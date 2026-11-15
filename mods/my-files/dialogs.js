@@ -1,3 +1,4 @@
+import { appearance, fontSize, metric } from "./appearance.js";
 // SPDX-License-Identifier: Apache-2.0
 // ProdAdvice for Herdr: customized interface and behavior, 2026. See NOTICE.
 import { View, div } from "gpui-kit";
@@ -35,7 +36,7 @@ export class FileMenu extends View {
   }
   render(cx) {
     const t = theme(), list = this.items();
-    return v_flex().id("files-menu").track_focus(this.h).w_full().max_h(506).overflow_y_scrollbar().p(5).bg(t.popover).text_size(12.5)
+    return v_flex().id("files-menu").track_focus(this.h).w_full().max_h(506).overflow_y_scrollbar().p(5).bg(t.popover).text_size(fontSize("fileDialog.menu"))
       .on_key_down((e, cx) => {
         if (e.key === "up") this.at = (this.at + list.length - 1) % list.length;
         else if (e.key === "down") this.at = (this.at + 1) % list.length;
@@ -45,7 +46,7 @@ export class FileMenu extends View {
         cx.stop_propagation(); cx.notify();
       })
       .child(div().px(9).py(7).truncate().text_color(t.dim).child(basename(this.target.path)))
-      .children(list.map(([label, action], i) => div().id(`files-menu-${action}`).h(31).px(9).flex().items_center().rounded(6).cursor_pointer()
+      .children(list.map(([label, action], i) => div().id(`files-menu-${action}`).h(metric("fileDialog.menuRow")).px(9).flex().items_center().rounded(6).cursor_pointer()
         .text_color(action === "trash" ? t.ansi1 : t.foreground).when(this.at === i, el => el.bg(t.selected)).hover(s => s.bg(t.hover))
         .on_click((_e, cx) => this.choose(action, cx)).child(label)));
   }
@@ -87,15 +88,15 @@ export class FileDialog extends View {
     const t = theme(), target = this.target;
     const button = (id, label, fn, primary) => div().id(id).px(12).py(7).rounded(7).cursor_pointer().bg(primary ? t.solid : t.raised)
       .text_color(primary ? t.solid_foreground : t.foreground).hover(s => s.opacity(0.85)).on_click(fn).child(label);
-    return v_flex().id("files-dialog").track_focus(this.h).size_full().p(18).gap(12).bg(t.popover).text_color(t.foreground).text_size(13)
+    return v_flex().id("files-dialog").track_focus(this.h).size_full().p(18).gap(12).bg(t.popover).text_color(t.foreground).text_size(fontSize("fileDialog.body"))
       .on_key_down((e, cx) => { if (e.key === "escape" && !this.busy) closeOverlay(props().overlay); else if (e.key === "enter" && !this.needsInput()) this.submit(cx); else return; cx.stop_propagation(); })
-      .child(div().text_size(16).font_semibold().child(labels[target.action]))
-      .child(div().truncate().tooltip(target.path).text_size(12).text_color(t.dim).child(target.path))
-      .when(this.needsInput(), el => el.child(Input.new(this.input).h(36).px(10).rounded(7).border_1().border_color(t.input).bg(t.background)))
+      .child(div().text_size(fontSize("fileDialog.title")).font_weight(appearance().weights.semibold).child(labels[target.action]))
+      .child(div().truncate().tooltip(target.path).text_size(fontSize("fileDialog.hint")).text_color(t.dim).child(target.path))
+      .when(this.needsInput(), el => el.child(Input.new(this.input).h(metric("fileDialog.input")).px(10).rounded(7).border_1().border_color(t.input).bg(t.background)))
       .when(target.action === "trash", el => el.child(div().text_color(t.muted).child("Файл или папка будут перемещены в корзину macOS.")))
-      .when(target.action === "paste", el => el.child(div().text_size(12).text_color(t.dim).child("Можно изменить имя. Существующие файлы не перезаписываются.")))
+      .when(target.action === "paste", el => el.child(div().text_size(fontSize("fileDialog.hint")).text_color(t.dim).child("Можно изменить имя. Существующие файлы не перезаписываются.")))
       .when(target.action === "duplicate", el => el.child(div().text_color(t.muted).child("Копия появится рядом с оригиналом под свободным именем.")))
-      .child(div().flex_1().min_h(0).overflow_y_scrollbar().text_size(12).text_color(t.ansi1).child(this.error ?? ""))
+      .child(div().flex_1().min_h(0).overflow_y_scrollbar().text_size(fontSize("fileDialog.hint")).text_color(t.ansi1).child(this.error ?? ""))
       .child(h_flex().gap(8).justify_end()
         .child(button("files-cancel", "Отмена", () => { if (!this.busy) closeOverlay(props().overlay); }))
         .child(button("files-confirm", this.busy ? "Выполняю…" : target.action === "trash" ? "В корзину" : "Готово", (_e, cx) => this.submit(cx), true)));

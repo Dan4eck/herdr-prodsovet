@@ -42,6 +42,11 @@ class InstallTests(unittest.TestCase):
         self.assertTrue((self.home / layout['preview']).is_file())
         self.assertIn('layout:ProdAdvice', json.loads((self.home / 'keys.json').read_text()))
         self.assertFalse((self.home / 'layouts/prodsovet.json').exists())
+        self.assertTrue((self.home / 'layouts/ProdAdvice2.json').is_file())
+        self.assertTrue((self.home / 'themes/ProdAdvice2.json').is_file())
+        self.assertIn('layout:ProdAdvice2', json.loads((self.home / 'keys.json').read_text()))
+        self.assertTrue((self.home / 'appearance_profiles.json').is_file())
+        self.assertTrue((self.home / 'sync_appearance.py').is_file())
         self.assertFalse((self.home / 'mods/prodsovet/limits.local.json').exists())
         keys = json.loads((self.home / 'keys.json').read_text())
         keys['global']['cmd-y'] = 'new-user-binding'

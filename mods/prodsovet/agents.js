@@ -1,3 +1,4 @@
+import { appearance, fontSize, metric } from "./appearance.js";
 // SPDX-License-Identifier: Apache-2.0
 // ProdAdvice for Herdr: customized interface and behavior, 2026. See NOTICE.
 // Agents in grouped or priority views; parents take their most urgent sub-agent's place.
@@ -171,11 +172,11 @@ export class Agents {
       .w_full()
       .p(5)
       .bg(t.popover)
-      .text_size(12.8)
-      .child(div().px(8).pt(4).pb(6).text_size(10).text_color(t.dim).child("СОРТИРОВКА"))
+      .text_size(fontSize("agents.menu"))
+      .child(div().px(8).pt(4).pb(6).text_size(fontSize("agents.section")).text_color(t.dim).child("СОРТИРОВКА"))
       .children(SORTS.map((s) => h_flex()
         .id(`sort-${s.id}`)
-        .h(31)
+        .h(metric("agents.menuRow"))
         .px(8)
         .gap(9)
         .rounded(7)
@@ -217,11 +218,11 @@ export class Agents {
       .pl(39)
       .pr(8)
       .rounded(8)
-      .h(26)
+      .h(metric("agents.compactRow"))
       .flex_none()
       .gap(0)
       .items_center()
-      .text_size(12.5)
+      .text_size(fontSize("agents.compact"))
       .when(on, (el) => el.bg(t.raised))
       .hover((s) => s.bg(t.hover))
       .on_click(() => (this.listed.has(k.address) ? run("pane.focus", { terminal: k.address }) : this.peek(k.address)))
@@ -236,8 +237,8 @@ export class Agents {
   status(t, a, compact = false) {
     const color = t[a.status] ?? t.dim;
     if (a.status === "working") return svg("mods/workspace-chrome/spinner.svg").size(12).mx(1).flex_none().text_color(t.working).spin(900);
-    if (a.status === "blocked" && compact) return div().size(14).flex_none().rounded(4).bg(t.blocked + "26").text_size(10.5).font_bold().text_color(t.blocked).flex().items_center().justify_center().child("!");
-    if (a.status === "blocked") return div().flex_none().px(6).h(18).rounded(5).bg(t.blocked + "26").text_size(10.5).font_semibold().text_color(t.blocked).flex().items_center().child("Needs you");
+    if (a.status === "blocked" && compact) return div().size(14).flex_none().rounded(4).bg(t.blocked + "26").text_size(fontSize("agents.badge")).font_weight(appearance().weights.bold).text_color(t.blocked).flex().items_center().justify_center().child("!");
+    if (a.status === "blocked") return div().flex_none().px(6).h(18).rounded(5).bg(t.blocked + "26").text_size(fontSize("agents.badge")).font_weight(appearance().weights.semibold).text_color(t.blocked).flex().items_center().child("Needs you");
     // Idle: a ring; done: a dot.
     if (a.status === "idle") return div().size(7).mx(3).flex_none().rounded(4).border(1.5).border_color(t.idle ?? t.dim);
     return div().size(7).mx(3).flex_none().rounded(4).bg(a.status === "done" ? color : t.dim + "00");
@@ -313,7 +314,7 @@ export class Agents {
         .flex()
         .items_center()
         .rounded(4)
-        .text_size(11)
+        .text_size(fontSize("agents.meta"))
         .text_color(open ? t.dim : (t[top] ?? t.dim))
         .cursor_pointer()
         .hover((s) => s.bg(t.hover).text_color(t.foreground))
@@ -353,7 +354,7 @@ export class Agents {
       if (collapsed) {
         return h_flex()
           .id(`ag-${a.address}`)
-          .h(26)
+          .h(metric("agents.compactRow"))
           .px(8)
           .flex_none()
           .items_center()
@@ -392,7 +393,7 @@ export class Agents {
       return h_flex()
         .id(`ag-${a.address}`)
         .px(6)
-        .h(52)
+        .h(metric("agents.row"))
         .flex_none()
         .items_center()
         .gap(8)
@@ -417,9 +418,9 @@ export class Agents {
               .left(-44 * ((this.tick + i * 5) % ART_FRAMES)).w(44 * ART_FRAMES).h(44)))))
         .child(v_flex().flex_1().min_w(0).gap(2)
           .child(h_flex().min_w(0).gap(5).items_center()
-            .child(div().min_w(0).max_w(full && more ? 100 : 180).truncate().text_size(13).text_color(idle ? t.muted : t.foreground).child(name))
-            .when(full && Boolean(more), el => el.child(div().flex_1().min_w(0).truncate().text_size(12).text_color(t.dim).child(`\u00b7 ${more}`))))
-          .child(h_flex().gap(6).items_center().text_size(11).text_color(t.dim)
+            .child(div().min_w(0).max_w(full && more ? 100 : 180).truncate().text_size(fontSize("agents.body")).text_color(idle ? t.muted : t.foreground).child(name))
+            .when(full && Boolean(more), el => el.child(div().flex_1().min_w(0).truncate().text_size(fontSize("agents.secondary")).text_color(t.dim).child(`\u00b7 ${more}`))))
+          .child(h_flex().gap(6).items_center().text_size(fontSize("agents.meta")).text_color(t.dim)
             .when(a.status === "blocked", el => el.child(div().text_color(tint).child(WORD.blocked)))
             .when(a.status == null, el => el.child(div().text_color(t.dim).child("СТАТУС НЕИЗВЕСТЕН")))
             .when(Boolean(machine), el => el.child(div().child(machine)))
@@ -446,12 +447,12 @@ export class Agents {
         .id(g.id)
         .px(8)
         .pt(8)
-        .h(30)
+        .h(metric("agents.groupRow"))
         .flex_none()
         .gap(6)
         .items_center()
-        .text_size(11)
-        .font_medium()
+        .text_size(fontSize("agents.meta"))
+        .font_weight(appearance().weights.medium)
         .cursor_pointer()
         .hover((s) => s.text_color(t.foreground))
         .on_click((_e, cx) => {
@@ -475,22 +476,22 @@ export class Agents {
       .bg(t.chrome)
       .border_t(1)
       .border_color(t.border)
-      .text_size(13)
+      .text_size(fontSize("agents.body"))
       .when(!collapsed, (el) =>
         el.child(
           h_flex()
             .px(16)
-            .h(41)
+            .h(metric("agents.header"))
             .pt(14)
             .pb(5)
             .flex_none()
             .items_center()
             .justify_between()
-            .child(div().text_size(11.5).font_medium().text_color(t.dim).child("МАСТЕРСКАЯ"))
+            .child(div().text_size(fontSize("agents.group")).font_weight(appearance().weights.medium).text_color(t.dim).child("МАСТЕРСКАЯ"))
             .child(
               div()
                 .id("ag-sort")
-                .text_size(11)
+                .text_size(fontSize("agents.meta"))
                 .text_color(t.dim)
                 .hover((s) => s.text_color(t.foreground))
                 .on_click(() => openOverlay({ mod: "prodsovet", kind: "popup", width: 200, height: 140, props: { role: "agents", sortMenu: true } }))
@@ -500,7 +501,7 @@ export class Agents {
         ),
       )
       .when(list.length === 0 && !collapsed, (el) =>
-        el.child(div().px(12).text_size(12).text_color(t.dim).child("No agent status yet. Agents show up here when they report their status. Older versions and agents inside tmux may not.")),
+        el.child(div().px(12).text_size(fontSize("agents.secondary")).text_color(t.dim).child("No agent status yet. Agents show up here when they report their status. Older versions and agents inside tmux may not.")),
       )
       .child(v_flex().id("ag-list").flex_1().min_h(0).px(collapsed ? 0 : 8).overflow_y_scrollbar().mode("always").children(rows))
       .when(collapsed, (el) =>
@@ -512,7 +513,7 @@ export class Agents {
             .child(
               div()
                 .id("collapse")
-                .text_size(13)
+                .text_size(fontSize("agents.body"))
                 .text_color(t.dim)
                 .hover((s) => s.text_color(t.foreground))
                 .on_click(toggleSidebar)

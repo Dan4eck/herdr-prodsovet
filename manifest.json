@@ -1,6 +1,6 @@
 {
   "name": "herdr-prodsovet",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "herdr_tested": "0.1.15",
   "platform": "macOS",
   "mods": [
@@ -24,5 +24,21 @@
     "license_commit": "5216e6f9f8c0c281a65e09816c66e4319e671784"
   },
   "display_name": "ProdAdvice",
-  "layout": "ProdAdvice"
+  "layout": "ProdAdvice",
+  "layouts": [
+    "ProdAdvice",
+    "ProdAdvice2"
+  ],
+  "appearance_files": [
+    "appearance_profiles.json",
+    "sync_appearance.py",
+    "layouts/ProdAdvice.json",
+    "layouts/ProdAdvice2.json",
+    "layouts/prodadvice.png",
+    "layouts/prodadvice.svg",
+    "layouts/prodadvice2.png",
+    "layouts/prodadvice2.svg",
+    "themes/ProdAdvice.json",
+    "themes/ProdAdvice2.json"
+  ]
 }

@@ -1,3 +1,4 @@
+import { appearance, fontSize, metric } from "./appearance.js";
 // SPDX-License-Identifier: Apache-2.0
 // ProdAdvice for Herdr: customized interface and behavior, 2026. See NOTICE.
 // A file as its own tab, next to the terminal tabs.
@@ -110,17 +111,46 @@ export default class FileTab extends View {
           let draft;
           try { draft = JSON.parse(localStorage.getItem("draft") ?? "null"); } catch {}
           if (draft?.file === this.file) this.original = draft.original;
-          this.code = EditorState.new({
-            value: draft?.file === this.file ? draft.text : text, language: LANG[this.ext] ?? this.ext, readonly: !this.editable, soft_wrap: true,
-            line_numbers: !["md", "markdown", "txt"].includes(this.ext),
-            font_family: settings().font_family, font_size: 13,
-            syntax: { keyword: t.ansi5, string: t.ansi2, comment: t.dim, function: t.ansi4, type: t.ansi3, number: t.ansi1, constant: t.ansi6 },
-          });
-          this.code.on("change", (_e, cx) => { this.snapshot(); cx.notify(); });
+          this.code = this.makeEditor(draft?.file === this.file ? draft.text : text);
           this.publish();
         }
       } catch (e) { this.error = `Не открылся: ${e}`; }
       cx.notify();
+    });
+  }
+
+  editorOptions() {
+    const t = theme();
+    return {
+      language: LANG[this.ext] ?? this.ext, readonly: !this.editable, soft_wrap: true,
+      line_numbers: !["md", "markdown", "txt"].includes(this.ext),
+      font_family: appearance().fonts.editor, font_size: fontSize("fileTab.editor"),
+      syntax: { keyword: t.ansi5, string: t.ansi2, comment: t.dim, function: t.ansi4, type: t.ansi3, number: t.ansi1, constant: t.ansi6 },
+    };
+  }
+
+  makeEditor(value) {
+    const options = this.editorOptions();
+    const editor = EditorState.new({ ...options, value });
+    editor.on("change", (_e, cx) => { this.snapshot(); cx.notify(); });
+    this.editorStyle = JSON.stringify(options);
+    return editor;
+  }
+
+  refreshEditorStyle(cx) {
+    if (!this.code || this.saving || this.restyleQueued || JSON.stringify(this.editorOptions()) === this.editorStyle) return;
+    this.restyleQueued = true;
+    cx.spawn(async cx => {
+      try {
+        // Native editor style is fixed on creation. Rebuild only when styling
+        // actually differs, retaining the text, original snapshot and dirty flag.
+        await exec("true", []);
+        if (this.closed || !this.code || this.saving) return;
+        const old = this.code;
+        this.code = this.makeEditor(old.value());
+        old.release();
+        this.snapshot();
+      } finally { this.restyleQueued = false; cx.notify(); }
     });
   }
 
@@ -191,6 +221,7 @@ export default class FileTab extends View {
   }
 
   async close() {
+    this.closed = true;
     this.syncDocument();
     if (panes().some(p => p.tab === this.tab && p.mod === "file-tab")) {
       // Hot reload or application quit: retain the path and unsaved buffer.
@@ -204,6 +235,7 @@ export default class FileTab extends View {
 
   render(cx) {
     this.syncDocument();
+    this.refreshEditorStyle(cx);
     const t = theme(), md = ["md", "markdown"].includes(this.ext);
     // theme switched (light/dark, another theme): re-derive the selection color
     if (this.code && this.selKey !== `${t.background}/${t.selection}`) {
@@ -216,32 +248,32 @@ export default class FileTab extends View {
       const agents = shared("files.agents") ?? {};
       if (agents[f.space] !== f.terminal) setShared("files.agents", { ...agents, [f.space]: f.terminal });
     }
-    const btn = (id, label, on, active) => div().id(id).px(8).py(3).rounded(6).text_size(12).cursor_pointer()
+    const btn = (id, label, on, active) => div().id(id).px(8).py(3).rounded(6).text_size(fontSize("fileTab.action")).cursor_pointer()
       .text_color(active ? t.foreground : t.muted).when(active, (el) => el.bg(t.selected))
       .hover((s) => s.bg(t.hover).text_color(t.foreground)).on_click(on).child(label);
     const dir = this.file ? this.file.slice(0, this.file.lastIndexOf("/")).replace(/^\/Users\/[^/]+/, "~") : "";
 
-    return v_flex().id("file-tab").relative().track_focus(this.h).size_full().min_h(0).bg(t.background).text_color(t.foreground).text_size(13)
+    return v_flex().id("file-tab").relative().track_focus(this.h).size_full().min_h(0).bg(t.background).text_color(t.foreground).text_size(fontSize("fileTab.body"))
       .on_key_down((e, cx) => {
         if (e.key === "escape" && this.openMenu) { this.openMenu = false; cx.stop_propagation(); cx.notify(); return; }
         if (e.key === "escape" && this.renaming) { this.renaming.release(); this.renaming = null; cx.stop_propagation(); cx.notify(); }
       })
-      .child(h_flex().h(40).flex_none().px(14).gap(8).items_center().border_b(1).border_color(t.border).bg(t.chrome)
+      .child(h_flex().h(metric("fileTab.toolbar")).flex_none().px(14).gap(8).items_center().border_b(1).border_color(t.border).bg(t.chrome)
         .child(svg("mods/my-files/file.svg").size(14).flex_none().text_color(t.dim))
         .child(this.renaming
-          ? h_flex().w(320).h(28).px(8).rounded(6).border_1().border_color(t.accent).bg(t.background).items_center()
-              .child(Input.new(this.renaming).flex_1().h_full().text_size(13).text_color(t.foreground))
-          : div().id("ft-name").flex_none().max_w(360).truncate().font_semibold().cursor_pointer().rounded(5).px(4)
+          ? h_flex().w(320).h(metric("fileTab.input")).px(8).rounded(6).border_1().border_color(t.accent).bg(t.background).items_center()
+              .child(Input.new(this.renaming).flex_1().h_full().text_size(fontSize("fileTab.body")).text_color(t.foreground))
+          : div().id("ft-name").flex_none().max_w(360).truncate().font_weight(appearance().weights.semibold).cursor_pointer().rounded(5).px(4)
               .hover((s) => s.bg(t.hover)).on_click((e, cx) => { if (e.click_count >= 2) this.startRename(cx); })
               .child((this.dirty() ? "● " : "") + (this.file ? base(this.file) : "")))
-        .child(div().flex_1().min_w(0).truncate().text_size(11.5).text_color(t.dim).child((this.on ? `${this.on}:` : "") + dir))
-        .when(Boolean(this.saveError), (el) => el.child(div().text_size(11.5).text_color(t.blocked).child(this.saveError)))
+        .child(div().flex_1().min_w(0).truncate().text_size(fontSize("fileTab.meta")).text_color(t.dim).child((this.on ? `${this.on}:` : "") + dir))
+        .when(Boolean(this.saveError), (el) => el.child(div().text_size(fontSize("fileTab.meta")).text_color(t.blocked).child(this.saveError)))
         .when(md && Boolean(this.code), (el) => el
           .child(btn("ft-edit", "Текст", (_e, cx) => { this.preview = false; cx.notify(); }, !this.preview))
           .child(btn("ft-prev", "Превью", (_e, cx) => { this.preview = true; cx.notify(); }, this.preview)))
         .child(btn("ft-agent", "@ агенту", () => this.agent()))
         .when(Boolean(this.code) && this.editable && !this.removed, (el) => el.child(btn("ft-save", this.saving ? "Сохраняю…" : this.dirty() ? "Сохранить ⌘S" : "Сохранено", (_e, cx) => this.save(cx), this.dirty())))
-        .when(Boolean(this.code) && !this.editable, (el) => el.child(div().text_size(11).text_color(t.dim).child("только чтение")))
+        .when(Boolean(this.code) && !this.editable, (el) => el.child(div().text_size(fontSize("fileTab.hint")).text_color(t.dim).child("только чтение")))
         .when(!this.on, (el) => el.child(btn("ft-open", "Открыть в ▾", (_e, cx) => { this.openMenu = !this.openMenu; cx.notify(); }, this.openMenu))))
       .when(Boolean(this.removed), el => el.child(div().px(14).py(8).text_color(t.blocked).child("Файл перемещён в корзину. Содержимое вкладки сохранено для просмотра.")))
       .child(this.code
@@ -257,8 +289,8 @@ export default class FileTab extends View {
         v_flex().id("ft-menu").absolute().top(38).right(12).w(170).p(4).gap(2)
           .rounded(9).border_1().border_color(t.border).bg(t.popover).shadow_lg()
           .on_mouse_down_out((_e, cx) => { this.openMenu = false; cx.notify(); })
-          .children(OPEN_IN.map((a) => h_flex().id(`ft-in-${a.id}`).h(32).px(8).gap(9).items_center().rounded(6).cursor_pointer()
-            .text_size(13).text_color(t.foreground).hover((s) => s.bg(t.hover))
+          .children(OPEN_IN.map((a) => h_flex().id(`ft-in-${a.id}`).h(metric("fileTab.menuRow")).px(8).gap(9).items_center().rounded(6).cursor_pointer()
+            .text_size(fontSize("fileTab.body")).text_color(t.foreground).hover((s) => s.bg(t.hover))
             .on_click((_e, cx) => { this.openMenu = false; this.openIn(a); cx.notify(); })
             .child(svg(a.icon).size(18).flex_none())
             .child(a.label)))));

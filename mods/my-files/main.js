@@ -1,3 +1,4 @@
+import { appearance, fontSize, metric } from "./appearance.js";
 // SPDX-License-Identifier: Apache-2.0
 // ProdAdvice for Herdr: customized interface and behavior, 2026. See NOTICE.
 // Personal file explorer; roots are stable per workspace.
@@ -187,33 +188,33 @@ export default class Files extends View {
       .when(enabled, el => el.cursor_pointer().hover(s => s.bg(t.hover).text_color(t.foreground)))
       .when(!enabled, el => el.opacity(0.35)).on_click((e, cx) => { if (enabled) fn(e, cx); }).child(label);
     const selectedFolder = this.flat.find(e => e.path === this.sel && e.dir);
-    return v_flex().id("files").track_focus(this.h).on_key_down((e, cx) => this.key(e, cx)).size_full().min_h(0).rounded(10).overflow_hidden().bg(t.background).border_1().border_color(t.border).text_color(t.foreground).text_size(13)
-      .child(h_flex().h(38).flex_none().px(10).gap(3).items_center()
-        .child(div().flex_1().font_semibold().child("Files"))
+    return v_flex().id("files").track_focus(this.h).on_key_down((e, cx) => this.key(e, cx)).size_full().min_h(0).rounded(10).overflow_hidden().bg(t.background).border_1().border_color(t.border).text_color(t.foreground).text_size(fontSize("files.body"))
+      .child(h_flex().h(metric("files.toolbar")).flex_none().px(10).gap(3).items_center()
+        .child(div().flex_1().font_weight(appearance().weights.semibold).child("Files"))
         .child(button("files-up", "↑", (_e, cx) => this.navigate("up", cx), Boolean(this.root && parent(this.root) !== this.root)))
         .child(button("files-down", "↓", (_e, cx) => this.navigate("down", cx), Boolean(selectedFolder)))
         .child(button("files-add", "+", () => this.dialog("create-file")))
         .child(button("files-search", "⌕", () => run("mod.open", { name: "find" })))
         .child(button("files-more", "⋯", () => this.menu())))
-      .child(div().id("files-path").h(25).flex_none().px(12).truncate().text_size(11).text_color(t.dim).tooltip(this.root ?? "").cursor_pointer()
+      .child(div().id("files-path").h(metric("files.path")).flex_none().px(12).truncate().text_size(fontSize("files.meta")).text_color(t.dim).tooltip(this.root ?? "").cursor_pointer()
         .on_click(() => this.dialog("goto")).child((this.on ? this.on + ":" : "") + (this.root ?? "Нет папки")))
-      .child(div().mx(8).mb(5).h(28).flex_none().child(Input.new(this.filter).w_full().h_full().px(7).rounded(5).border_1().border_color(t.input).bg(t.background).text_size(12)))
+      .child(div().mx(8).mb(5).h(metric("files.filter")).flex_none().child(Input.new(this.filter).w_full().h_full().px(7).rounded(5).border_1().border_color(t.input).bg(t.background).text_size(fontSize("files.hint"))))
       .child(v_flex().id("files-tree").flex_1().min_h(0).overflow_y_scrollbar().track_scroll(this.scroll).p(6)
         .on_mouse_down("right", (_e, cx) => { cx.stop_propagation(); this.sel = null; this.menu(); })
         .children(this.flat.map(e => {
           const selected = this.sel === e.path, open = this.folders.has(e.path), mark = this.marks[join(this.root, e.path)];
-          return h_flex().id(`file-${e.path}`).h(28).flex_none().pl(6 + (this.query ? 0 : e.depth * 16)).pr(5).gap(6).items_center().rounded(6).cursor_pointer()
+          return h_flex().id(`file-${e.path}`).h(metric("files.row")).flex_none().pl(6 + (this.query ? 0 : e.depth * 16)).pr(5).gap(6).items_center().rounded(6).cursor_pointer()
             .when(selected, el => el.bg(t.selected)).hover(s => s.bg(t.hover))
             .on_mouse_down("right", (_ev, cx) => { cx.stop_propagation(); this.sel = e.path; this.menu(); cx.notify(); })
             .on_click((_ev, cx) => { this.sel = e.path; this.h.focus(); if (e.dir) this.toggle(e.path, cx); else openFile(join(this.root, e.path), this.on, this.context.space); cx.notify(); })
             .child(e.dir ? svg(`mods/my-files/chevron-${open ? "down" : "right"}.svg`).size(10).text_color(t.dim) : div().w(10))
             .child(svg(`mods/my-files/${e.dir ? "folder" : "file"}.svg`).size(14).flex_none().text_color(t.muted))
             .child(div().flex_1().min_w(0).truncate().tooltip(e.path).child(this.query ? e.path : e.name))
-            .when(Boolean(mark), el => el.child(div().text_size(10).text_color(mark === "A" ? t.ansi2 : t.blocked).child(mark)))
+            .when(Boolean(mark), el => el.child(div().text_size(fontSize("files.badge")).text_color(mark === "A" ? t.ansi2 : t.blocked).child(mark)))
             .when(selected, el => el.child(button(`insert-${e.path}`, "@", (_ev, cx) => { cx.stop_propagation(); cx.spawn(cx => this.insert(e.path, cx)); })));
         }))
-        .when(Boolean(this.error) || !this.flat.length, el => el.child(div().p(8).text_size(12).text_color(t.dim).child(this.error || (this.loading ? "Загрузка…" : this.query ? "Нет совпадений в раскрытом дереве" : "Папка пуста")))))
-      .when(this.limited, el => el.child(div().p(6).text_size(10).text_color(t.dim).child("Лимит: 500 в папке / 5000 всего. Поиск: ⌘⇧O")))
-      .when(Boolean(shared("files.clipboard")), el => el.child(div().px(10).py(5).truncate().text_size(11).text_color(t.dim).child(`${shared("files.clipboard")?.cut ? "Вырезано" : "Скопировано"}: ${basename(shared("files.clipboard")?.path)}`)));
+        .when(Boolean(this.error) || !this.flat.length, el => el.child(div().p(8).text_size(fontSize("files.hint")).text_color(t.dim).child(this.error || (this.loading ? "Загрузка…" : this.query ? "Нет совпадений в раскрытом дереве" : "Папка пуста")))))
+      .when(this.limited, el => el.child(div().p(6).text_size(fontSize("files.badge")).text_color(t.dim).child("Лимит: 500 в папке / 5000 всего. Поиск: ⌘⇧O")))
+      .when(Boolean(shared("files.clipboard")), el => el.child(div().px(10).py(5).truncate().text_size(fontSize("files.meta")).text_color(t.dim).child(`${shared("files.clipboard")?.cut ? "Вырезано" : "Скопировано"}: ${basename(shared("files.clipboard")?.path)}`)));
   }
 }

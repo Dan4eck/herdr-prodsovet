@@ -1,12 +1,10 @@
+import { appearance, profileName, allProfiles } from "./appearance.js";
 // SPDX-License-Identifier: Apache-2.0
 // ProdAdvice for Herdr: customized interface and behavior, 2026. See NOTICE.
 // Only Codex and Claude receive an almost-black terminal tint.
 // Herdr shares pane frames within a tab, so the focused terminal chooses it.
-export const PALETTES = {
-  codex: { background: "#090b0e", border: "#262b32", accent: "#7797ba", working: "#7797ba" },
-  claude: { background: "#0b0a09", border: "#2d2926", accent: "#b3927b", working: "#b3927b" },
-};
 export function paletteFor(agent) {
+  const PALETTES = appearance().agentPalettes;
   const names = [agent?.program?.key, agent?.app, agent?.program?.name, agent?.foreground?.name].filter(Boolean).map(s => s.toLowerCase());
   return names.some(s => /^(codex|openai-codex)(\b|$)/.test(s)) ? PALETTES.codex
     : names.some(s => /^claude(\b|$)/.test(s)) ? PALETTES.claude : null;
@@ -18,7 +16,7 @@ export function withTerminal(agent, all) {
 }
 export function enabled(tree, dark) {
   const name = typeof tree?.theme === "string" ? tree.theme : tree?.theme?.[dark ? "dark" : "light"];
-  return dark && name === "ProdAdvice";
+  return dark && appearance().agentTints && name === profileName();
 }
 export function agentTheme(t, agent, active) {
   const p = active && paletteFor(agent);
@@ -35,7 +33,7 @@ function find(node, id) {
 // Release the previous revision's global accents; agent colors now stay in terminals.
 const OLD_ACCENTS = ["#91abc9", "#c6a084", "#bdb17c", "#a8b3ae"];
 const OLD_SELECTIONS = ["#303b49", "#42362e", "#3d3b2b", "#343a3c"];
-const OWN_BACKGROUNDS = ["#24282e", "#2b2724", "#2a2923", "#252629", ...Object.values(PALETTES).map(p => p.background)];
+const OWN_BACKGROUNDS = ["#24282e", "#2b2724", "#2a2923", "#252629", ...Object.values(allProfiles).flatMap(p => Object.values(p.agentPalettes).map(a => a.background))];
 export function styledLayout(tree, agent, dark) {
   if (!find(tree, "main")?.content?.pane) return null;
   const next = JSON.parse(JSON.stringify(tree));

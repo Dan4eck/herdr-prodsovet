@@ -1,17 +1,22 @@
 # Validation record
 
-Date: 2026-11-15. Source package: 0.1.1. Host: macOS, Herdr App 0.1.15,
+Date: 2026-11-15. Source package: 0.2.0. Host: macOS, Herdr App 0.1.15,
 Python 3.15 and Node.js 22.14.0. Published at https://github.com/Dan4eck/herdr-prodsovet.
 
 ## Passed
 
 - ProdAdvice layout name, custom thumbnail and selected state visually verified
-  in native Settings > Look. Active layout reported ProdAdvice with no errors.
+  in native Settings > Look. Both profile renders and switching back to the
+  original were checked in the installed app. An initial unsupported space in
+  the second layout key scope was corrected by using ProdAdvice2. Final native
+  status reports ProdAdvice selected and no errors.
 - Renamed layout-scoped keys preserved; installer test checks both the new
   layout scope and existence of the referenced preview image.
 
-- 49 automated cases: 10 real filesystem operations, 13 workspace/document-state
-  cases, 14 dialog/editor integration cases and 12 installer/disabled-limits cases.
+- 58 automated cases: 10 real filesystem operations, 13 workspace/document-state
+  cases, 15 dialog/editor integration cases, 12 installer/disabled-limits cases
+  and 8 appearance isolation cases. Profile switching with different editor font
+  sizes preserves unsaved text and the disk-conflict baseline in the host mock.
 - Installer dry run, actual install and uninstall via its CLI into a temporary
   Herdr home seeded with the stock dependencies. Existing unrelated keys survived.
 - Installer cases cover collisions, opt-in limits, user edits, symlinks,

@@ -1,3 +1,4 @@
+import { appearance, fontSize, metric } from "./appearance.js";
 // SPDX-License-Identifier: Apache-2.0
 // ProdAdvice for Herdr: customized interface and behavior, 2026. See NOTICE.
 // ПродСовет: custom workspace features with the standard Herdr styling.
@@ -15,7 +16,6 @@ import Tabs from "./file-tabs.js";
 import NewMenu from "./file-new-menu.js";
 import TabMenu from "./file-tab-menu.js";
 
-const MONO = "JetBrains Mono";
 
 function find(node, id) {
   if (node?.id === id) return node;
@@ -65,8 +65,8 @@ class Brand {
       .when(!collapsed, (el) => el.child(h_flex().flex_1().min_w(0).gap(8).items_center()
         .child(image("frame/welcome/herdr.png").size(20).flex_none().rounded(5))
         .child(v_flex().min_w(0)
-          .child(div().text_size(13.5).line_height("17px").font_semibold().text_color(t.foreground).child("Herdr"))
-          .child(div().font_semibold().text_size(9.5).line_height("12px").text_color(settings().dark ? "#7d9a72" : "#527148").truncate().child("ProdAdvice")))))
+          .child(div().text_size(fontSize("brand.title")).line_height(`${metric("brand.titleLine")}px`).font_weight(appearance().weights.semibold).text_color(t.foreground).child("Herdr"))
+          .child(div().font_weight(appearance().weights.semibold).text_size(fontSize("brand.subtitle")).line_height(`${metric("brand.subtitleLine")}px`).text_color(appearance().brandColors[settings().dark ? "dark" : "light"]).truncate().child("ProdAdvice")))))
       .when(!collapsed, (el) => el.child(this.button(t, "search", "search", () => run("mod.open", { name: "picker" }))))
       .when(!(collapsed && mac), (el) => el.child(this.button(t, "sidebar-toggle", "sidebar", toggleSidebar)));
   }
@@ -89,15 +89,15 @@ class PaneHead {
     const st = p.status;
     const pane = p.pane;
     const m = st ? mini(st) : null;
-    return h_flex().id(`ps-head-${pane}`).size_full().px(10).gap(8).items_center().text_size(12)
+    return h_flex().id(`ps-head-${pane}`).size_full().px(10).gap(8).items_center().text_size(fontSize("pane.body"))
       .bg(pt.background).border_b(1).border_color(st === "working" ? pt.border : t.border)
       .on_hover((h, cx) => { this.hovered = h; cx.notify(); })
       .on_click(() => run("pane.focus", { pane }))
-      .when(Boolean(m), (el) => el.child(div().flex_none().font_family(MONO).text_size(11).text_color(pt[st] ?? t.dim).frames(m.frames, m.ms)))
-      .when(!m, (el) => el.child(div().flex_none().font_family(MONO).text_size(11).text_color(t.dim).child(">_")))
-      .child(div().flex_none().truncate().max_w(260).font_medium().text_color(t.foreground).child(name))
+      .when(Boolean(m), (el) => el.child(div().flex_none().font_family(appearance().fonts.mono).text_size(fontSize("pane.status")).text_color(pt[st] ?? t.dim).frames(m.frames, m.ms)))
+      .when(!m, (el) => el.child(div().flex_none().font_family(appearance().fonts.mono).text_size(fontSize("pane.status")).text_color(t.dim).child(">_")))
+      .child(div().flex_none().truncate().max_w(260).font_weight(appearance().weights.medium).text_color(t.foreground).child(name))
       .child(div().flex_1().truncate().text_color(t.dim).child(folder(p.cwd)))
-      .when(Boolean(st) && st !== "idle" && st !== "working", (el) => el.child(div().flex_none().text_size(9).text_color(pt[st] ?? t.dim)
+      .when(Boolean(st) && st !== "idle" && st !== "working", (el) => el.child(div().flex_none().text_size(fontSize("pane.state")).text_color(pt[st] ?? t.dim)
         .when(st === "blocked", (e) => e.loop("opacity", { from: 0.3, to: 1, period: 700 }))
         .child(WORD[st] ?? "")))
       .when(this.hovered, (el) => el
@@ -171,7 +171,7 @@ class Status {
     const c = counts();
     const cell = (text, color) => div().flex_none().text_color(color ?? t.muted).child(text);
     return h_flex().size_full().px(10).gap(10).items_center().bg(t.chrome).border_t(1).border_color(t.border)
-      .text_size(10).text_color(t.muted)
+      .text_size(fontSize("status.body")).text_color(t.muted)
       .child(cell((space?.machine ?? "THIS MAC").toUpperCase()))
       .when(Boolean(space?.branch), (el) => el.child(cell(`⎇ ${space.branch}`)))
       .child(cell(`АГЕНТЫ ${c.total}`))
@@ -212,8 +212,8 @@ class Toast {
       .on_click(() => { if (n.action?.name) run(n.action.name, n.action.args ?? {}); closeOverlay(n.overlay); })
       .child(n.icon ? image(n.icon).w(18).h(18).flex_none() : div().size(8).rounded(4).flex_none().bg(t[TOAST_DOT[n.level] ?? "accent"]))
       .child(v_flex().flex_1().overflow_hidden()
-        .child(div().truncate().font_semibold().text_size(13).text_color(t.foreground).child(n.title ?? ""))
-        .when(Boolean(n.body), (el) => el.child(div().truncate().tooltip(n.body).text_size(12).text_color(t.muted).child(n.body ?? ""))));
+        .child(div().truncate().font_weight(appearance().weights.semibold).text_size(fontSize("toast.title")).text_color(t.foreground).child(n.title ?? ""))
+        .when(Boolean(n.body), (el) => el.child(div().truncate().tooltip(n.body).text_size(fontSize("toast.body")).text_color(t.muted).child(n.body ?? ""))));
   }
 }
 
@@ -226,7 +226,7 @@ class Zoo {
     const sts = ["working", "blocked", "done", "idle"];
     return v_flex().p(16).gap(10).bg(t.chrome)
       .children(kinds.map((k) => h_flex().gap(18).items_center()
-      .child(div().w(60).text_size(11).text_color(t.dim).child(k.toUpperCase()))
+      .child(div().w(60).text_size(fontSize("zoo.label")).text_color(t.dim).child(k.toUpperCase()))
       .children(sts.map((st) => div().size(64).flex_none().relative().overflow_hidden()
         .child(image(artPath(k, st)).absolute().top(0).left(-64 * (this.tick % ART_FRAMES)).w(64 * ART_FRAMES).h(64))))));
   }

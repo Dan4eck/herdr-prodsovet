@@ -1,0 +1,54 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import vm from 'node:vm';
+import {fileURLToPath} from 'node:url';
+const root=fileURLToPath(new URL('..',import.meta.url));
+let active='ProdAdvice';
+const context=vm.createContext({JSON,Object,Number,Error});
+const modules=new Map();
+const host=new vm.SyntheticModule(['shared'],function(){this.setExport('shared',key=>key==='layout'?active:undefined)},{context});
+async function load(file){
+ if(modules.has(file))return modules.get(file);
+ const mod=new vm.SourceTextModule(fs.readFileSync(file,'utf8'),{context,identifier:file});modules.set(file,mod);
+ await mod.link((s,ref)=>s==='herdr'?host:load(path.resolve(path.dirname(ref.identifier),s)));return mod;
+}
+const helper=await load(path.join(root,'mods/prodsovet/appearance.js'));await helper.evaluate();
+const a=helper.namespace;
+const palette=await load(path.join(root,'mods/prodsovet/palette.js'));await palette.evaluate();
+const p=palette.namespace;
+let count=0;
+function test(name,fn){fn();console.log(`ok ${++count} - ${name}`);}
+test('unknown layouts keep compatible defaults',()=>{active='main';assert.equal(a.profileName(),'ProdAdvice');assert.equal(a.fontSize('files.body'),13);});
+test('profiles start with identical visual values and independent objects',()=>{
+ const x=JSON.parse(JSON.stringify(a.appearance('ProdAdvice'))),y=JSON.parse(JSON.stringify(a.appearance('ProdAdvice2')));
+ delete x.preview;delete y.preview;assert.deepEqual(x,y);
+ assert.notEqual(a.appearance('ProdAdvice').text,a.appearance('ProdAdvice2').text);
+});
+test('changing the second profile does not change classic typography or colors',()=>{
+ const second=a.appearance('ProdAdvice2');second.text.files.body=17;second.brandColors.dark='#123456';
+ active='ProdAdvice2';assert.equal(a.fontSize('files.body'),17);assert.equal(a.appearance().brandColors.dark,'#123456');
+ active='ProdAdvice';assert.equal(a.fontSize('files.body'),13);assert.equal(a.appearance().brandColors.dark,'#7d9a72');
+});
+test('changing classic does not change second typography',()=>{
+ a.appearance('ProdAdvice').text.files.meta=22;active='ProdAdvice2';assert.equal(a.fontSize('files.meta'),11);
+});
+test('agent tint uses the active profile and respects an overriding theme',()=>{
+ active='ProdAdvice2';a.appearance().agentPalettes.codex.background='#123456';
+ assert.equal(p.paletteFor({app:'codex'}).background,'#123456');
+ assert.equal(p.enabled({theme:{dark:'ProdAdvice2'}},true),true);
+ assert.equal(p.enabled({theme:{dark:'graphite'}},true),false);
+ active='ProdAdvice';assert.equal(p.paletteFor({app:'codex'}).background,'#090b0e');
+});
+test('disabling second-profile tints leaves classic enabled',()=>{
+ active='ProdAdvice2';a.appearance().agentTints=false;assert.equal(p.enabled({theme:'ProdAdvice2'},true),false);
+ active='ProdAdvice';assert.equal(p.enabled({theme:'ProdAdvice'},true),true);
+});
+test('switching back removes the other profile tint without changing geometry',()=>{
+ const tree={id:'root',theme:'ProdAdvice',children:[{id:'main',content:{pane:{background:'#123456',radius:10,header:{height:30}}}}]};
+ active='ProdAdvice';const result=p.styledLayout(tree,{app:'codex',status:'working'},true);
+ assert.equal(result.children[0].content.pane.background,'#090b0e');assert.equal(result.children[0].content.pane.radius,10);
+ assert.equal(result.children[0].content.pane.header.height,30);assert.equal(tree.children[0].content.pane.background,'#123456');
+});
+test('missing typography values fail visibly instead of borrowing another profile',()=>{assert.throws(()=>a.fontSize('missing.value'),/Unknown appearance/);});
+console.log(`${count} appearance tests passed`);

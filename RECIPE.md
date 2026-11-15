@@ -8,7 +8,7 @@ strip. Russian labels, workspace-aware navigation and optional account limits.
 
 ## What you see
 
-In Settings > Look the layout is named ProdAdvice and has a custom dark thumbnail
+In Settings > Look the layouts are named ProdAdvice and ProdAdvice2. Each has a custom dark thumbnail
 with its name, Codex/Claude mascots, terminal and file tree. The root preview
 points to layouts/prodadvice.png; layouts/prodadvice.svg is the editable source.
 
@@ -20,8 +20,8 @@ mode and #527148 in light mode; line heights are 17/12 px. Main work
 column: 42 px tabs, flexible body, 20 px status strip. Body has 8 px padding/gap;
 right panel 294 px, min 280 / max 900, a files/changes stack. Pane headers are
 30 px with radius 10, gap 8 and a one-pixel border. Terminal padding is 14/12.
-Status type is 10 px with 10 px horizontal spacing. Other type sizes stay in the
-individual mods; use their current source rather than globally scaling fonts.
+Status type is 10 px with 10 px horizontal spacing. Mod type sizes and main row heights come from appearance_profiles.json. Each
+profile owns a full independent set of values; see APPEARANCE.md.
 
 Dark palette: canvas/chrome #030303, background #090909, foreground #f3f4ef,
 border #262626, accent #39ff14. Focused Codex panes use #090b0e / #7797ba;
@@ -123,3 +123,14 @@ not source files to redistribute. Agent lifecycle hooks are not installed here.
 
 Items 5-6 are a manual acceptance procedure, not a claim that every case was
 rerun for this distribution. Actual evidence is recorded in VALIDATION.md.
+
+## Appearance architecture
+
+appearance_profiles.json is canonical. sync_appearance.py generates one local
+appearance.js helper per mod, the native themes, root font settings and the second
+layout key scope. Herdr forbids imports across mod directories, so generated
+helpers are identical copies. Each reads the active shared layout name; both
+layouts reference the same feature modules and use the same runtime documents.
+Layout geometry remains in each native layout JSON and survives regeneration.
+The second profile initially matches the first. Original pre-refactor code is
+preserved by the tag prodadvice-classic-2026-11-15.

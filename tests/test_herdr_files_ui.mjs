@@ -50,6 +50,18 @@ try {
   await test('context menu for a file contains all requested operations',()=>{props={target:{path:root+'/folder/moved.md',dir:false,on:null,space:'test'}};const menu=new ui.namespace.FileMenu();menu.init({},newCx());const actions=menu.items().map(x=>x[1]);for(const action of ['create-file','create-folder','rename','duplicate','copy','cut','copy-path','reveal','trash'])assert.ok(actions.includes(action));for(const action of ['goto','workspace'])assert.ok(!actions.includes(action));menu.render(newCx());});
   await test('unsaved buffer survives a mod reload and detects disk conflicts',async()=>{editor.code.set_value('draft recovery');editor.snapshot();fs.writeFileSync(editor.file,'external edit');props={file:root+'/sample.md',on:null};const cx=newCx(), reloaded=new ft.namespace.default();reloaded.init({},cx);await cx.tasks[0];assert.equal(reloaded.code.value(),'draft recovery');await reloaded.save(cx);assert.equal(fs.readFileSync(editor.file,'utf8'),'external edit');assert.ok(reloaded.saveError);});
   await test('same file opened in another space receives its own tab identity',async()=>{storage.clear();extraSpaces.push({id:'other',tabs:[{id:'other-file',name:'moved.md'}]});space.tabs.push({id:'new-file',name:'moved.md'});allPanes.push({tab:'other-file',mod:'file-tab'},{tab:'new-file',mod:'file-tab'});shared.set('file-tab.open',{[root+'/folder/moved.md']:'other-file'});focus={space:'test',tab:'new-file'};props={file:root+'/folder/moved.md',space:'test',on:null};const cx=newCx(), separate=new ft.namespace.default();separate.init({},cx);await cx.tasks[0];assert.equal(separate.tab,'new-file');assert.equal(separate.space,'test');});
+  await test('changing an open editor style retains unsaved text and disk conflict protection',async()=>{
+    const helper=(await load(app+'/mods/file-tab/appearance.js')).namespace;
+    const original=editor.original;editor.code.set_value('profile-safe draft');
+    const disk=fs.readFileSync(editor.file,'utf8');
+    helper.allProfiles['ProdAdvice2'].text.fileTab.editor=17;
+    shared.set('layout','ProdAdvice2');const cx=newCx();editor.refreshEditorStyle(cx);await Promise.all(cx.tasks);
+    assert.equal(editor.code.value(),'profile-safe draft');assert.equal(editor.original,original);
+    assert.equal(editor.dirty(),true);assert.equal(fs.readFileSync(editor.file,'utf8'),disk);
+    assert.equal(JSON.parse(editor.editorStyle).font_size,17);
+    shared.set('layout','ProdAdvice');const restore=newCx();editor.refreshEditorStyle(restore);await Promise.all(restore.tasks);
+    assert.equal(editor.code.value(),'profile-safe draft');assert.equal(JSON.parse(editor.editorStyle).font_size,13);
+  });
   await test('hot reload retains unsaved recovery state',async()=>{editor.syncDocument();editor.code.set_value('close recovery');await editor.close();assert.equal(JSON.parse(storage.get('draft')).text,'close recovery');});
   await test('closing a tab removes its document registration',async()=>{const index=allPanes.findIndex(p=>p.tab===editor.tab);allPanes.splice(index,1);await editor.close();assert.ok(!shared.get('files.documents')[editor.tab]);});
   console.log(`${n} dialog/editor integration tests passed`);

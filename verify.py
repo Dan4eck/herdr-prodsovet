@@ -14,6 +14,9 @@ for path in ROOT.rglob('*.json'):
 canonical = (ROOT / 'mods/my-files/filesystem.js').read_text()
 for mod in ('file-tab', 'find', 'prodsovet'):
     assert (ROOT / f'mods/{mod}/filesystem.js').read_text().split('\n', 1)[1] == canonical, mod + ': shared API copy drifted'
+helpers = [(ROOT / 'mods' / name / 'appearance.js').read_text() for name in manifest['mods']]
+assert len(set(helpers)) == 1, 'Appearance helper copies drifted'
+subprocess.run([sys.executable, '-B', str(ROOT / 'sync_appearance.py'), '--check'], check=True)
 for path in ROOT.rglob('*'):
     if not path.is_file() or '.git' in path.parts or '__pycache__' in path.parts:
         continue
@@ -30,6 +33,6 @@ for path in ROOT.rglob('*'):
                 assert path.parent.resolve() in dest.parents and dest.is_file(), f'Invalid import: {path}: {ref}'
 print('Package structure, JSON, module copies and privacy scan: PASS', flush=True)
 subprocess.run([sys.executable, '-B', '-m', 'unittest', 'discover', '-s', 'tests', '-p', 'test_*.py'], cwd=ROOT, check=True)
-for name in ('test_herdr_files.mjs', 'test_herdr_files_ui.mjs'):
+for name in ('test_herdr_files.mjs', 'test_herdr_files_ui.mjs', 'test_appearance.mjs'):
     subprocess.run(['node','--experimental-vm-modules',str(ROOT/'tests'/name)], cwd=ROOT, check=True)
 print('All package checks passed.')

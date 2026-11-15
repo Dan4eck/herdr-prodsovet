@@ -201,5 +201,8 @@
     16
   ],
   "toast": "prodsovet",
-  "preview": "layouts/prodadvice.png"
+  "preview": "layouts/prodadvice.png",
+  "ui_font": "Geist",
+  "font": "JetBrains Mono",
+  "font_size": 14
 }

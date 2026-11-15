@@ -1,3 +1,4 @@
+import { appearance, fontSize, metric } from "./appearance.js";
 // SPDX-License-Identifier: Apache-2.0
 // ProdAdvice for Herdr: customized interface and behavior, 2026. See NOTICE.
 import { View, div } from "gpui-kit";
@@ -47,8 +48,8 @@ export default class SessionFork extends View {
   render() {
     const t = theme();
     return div().p(18).flex().flex_col().gap(12).text_color(t.foreground)
-      .child(div().text_size(16).font_semibold().child("Форк диалога"))
-      .child(div().text_size(13).child(this.message))
-      .child(div().text_size(12).text_color(t.muted).child(this.error ? "Esc - закрыть" : "Откроется новая вкладка в том же пространстве."));
+      .child(div().text_size(fontSize("fork.title")).font_weight(appearance().weights.semibold).child("Форк диалога"))
+      .child(div().text_size(fontSize("fork.body")).child(this.message))
+      .child(div().text_size(fontSize("fork.hint")).text_color(t.muted).child(this.error ? "Esc - закрыть" : "Откроется новая вкладка в том же пространстве."));
   }
 }

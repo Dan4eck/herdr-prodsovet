@@ -19,7 +19,7 @@ mascots match the personal install.
 5. Set topic `herdr-layout` (and optionally `herdr-mod`). The installed Herdr
    sharing guide describes catalog discovery by topics. Check catalog behavior
    at publication time; it is an external service, not part of this installer.
-6. Tag `v0.1.1`, attach a source archive and include tested Herdr/macOS versions
+6. Tag `v0.2.0`, attach a source archive and include tested Herdr/macOS versions
    plus the known limitations in the release notes.
 
 Future releases: preserve the mods' shared API copies, refresh checks and

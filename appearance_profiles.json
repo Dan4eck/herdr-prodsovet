@@ -1,0 +1,403 @@
+{
+  "version": 1,
+  "profiles": {
+    "ProdAdvice": {
+      "fonts": {
+        "ui": "Geist",
+        "terminal": "JetBrains Mono",
+        "terminalSize": 14,
+        "mono": "JetBrains Mono",
+        "editor": "JetBrains Mono"
+      },
+      "text": {
+        "brand": {
+          "title": 13.5,
+          "subtitle": 9.5
+        },
+        "pane": {
+          "body": 12,
+          "status": 11,
+          "state": 9
+        },
+        "status": {
+          "body": 10
+        },
+        "toast": {
+          "title": 13,
+          "body": 12
+        },
+        "zoo": {
+          "label": 11
+        },
+        "agents": {
+          "body": 13,
+          "secondary": 12,
+          "meta": 11,
+          "group": 11.5,
+          "badge": 10.5,
+          "menu": 12.8,
+          "section": 10,
+          "compact": 12.5
+        },
+        "files": {
+          "body": 13,
+          "meta": 11,
+          "hint": 12,
+          "badge": 10
+        },
+        "fileDialog": {
+          "body": 13,
+          "title": 16,
+          "hint": 12,
+          "menu": 12.5
+        },
+        "fileTab": {
+          "body": 13,
+          "action": 12,
+          "meta": 11.5,
+          "hint": 11,
+          "editor": 13
+        },
+        "find": {
+          "body": 13,
+          "action": 12,
+          "input": 12.8,
+          "meta": 11,
+          "hint": 10.5
+        },
+        "newMenu": {
+          "body": 12.8,
+          "hint": 11
+        },
+        "tabMenu": {
+          "body": 13
+        },
+        "tabs": {
+          "body": 12.8,
+          "action": 12
+        },
+        "fork": {
+          "title": 16,
+          "body": 13,
+          "hint": 12
+        }
+      },
+      "metrics": {
+        "brand": {
+          "titleLine": 17,
+          "subtitleLine": 12
+        },
+        "agents": {
+          "row": 52,
+          "compactRow": 26,
+          "header": 41,
+          "groupRow": 30,
+          "menuRow": 31
+        },
+        "files": {
+          "toolbar": 38,
+          "path": 25,
+          "filter": 28,
+          "row": 28
+        },
+        "fileDialog": {
+          "menuRow": 31,
+          "input": 36
+        },
+        "fileTab": {
+          "toolbar": 40,
+          "input": 28,
+          "menuRow": 32
+        },
+        "find": {
+          "input": 36,
+          "fileRow": 32,
+          "resultRow": 46
+        },
+        "tabs": {
+          "row": 29,
+          "button": 26
+        },
+        "newMenu": {
+          "row": 31
+        },
+        "tabMenu": {
+          "row": 32
+        }
+      },
+      "brandColors": {
+        "dark": "#7d9a72",
+        "light": "#527148"
+      },
+      "agentTints": true,
+      "agentPalettes": {
+        "codex": {
+          "background": "#090b0e",
+          "border": "#262b32",
+          "accent": "#7797ba",
+          "working": "#7797ba"
+        },
+        "claude": {
+          "background": "#0b0a09",
+          "border": "#2d2926",
+          "accent": "#b3927b",
+          "working": "#b3927b"
+        }
+      },
+      "lightTheme": "paper",
+      "darkTheme": {
+        "background": "#090909",
+        "foreground": "#e6e7e2",
+        "selection": "#2f6a22",
+        "cursor": "#39ff14",
+        "ansi": [
+          "#3a3a3a",
+          "#ff3b2f",
+          "#39ff14",
+          "#ffb02e",
+          "#327dff",
+          "#b02eff",
+          "#00ffc3",
+          "#c3c6c0",
+          "#6a6a6a",
+          "#ff6a5f",
+          "#7dff5e",
+          "#ffc861",
+          "#6aa0ff",
+          "#c766ff",
+          "#5cffd9",
+          "#f3f4ef"
+        ],
+        "colors": {
+          "canvas": "#030303",
+          "chrome": "#030303",
+          "background": "#090909",
+          "surface": "#0e120f",
+          "popover": "#0a0a0a",
+          "raised": "#141414",
+          "hover": "#111611",
+          "selected": "#0e1a0c",
+          "border": "#262626",
+          "input": "#3a3a3a",
+          "foreground": "#f3f4ef",
+          "muted": "#a6aaa4",
+          "dim": "#6a6a6a",
+          "accent": "#39ff14",
+          "accent_foreground": "#000000",
+          "solid": "#f3f4ef",
+          "solid_foreground": "#000000",
+          "working": "#39ff14",
+          "blocked": "#ff3b2f",
+          "done": "#00ffc3",
+          "idle": "#6a6a6a",
+          "unknown": "#6a6a6a"
+        }
+      },
+      "preview": "layouts/prodadvice.png",
+      "weights": {
+        "medium": 500,
+        "semibold": 600,
+        "bold": 700
+      }
+    },
+    "ProdAdvice2": {
+      "fonts": {
+        "ui": "Geist",
+        "terminal": "JetBrains Mono",
+        "terminalSize": 14,
+        "mono": "JetBrains Mono",
+        "editor": "JetBrains Mono"
+      },
+      "text": {
+        "brand": {
+          "title": 13.5,
+          "subtitle": 9.5
+        },
+        "pane": {
+          "body": 12,
+          "status": 11,
+          "state": 9
+        },
+        "status": {
+          "body": 10
+        },
+        "toast": {
+          "title": 13,
+          "body": 12
+        },
+        "zoo": {
+          "label": 11
+        },
+        "agents": {
+          "body": 13,
+          "secondary": 12,
+          "meta": 11,
+          "group": 11.5,
+          "badge": 10.5,
+          "menu": 12.8,
+          "section": 10,
+          "compact": 12.5
+        },
+        "files": {
+          "body": 13,
+          "meta": 11,
+          "hint": 12,
+          "badge": 10
+        },
+        "fileDialog": {
+          "body": 13,
+          "title": 16,
+          "hint": 12,
+          "menu": 12.5
+        },
+        "fileTab": {
+          "body": 13,
+          "action": 12,
+          "meta": 11.5,
+          "hint": 11,
+          "editor": 13
+        },
+        "find": {
+          "body": 13,
+          "action": 12,
+          "input": 12.8,
+          "meta": 11,
+          "hint": 10.5
+        },
+        "newMenu": {
+          "body": 12.8,
+          "hint": 11
+        },
+        "tabMenu": {
+          "body": 13
+        },
+        "tabs": {
+          "body": 12.8,
+          "action": 12
+        },
+        "fork": {
+          "title": 16,
+          "body": 13,
+          "hint": 12
+        }
+      },
+      "metrics": {
+        "brand": {
+          "titleLine": 17,
+          "subtitleLine": 12
+        },
+        "agents": {
+          "row": 52,
+          "compactRow": 26,
+          "header": 41,
+          "groupRow": 30,
+          "menuRow": 31
+        },
+        "files": {
+          "toolbar": 38,
+          "path": 25,
+          "filter": 28,
+          "row": 28
+        },
+        "fileDialog": {
+          "menuRow": 31,
+          "input": 36
+        },
+        "fileTab": {
+          "toolbar": 40,
+          "input": 28,
+          "menuRow": 32
+        },
+        "find": {
+          "input": 36,
+          "fileRow": 32,
+          "resultRow": 46
+        },
+        "tabs": {
+          "row": 29,
+          "button": 26
+        },
+        "newMenu": {
+          "row": 31
+        },
+        "tabMenu": {
+          "row": 32
+        }
+      },
+      "brandColors": {
+        "dark": "#7d9a72",
+        "light": "#527148"
+      },
+      "agentTints": true,
+      "agentPalettes": {
+        "codex": {
+          "background": "#090b0e",
+          "border": "#262b32",
+          "accent": "#7797ba",
+          "working": "#7797ba"
+        },
+        "claude": {
+          "background": "#0b0a09",
+          "border": "#2d2926",
+          "accent": "#b3927b",
+          "working": "#b3927b"
+        }
+      },
+      "lightTheme": "paper",
+      "darkTheme": {
+        "background": "#090909",
+        "foreground": "#e6e7e2",
+        "selection": "#2f6a22",
+        "cursor": "#39ff14",
+        "ansi": [
+          "#3a3a3a",
+          "#ff3b2f",
+          "#39ff14",
+          "#ffb02e",
+          "#327dff",
+          "#b02eff",
+          "#00ffc3",
+          "#c3c6c0",
+          "#6a6a6a",
+          "#ff6a5f",
+          "#7dff5e",
+          "#ffc861",
+          "#6aa0ff",
+          "#c766ff",
+          "#5cffd9",
+          "#f3f4ef"
+        ],
+        "colors": {
+          "canvas": "#030303",
+          "chrome": "#030303",
+          "background": "#090909",
+          "surface": "#0e120f",
+          "popover": "#0a0a0a",
+          "raised": "#141414",
+          "hover": "#111611",
+          "selected": "#0e1a0c",
+          "border": "#262626",
+          "input": "#3a3a3a",
+          "foreground": "#f3f4ef",
+          "muted": "#a6aaa4",
+          "dim": "#6a6a6a",
+          "accent": "#39ff14",
+          "accent_foreground": "#000000",
+          "solid": "#f3f4ef",
+          "solid_foreground": "#000000",
+          "working": "#39ff14",
+          "blocked": "#ff3b2f",
+          "done": "#00ffc3",
+          "idle": "#6a6a6a",
+          "unknown": "#6a6a6a"
+        }
+      },
+      "preview": "layouts/prodadvice2.png",
+      "weights": {
+        "medium": 500,
+        "semibold": 600,
+        "bold": 700
+      }
+    }
+  }
+}

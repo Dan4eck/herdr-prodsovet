@@ -19,5 +19,11 @@
     "ctrl-t": "prodsovet.new-terminal",
     "cmd-d": "prodsovet.split-right",
     "cmd-shift-d": "prodsovet.split-down"
+  },
+  "layout:ProdAdvice2": {
+    "cmd-t": "prodsovet.new-terminal",
+    "ctrl-t": "prodsovet.new-terminal",
+    "cmd-d": "prodsovet.split-right",
+    "cmd-shift-d": "prodsovet.split-down"
   }
 }

@@ -7,8 +7,9 @@ a practical file manager, full-project search and a compact status bar.
 
 The preview is an illustration of the layout, not a screenshot of a live session.
 
-The layout appears as **ProdAdvice** in Settings > Look, with its own illustrated
-thumbnail. Internal mod identifiers remain `prodsovet` for compatibility.
+Settings > Look includes **ProdAdvice** and **ProdAdvice2**, each with its own
+illustrated thumbnail. They start with the same appearance and share feature code;
+fonts, colors and main row sizes can be changed independently. See [APPEARANCE.md](APPEARANCE.md). Internal mod identifiers remain `prodsovet` for compatibility.
 
 ## What is included
 
@@ -50,7 +51,7 @@ for mod in prodsovet my-files file-tab find session_fork; do
 done
 ```
 
-If all five checks pass, switch with Cmd+Shift+L, choosing `ProdAdvice`, or:
+If all five checks pass, switch with Cmd+Shift+L, choosing `ProdAdvice` or `ProdAdvice2`, or:
 
 ```sh
 herdr-app do layout.switch '{"name":"ProdAdvice"}'
@@ -87,8 +88,8 @@ Remove or disable the local config to stop collection on the next refresh.
 
 | Context | Key/action | Result |
 |---|---|---|
-| ProdAdvice layout | Cmd+T / Ctrl+T | Terminal in the workspace root |
-| ProdAdvice layout | Cmd+D / Cmd+Shift+D | Right/down split in that root |
+| Either ProdAdvice layout | Cmd+T / Ctrl+T | Terminal in the workspace root |
+| Either ProdAdvice layout | Cmd+D / Cmd+Shift+D | Right/down split in that root |
 | Global | Cmd+Shift+O | Project filename/content search |
 | Terminal | Cmd+Shift+F | Fork current conversation |
 | File tree | F2 | Rename selected item |
@@ -145,7 +146,7 @@ and reconcile them before continuing. In particular, keep a copy of
 files and runtime state remain. Updated user key bindings remain. The receipt
 `.herdr-prodsovet-install.json` tracks ownership; do not publish it.
 
-For v0.1.x updates: preserve local changes, uninstall the old package using its
+For package updates: preserve local changes, uninstall the old package using its
 installer/receipt, install the new version, and reapply your changes. There is
 no automatic updater and no silent replacement of customized code.
 

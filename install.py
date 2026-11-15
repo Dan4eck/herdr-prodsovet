@@ -58,7 +58,7 @@ def payload():
                 if p.name in {'limits.local.json', 'jsconfig.json'} or '__pycache__' in p.parts:
                     continue
                 files[str(p.relative_to(ROOT))] = p.read_bytes()
-    for name in ['layouts/ProdAdvice.json', 'layouts/prodadvice.png', 'layouts/prodadvice.svg', 'themes/ProdAdvice.json']:
+    for name in MANIFEST['appearance_files']:
         files[name] = (ROOT / name).read_bytes()
     return files
 
