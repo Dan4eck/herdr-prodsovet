@@ -184,7 +184,7 @@
   "background": "canvas",
   "theme": {
     "light": "paper",
-    "dark": "prodsovet"
+    "dark": "ProdAdvice"
   },
   "terminal_padding": [
     14,
@@ -200,5 +200,6 @@
     12,
     16
   ],
-  "toast": "prodsovet"
+  "toast": "prodsovet",
+  "preview": "layouts/prodadvice.png"
 }

@@ -1,4 +1,4 @@
-Herdr Prodsovet / УПРЯЖ
+ProdAdvice
 Copyright 2026 ProdAdvice contributors.
 
 This distribution includes modified interface code derived from Herdr App:
@@ -23,10 +23,10 @@ apps/desktop/public/nous-girl.png. See licenses/NousResearch-MIT.txt.
 The proportions, full-body rig and animation are modifications for this project.
 This is an unofficial adaptation, not an official Nous Research animation.
 
-The custom Gemini artwork, generic robot, УПРЯЖ mark and external-editor badges
+The custom Gemini artwork, generic robot, layout preview and external-editor badges
 are licensed under Apache-2.0 to the extent of contributors' rights. Gemini
 artwork was drawn as an SVG rig from an AI-generated concept. The generic robot
-and УПРЯЖ mark are custom SVG artwork.
+and layout preview are custom SVG artwork.
 
 mods/prodsovet/art/creatures/codex-*.png:
 Adapted from the official Codex TUI companion spritesheet

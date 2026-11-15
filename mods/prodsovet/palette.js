@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Herdr Prodsovet: customized interface and behavior, 2026. See NOTICE.
+// ProdAdvice for Herdr: customized interface and behavior, 2026. See NOTICE.
 // Only Codex and Claude receive an almost-black terminal tint.
 // Herdr shares pane frames within a tab, so the focused terminal chooses it.
 export const PALETTES = {
@@ -18,7 +18,7 @@ export function withTerminal(agent, all) {
 }
 export function enabled(tree, dark) {
   const name = typeof tree?.theme === "string" ? tree.theme : tree?.theme?.[dark ? "dark" : "light"];
-  return dark && name === "prodsovet";
+  return dark && name === "ProdAdvice";
 }
 export function agentTheme(t, agent, active) {
   const p = active && paletteFor(agent);

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Herdr Prodsovet: customized interface and behavior, 2026. See NOTICE.
+// ProdAdvice for Herdr: customized interface and behavior, 2026. See NOTICE.
 // Agents in grouped or priority views; parents take their most urgent sub-agent's place.
 
 import { div, image, svg } from "gpui-kit";

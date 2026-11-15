@@ -1,9 +1,14 @@
 # Validation record
 
-Date: 2026-11-15. Source package: 0.1.0. Host: macOS, Herdr App 0.1.15,
+Date: 2026-11-15. Source package: 0.1.1. Host: macOS, Herdr App 0.1.15,
 Python 3.15 and Node.js 22.14.0. Published at https://github.com/Dan4eck/herdr-prodsovet.
 
 ## Passed
+
+- ProdAdvice layout name, custom thumbnail and selected state visually verified
+  in native Settings > Look. Active layout reported ProdAdvice with no errors.
+- Renamed layout-scoped keys preserved; installer test checks both the new
+  layout scope and existence of the referenced preview image.
 
 - 49 automated cases: 10 real filesystem operations, 13 workspace/document-state
   cases, 14 dialog/editor integration cases and 12 installer/disabled-limits cases.

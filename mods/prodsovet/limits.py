@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Claude Code and Codex usage limits for the УПРЯЖ status bar, as one JSON line.
+"""Claude Code and Codex usage limits for the ProdAdvice status bar, as one JSON line.
 
 Claude: the OAuth usage endpoint with Claude Code's own token from the macOS Keychain.
 Codex: the latest `rate_limits` that Codex writes into its session logs.

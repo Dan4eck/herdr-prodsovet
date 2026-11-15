@@ -58,7 +58,7 @@ def payload():
                 if p.name in {'limits.local.json', 'jsconfig.json'} or '__pycache__' in p.parts:
                     continue
                 files[str(p.relative_to(ROOT))] = p.read_bytes()
-    for name in ['layouts/prodsovet.json', 'themes/prodsovet.json']:
+    for name in ['layouts/ProdAdvice.json', 'layouts/prodadvice.png', 'layouts/prodadvice.svg', 'themes/ProdAdvice.json']:
         files[name] = (ROOT / name).read_bytes()
     return files
 
@@ -126,7 +126,7 @@ def install(home, apply=False, skip_conflicts=False, with_limits=False):
                 except OSError: break
                 parent = parent.parent
         raise
-    print('Installed. Check all five mods, then switch to layout prodsovet. Layout was not activated.')
+    print('Installed. Check all five mods, then switch to layout ProdAdvice. Layout was not activated.')
 
 
 def uninstall(home, apply=False):

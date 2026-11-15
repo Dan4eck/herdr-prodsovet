@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Herdr Prodsovet: customized interface and behavior, 2026. See NOTICE.
+// ProdAdvice for Herdr: customized interface and behavior, 2026. See NOTICE.
 // Find: one popup to search files by name, text inside files, and the text of open terminals.
 // Root = the focused pane's folder (as my-files shows it). Tab switches mode.
 // Enter or click: open (file -> its own tab via file-tab, terminal -> go to it),

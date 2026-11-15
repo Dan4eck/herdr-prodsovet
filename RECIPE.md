@@ -1,4 +1,4 @@
-# УПРЯЖ / Herdr Prodsovet
+# ProdAdvice
 
 A dark Herdr workspace with spaces and animated agents at the left, terminal or
 file tabs in the center, a file tree at the right and a compact bottom status
@@ -7,6 +7,10 @@ strip. Russian labels, workspace-aware navigation and optional account limits.
 ![Illustrated layout with fictional data](preview.png)
 
 ## What you see
+
+In Settings > Look the layout is named ProdAdvice and has a custom dark thumbnail
+with its name, Codex/Claude mascots, terminal and file tree. The root preview
+points to layouts/prodadvice.png; layouts/prodadvice.svg is the editable source.
 
 The root is a row. Left sidebar: 241 px, min 44 / max 480; 46 px brand header,
 a weighted spaces/agents column and 69 px stock workspace footer. The brand
@@ -64,7 +68,7 @@ unavailable while the rest of the interface remains usable.
 
 Node tree: root -> sidebar(brand, sidebar-lists(spaces, agents), sidebar-footer)
 and work(tabs, work-body(main, panel(panel-body(files, changes))), status).
-See layouts/prodsovet.json for exact weights and content props.
+See layouts/ProdAdvice.json for exact weights and content props.
 
 prodsovet implements brand, agents, pane, status, toast, zoo, tabs, new-menu and
 tab-menu roles. The default pane/header role and overlay role are selected by

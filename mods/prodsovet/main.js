@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Herdr Prodsovet: customized interface and behavior, 2026. See NOTICE.
+// ProdAdvice for Herdr: customized interface and behavior, 2026. See NOTICE.
 // ПродСовет: custom workspace features with the standard Herdr styling.
 // One mod, several roles (props.role): brand, agents, pane, status.
 

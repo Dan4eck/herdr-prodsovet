@@ -38,6 +38,10 @@ class InstallTests(unittest.TestCase):
         (self.home / 'shared.json').write_text('{"private":"keep"}')
         installer.install(self.home, apply=True)
         self.assertTrue((self.home / 'mods/prodsovet/main.js').exists())
+        layout = json.loads((self.home / 'layouts/ProdAdvice.json').read_text())
+        self.assertTrue((self.home / layout['preview']).is_file())
+        self.assertIn('layout:ProdAdvice', json.loads((self.home / 'keys.json').read_text()))
+        self.assertFalse((self.home / 'layouts/prodsovet.json').exists())
         self.assertFalse((self.home / 'mods/prodsovet/limits.local.json').exists())
         keys = json.loads((self.home / 'keys.json').read_text())
         keys['global']['cmd-y'] = 'new-user-binding'

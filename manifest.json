@@ -1,6 +1,6 @@
 {
   "name": "herdr-prodsovet",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "herdr_tested": "0.1.15",
   "platform": "macOS",
   "mods": [
@@ -22,5 +22,7 @@
   "upstream": {
     "url": "https://github.com/herdrdev/herdr-app",
     "license_commit": "5216e6f9f8c0c281a65e09816c66e4319e671784"
-  }
+  },
+  "display_name": "ProdAdvice",
+  "layout": "ProdAdvice"
 }

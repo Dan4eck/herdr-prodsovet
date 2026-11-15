@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Herdr Prodsovet: customized interface and behavior, 2026. See NOTICE.
+// ProdAdvice for Herdr: customized interface and behavior, 2026. See NOTICE.
 import { View, div } from "gpui-kit";
 import { focused, spaces, props, appHome, readTextFile, exec, run, closeOverlay, theme } from "herdr";
 

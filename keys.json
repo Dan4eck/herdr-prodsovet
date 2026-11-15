@@ -14,7 +14,7 @@
   "mod:file-tab": {
     "cmd-s": "file-tab.save"
   },
-  "layout:prodsovet": {
+  "layout:ProdAdvice": {
     "cmd-t": "prodsovet.new-terminal",
     "ctrl-t": "prodsovet.new-terminal",
     "cmd-d": "prodsovet.split-right",

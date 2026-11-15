@@ -1,4 +1,4 @@
-# УПРЯЖ / Herdr Prodsovet
+# ProdAdvice
 
 A Russian-language workspace for Herdr: animated agent cards, editable file tabs,
 a practical file manager, full-project search and a compact status bar.
@@ -6,6 +6,9 @@ a practical file manager, full-project search and a compact status bar.
 ![Illustrated preview with fictional demo data](preview.png)
 
 The preview is an illustration of the layout, not a screenshot of a live session.
+
+The layout appears as **ProdAdvice** in Settings > Look, with its own illustrated
+thumbnail. Internal mod identifiers remain `prodsovet` for compatibility.
 
 ## What is included
 
@@ -47,10 +50,10 @@ for mod in prodsovet my-files file-tab find session_fork; do
 done
 ```
 
-If all five checks pass, switch with Cmd+Shift+L, choosing `prodsovet`, or:
+If all five checks pass, switch with Cmd+Shift+L, choosing `ProdAdvice`, or:
 
 ```sh
-herdr-app do layout.switch '{"name":"prodsovet"}'
+herdr-app do layout.switch '{"name":"ProdAdvice"}'
 ```
 
 The installer does not activate the layout or change agent settings. It uses
@@ -84,8 +87,8 @@ Remove or disable the local config to stop collection on the next refresh.
 
 | Context | Key/action | Result |
 |---|---|---|
-| УПРЯЖ layout | Cmd+T / Ctrl+T | Terminal in the workspace root |
-| УПРЯЖ layout | Cmd+D / Cmd+Shift+D | Right/down split in that root |
+| ProdAdvice layout | Cmd+T / Ctrl+T | Terminal in the workspace root |
+| ProdAdvice layout | Cmd+D / Cmd+Shift+D | Right/down split in that root |
 | Global | Cmd+Shift+O | Project filename/content search |
 | Terminal | Cmd+Shift+F | Fork current conversation |
 | File tree | F2 | Rename selected item |

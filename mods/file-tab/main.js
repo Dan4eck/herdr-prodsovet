@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Herdr Prodsovet: customized interface and behavior, 2026. See NOTICE.
+// ProdAdvice for Herdr: customized interface and behavior, 2026. See NOTICE.
 // A file as its own tab, next to the terminal tabs.
 // Opened by find and my-files: run("tab.new", { name, mod: "file-tab", props: { file, on } }).
 // Edit and Cmd+S to save; double-click the name to rename the file; "Открыть в" sends it to Obsidian or VS Code.
