@@ -424,10 +424,7 @@ export class Agents {
           }))
           .when(art, el => el.child(div().size(44).flex_none().relative().overflow_hidden()
             .child(image(artPath(a.program?.key, a.status)).absolute().top(0)
-              .left(-44 * ((this.tick + i * 5) % ART_FRAMES)).w(44 * ART_FRAMES).h(44))
-            // Done: a mint scan line sweeps the character, like the page's mark fill.
-            .when(agency() && a.status === "done", e => e.child(div().absolute().left(0).w(44).h(2).bg(t.done).opacity(0.55)
-              .loop("top", { from: 42, to: 0, period: 1600 }))))))
+              .left(-44 * ((this.tick + i * 5) % ART_FRAMES)).w(44 * ART_FRAMES).h(44)))))
         .child(v_flex().flex_1().min_w(0).gap(2)
           .child(h_flex().min_w(0).gap(5).items_center()
             .child(div().min_w(0).max_w(full && more ? 100 : 180).truncate().text_size(fontSize("agents.body")).text_color(idle ? t.muted : t.foreground).child(name))

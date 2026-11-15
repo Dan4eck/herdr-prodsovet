@@ -160,8 +160,7 @@ solid pixel icons in `mods/prodsovet/art/px`, the halftone in
 - Spaces (`prodsovet` role `spaces`, derived from Herdr's stock mod): square
   letter tiles in the dashboard colors, mono machine headers, pixel icons;
 - Workshop: both sort orders as pixel buttons (clock = urgency, layers =
-  spaces); section labels get a colored square; done characters get a mint
-  scan line;
+  spaces); section labels get a colored square;
 - icons: a 15 px grid, 1 px solid strokes and rounded corners; the Files tree
   keeps dot-matrix type icons and Herdr's chevrons;
 - pane headers: a lead running along a dotted rail; pixel split/zoom/close;
@@ -170,6 +169,18 @@ solid pixel icons in `mods/prodsovet/art/px`, the halftone in
 - status strip: "1H 34m" (minutes in the last hour with an agent working), plan/fact limit bars (fill is
   usage, the paper tick is an even pace; orange above pace, coral from 80%) and
   the EN/RU language switch.
+
+## Right panel: Files, Changes, GitHub
+
+ProdAdvice2's right panel stacks three blocks, switched by buttons in the tab bar:
+Files (`my-files`), Changes (`prodsovet` role `changes`, derived from Herdr's
+stock diff panel: status colors, file-type icons, the profile's type) and GitHub
+(`prodsovet` role `github`, new). GitHub reads the focused folder's repository
+with the `gh` CLI every two minutes or on ↻: branch with ahead/behind and the last
+commit, this branch's pull request, review requests, your PRs, other open PRs with
+check states, recent workflow runs and open issues. A row opens in the browser;
+"@" pastes the link into the space's agent. It is read only. Agency profiles turn
+on the Changes and GitHub buttons once through shared `workspace.panels`.
 
 ## Language
 

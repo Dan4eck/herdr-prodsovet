@@ -4,7 +4,7 @@ import { agency, accentOf, selected as selectedLook, icon } from "./agency.js";
 // ProdAdvice for Herdr: customized interface and behavior, 2026. See NOTICE.
 import { View, div, svg, image } from "gpui-kit";
 import { h_flex, ScrollHandle } from "gpui-base";
-import { spaces, panes, run, openOverlay, theme, window, shared, layout, settings } from "herdr";
+import { spaces, panes, run, openOverlay, theme, window, shared, setShared, layout, settings } from "herdr";
 
 function find(node, id) {
   if (node?.id === id) return node;
@@ -95,7 +95,13 @@ export default class Tabs extends View {
       ? Math.max(10, (root.traffic_lights[0] + 64) / settings().zoom - (sidebar?.hidden ? 0 : sidebar?.size?.px ?? 0))
       : 10;
     const panel = find(root, "panel"), body = find(root, "panel-body");
-    const enabled = shared("workspace.panels") ?? ["files", "changes"];
+    // Panels shown as buttons: those the person enabled whose block this layout has.
+    // Agency profiles enable Changes and GitHub once (shared "workspace.panels").
+    if (agency() && !shared("prodsovet.panels") && find(root, "github")) {
+      setShared("workspace.panels", [...new Set([...(shared("workspace.panels") ?? ["files"]), "changes", "github"])]);
+      setShared("prodsovet.panels", 1);
+    }
+    const enabled = (shared("workspace.panels") ?? ["files", "changes"]).filter((id) => find(root, id));
     this.syncPanel(space, panel, body, enabled);
     const panelButton = (id, label, glyph) => {
       const on = panel && !panel.hidden && body?.active === id;
@@ -116,6 +122,7 @@ export default class Tabs extends View {
       .child(button("tab-new", agency() ? svg(icon("plus")).size(15) : "+", () => openOverlay({ mod: "prodsovet", kind: "popup", width: 250, height: 512, props: { role: "new-menu" } })))
       .when(enabled.includes("files"), el => el.child(panelButton("files", L("Files", "Файлы"), icon("file", "mods/files/file.svg"))))
       .when(enabled.includes("changes"), el => el.child(panelButton("changes", L("Changes", "Изменения"), icon("changes", "mods/changes/changes.svg"))))
+      .when(enabled.includes("github"), el => el.child(panelButton("github", "GitHub", icon("pr", "mods/workspace-chrome/branch.svg"))))
       .when(w?.buttons, el => el.child(button("minimize", w.platform === "windows" ? svg("mods/tabs/win-min.svg").size(16) : "−", () => run("window.minimize")))
         .child(button("maximize", w.platform === "windows" ? svg(`mods/tabs/${w.maximized ? "win-restore" : "win-max"}.svg`).size(16) : "□", () => run("window.maximize")))
         .child(button("close-window", w.platform === "windows" ? svg("mods/tabs/win-close.svg").size(16) : svg("mods/pane/close.svg").size(13), () => run("window.close"))));

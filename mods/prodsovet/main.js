@@ -11,6 +11,8 @@ import { agentTheme, enabled, styledLayout, withTerminal } from "./palette.js";
 import { Agents } from "./agents.js";
 import { Spaces } from "./spaces.js";
 import { Picker } from "./picker.js";
+import { Changes } from "./changes.js";
+import { GitHub } from "./github.js";
 import { mini, word, artPath, ART_FRAMES } from "./creatures.js";
 import { agency, accentOf, railFrames, glitchy, icon } from "./agency.js";
 
@@ -312,7 +314,7 @@ class Zoo {
   }
 }
 
-const ROLES = { tabs: Tabs, "new-menu": NewMenu, "tab-menu": TabMenu, toast: Toast, zoo: Zoo, brand: Brand, agents: Agents, spaces: Spaces, picker: Picker, pane: PaneHead, status: Status };
+const ROLES = { tabs: Tabs, "new-menu": NewMenu, "tab-menu": TabMenu, toast: Toast, zoo: Zoo, brand: Brand, agents: Agents, spaces: Spaces, picker: Picker, changes: Changes, github: GitHub, pane: PaneHead, status: Status };
 
 export default class ProdSovet extends View {
   init(p, cx) {

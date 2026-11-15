@@ -4,7 +4,8 @@ Copyright 2026 ProdAdvice contributors.
 This distribution includes modified interface code derived from Herdr App:
 https://github.com/herdrdev/herdr-app
 Herdr App contributors, Apache License 2.0 (see LICENSE).
-Derived components include the spaces list (mods/prodsovet/spaces.js), agent lists, tab/new-tab menus, pane/window controls,
+Derived components include the spaces list (mods/prodsovet/spaces.js), the Go to picker
+(mods/prodsovet/picker.js), the Changes panel (mods/prodsovet/changes.js), agent lists, tab/new-tab menus, pane/window controls,
 file-tree elements, layout structure and integration with the Herdr mod API.
 Modifications include workspace-root tracking, coordinated document operations,
 custom dialogs and menus, styling, animation, file editing and usage indicators.

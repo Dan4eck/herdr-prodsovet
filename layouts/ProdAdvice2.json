@@ -150,7 +150,20 @@
                       "id": "changes",
                       "type": "block",
                       "content": {
-                        "mod": "changes"
+                        "mod": "prodsovet",
+                        "props": {
+                          "role": "changes"
+                        }
+                      }
+                    },
+                    {
+                      "id": "github",
+                      "type": "block",
+                      "content": {
+                        "mod": "prodsovet",
+                        "props": {
+                          "role": "github"
+                        }
                       }
                     }
                   ],
