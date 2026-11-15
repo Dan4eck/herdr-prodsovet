@@ -12,14 +12,15 @@ export function workspace(id) {
   if (!s) return { space: null, cwd: null, on: null };
   const roots = shared("files.workspace-roots") ?? {};
   let cwd = roots[s.id];
-  if (!cwd) {
-    // Older spaces were created at HOME; the oldest terminal identifies the project.
+  if (!cwd || (!s.machine && cwd === home())) {
+    // HOME is provisional until a terminal reaches a project. Once found,
+    // keep that root stable across tab switches and later shell navigation.
     const all = panes();
     const candidates = s.tabs.flatMap(t => all.filter(p => p.tab === t.id && p.terminal && p.cwd));
     const anchor = candidates.find(p => s.machine || p.cwd !== home());
     cwd = anchor && s.folder && (s.machine || s.folder !== home()) && within(anchor.cwd, s.folder)
       ? s.folder : anchor?.cwd || s.folder || candidates[0]?.cwd || (!s.machine ? home() : null);
-    if (cwd) setShared("files.workspace-roots", { ...roots, [s.id]: cwd });
+    if (cwd && cwd !== roots[s.id]) setShared("files.workspace-roots", { ...roots, [s.id]: cwd });
   }
   return { space: s.id, cwd, on: s.machine ?? null };
 }
@@ -28,7 +29,7 @@ export function workspace(id) {
 // turns into "~" once that tab is a shell at home).
 export function spaceLabel(s) {
   if (!s || s.named) return s?.name ?? "";
-  const root = (shared("files.workspace-roots") ?? {})[s.id];
+  const root = workspace(s.id).cwd;
   if (!root) return s.name;
   return !s.machine && root === home() ? "~" : basename(root) || s.name;
 }

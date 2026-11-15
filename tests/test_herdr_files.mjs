@@ -36,6 +36,27 @@ await test('manual browsing does not change new terminal root',()=>{api.browse('
 await test('spaces remember independent browser roots',()=>{spaces[0].active=false;spaces[1].active=true;assert.equal(api.location().cwd,'/projects/cms');spaces[0].active=true;spaces[1].active=false;assert.equal(api.location().cwd,'/elsewhere');});
 await test('configured root is retained when terminal is in its subfolder',()=>{reset();spaces[0].folder='/projects/pa';panes[0].cwd='/projects/pa/src';assert.equal(api.workspace().cwd,'/projects/pa');});
 await test('remote roots keep their own machine',()=>{reset();spaces[0].machine='vps';panes[0].cwd='/srv/app';assert.equal(api.workspace().on,'vps');assert.equal(api.workspace().cwd,'/srv/app');});
+await test('HOME root upgrades through the sidebar label when the terminal enters a project',()=>{
+  reset();spaces[0].name='~';panes[0].cwd='/Users/test';
+  assert.equal(api.workspace().cwd,'/Users/test');assert.equal(api.spaceLabel(spaces[0]),'~');
+  panes[0].cwd='/projects/pa';
+  assert.equal(api.spaceLabel(spaces[0]),'pa');assert.equal(state.get('files.workspace-roots').pa,'/projects/pa');
+  api.newTerminal();assert.equal(calls.at(-1).args.folder,'/projects/pa');
+  panes[0].cwd='/projects/pa/src';assert.equal(api.spaceLabel(spaces[0]),'pa');
+  panes[0].cwd='/Users/test';assert.equal(api.workspace().cwd,'/projects/pa');
+});
+await test('existing HOME cache upgrades without opening the file tree',()=>{
+  reset();state.set('files.workspace-roots',{pa:'/Users/test',cms:'/projects/cms'});
+  assert.equal(api.spaceLabel(spaces[0]),'pa');assert.equal(state.get('files.workspace-roots').cms,'/projects/cms');
+});
+await test('manual space names survive a HOME root upgrade',()=>{
+  reset();spaces[0].named=true;spaces[0].name='Custom';state.set('files.workspace-roots',{pa:'/Users/test'});
+  assert.equal(api.workspace().cwd,'/projects/pa');assert.equal(api.spaceLabel(spaces[0]),'Custom');
+});
+await test('remote pinned root is not compared with the local HOME',()=>{
+  reset();spaces[0].machine='vps';state.set('files.workspace-roots',{pa:'/Users/test'});panes[0].cwd='/srv/app';
+  assert.equal(api.workspace().cwd,'/Users/test');
+});
 await test('an open file on another machine or space is not selected',()=>{reset();state.set('files.documents',{file:{file:'/projects/pa/a.md',on:'vps',space:'pa'}});api.openFile('/projects/pa/a.md');assert.equal(calls.at(-1).name,'tab.new');});
 await test('same file in the same space selects its existing tab',()=>{reset();state.set('files.documents',{file:{file:'/projects/pa/a.md',on:null,space:'pa'}});api.openFile('/projects/pa/a.md');assert.equal(calls.at(-1).name,'tab.select');assert.equal(calls.at(-1).args.id,'file');});
 await test('dirty descendants block rename and deletion',async()=>{reset();state.set('files.documents',{file:{file:'/projects/pa/folder/a.md',on:null,space:'pa',dirty:true}});await assert.rejects(api.operation({path:'/projects/pa/folder',action:'trash'}),/Сначала сохраните/);});
