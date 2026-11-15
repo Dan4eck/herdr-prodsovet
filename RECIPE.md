@@ -9,7 +9,9 @@ strip. Russian labels, workspace-aware navigation and optional account limits.
 ## What you see
 
 The root is a row. Left sidebar: 241 px, min 44 / max 480; 46 px brand header,
-a weighted spaces/agents column and 69 px stock workspace footer. Main work
+a weighted spaces/agents column and 69 px stock workspace footer. The brand
+header keeps the Herdr icon/name, with ProdAdvice underneath in bold 9.5 px
+JetBrains Mono using the theme accent; line heights are 17/12 px. Main work
 column: 42 px tabs, flexible body, 20 px status strip. Body has 8 px padding/gap;
 right panel 294 px, min 280 / max 900, a files/changes stack. Pane headers are
 30 px with radius 10, gap 8 and a one-pixel border. Terminal padding is 14/12.

@@ -62,9 +62,11 @@ class Brand {
     return h_flex().size_full().bg(t.chrome).pl(collapsed ? 6 : 14).pr(10).gap(4).items_center()
       .border_b(1).border_color(t.border)
       .when(mac && !collapsed, (el) => el.pl(80))
-      .when(!collapsed, (el) => el.child(h_flex().flex_1().gap(8).items_center().text_size(13.5)
-        .child(image("frame/welcome/herdr.png").size(20).rounded(5))
-        .child(div().font_semibold().text_color(t.foreground).child("Herdr"))))
+      .when(!collapsed, (el) => el.child(h_flex().flex_1().min_w(0).gap(8).items_center()
+        .child(image("frame/welcome/herdr.png").size(20).flex_none().rounded(5))
+        .child(v_flex().min_w(0)
+          .child(div().text_size(13.5).line_height("17px").font_semibold().text_color(t.foreground).child("Herdr"))
+          .child(div().font_family(MONO).font_bold().text_size(9.5).line_height("12px").text_color(t.accent).truncate().child("ProdAdvice")))))
       .when(!collapsed, (el) => el.child(this.button(t, "search", "search", () => run("mod.open", { name: "picker" }))))
       .when(!(collapsed && mac), (el) => el.child(this.button(t, "sidebar-toggle", "sidebar", toggleSidebar)));
   }

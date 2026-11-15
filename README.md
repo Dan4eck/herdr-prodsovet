@@ -34,6 +34,8 @@ become remote operations. Remote forks require Python, `hc` and the agent on the
 ## Install
 
 Download or clone this repository, then run commands **from its root**.
+Repository: https://github.com/Dan4eck/herdr-prodsovet
+
 Read [ACCESS.md](ACCESS.md) and the source before installation: mods can execute
 programs and read/write the files you work with.
 

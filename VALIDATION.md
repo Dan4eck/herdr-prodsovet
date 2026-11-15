@@ -1,7 +1,7 @@
 # Validation record
 
 Date: 2026-11-15. Source package: 0.1.0. Host: macOS, Herdr App 0.1.15,
-Python 3.15 and Node.js 22.14.0. No GitHub publication performed.
+Python 3.15 and Node.js 22.14.0. Published at https://github.com/Dan4eck/herdr-prodsovet.
 
 ## Passed
 
@@ -32,7 +32,9 @@ mocked host integration and the real Python filesystem backend. Live provider
 usage requests and conversation forks were not triggered in this preparation.
 Do the manual acceptance steps in RECIPE when evaluating a new Herdr version.
 
-The personal installation was not replaced or activated from this package.
+The personal installation was not replaced wholesale from this package. The
+ProdAdvice brand subtitle was subsequently applied to both the installed and
+public prodsovet mod, passed native check and was visually verified in Herdr.
 Public-only differences: optional limits configuration, neutral code/notes badges,
 portable test paths and corrected fork guidance. All 20 mascot sprite strips
 were compared byte-for-byte with the installed personal mod and match.
