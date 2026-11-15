@@ -1,0 +1,23 @@
+{
+  "global": {
+    "cmd-shift-o": "mod.open:find"
+  },
+  "terminal": {
+    "cmd-shift-f": "mod.open:session_fork"
+  },
+  "mod:my-files": {
+    "f2": "my-files.rename",
+    "cmd-n": "my-files.create-file",
+    "cmd-shift-n": "my-files.create-folder",
+    "cmd-shift-g": "my-files.goto"
+  },
+  "mod:file-tab": {
+    "cmd-s": "file-tab.save"
+  },
+  "layout:prodsovet": {
+    "cmd-t": "prodsovet.new-terminal",
+    "ctrl-t": "prodsovet.new-terminal",
+    "cmd-d": "prodsovet.split-right",
+    "cmd-shift-d": "prodsovet.split-down"
+  }
+}

@@ -1,0 +1,49 @@
+Herdr Prodsovet / УПРЯЖ
+Copyright 2026 ProdAdvice contributors.
+
+This distribution includes modified interface code derived from Herdr App:
+https://github.com/herdrdev/herdr-app
+Herdr App contributors, Apache License 2.0 (see LICENSE).
+Derived components include agent lists, tab/new-tab menus, pane/window controls,
+file-tree elements, layout structure and integration with the Herdr mod API.
+Modifications include workspace-root tracking, coordinated document operations,
+custom dialogs and menus, styling, animation, file editing and usage indicators.
+The installed source was customized from Herdr 0.1.14/0.1.15 defaults.
+Upstream license checked at commit 5216e6f9f8c0c281a65e09816c66e4319e671784.
+No Rust runtime, gpui-kit runtime, terminal engine or fonts are redistributed.
+
+mods/my-files/{file,folder,chevron-down,chevron-right}.svg:
+Lucide/Feather icons distributed with Herdr. See licenses/Lucide.txt.
+
+mods/prodsovet/art/creatures/hermes-*.png:
+Original animated SVG adaptation of Nous Research's Nous girl character.
+Reference: NousResearch/hermes-agent, commit
+372066215261fa53ea94d30cf112089155830819,
+apps/desktop/public/nous-girl.png. See licenses/NousResearch-MIT.txt.
+The proportions, full-body rig and animation are modifications for this project.
+This is an unofficial adaptation, not an official Nous Research animation.
+
+The custom Gemini artwork, generic robot, УПРЯЖ mark and external-editor badges
+are licensed under Apache-2.0 to the extent of contributors' rights. Gemini
+artwork was drawn as an SVG rig from an AI-generated concept. The generic robot
+and УПРЯЖ mark are custom SVG artwork.
+
+mods/prodsovet/art/creatures/codex-*.png:
+Adapted from the official Codex TUI companion spritesheet
+codex-spritesheet-v4.webp (OpenAI). The personal mod maps idle/running/waiting/
+jumping frames to idle/working/blocked/done and scales them into 16-frame strips.
+
+mods/prodsovet/art/creatures/claude-*.png:
+Clawd, the Claude Code welcome-screen mascot (Anthropic), reconstructed from
+terminal block glyphs and animated into 16-frame strips for the personal mod.
+
+Both mascot sets are included unchanged from the personal mod, with
+redistribution permission confirmed by the project owner. These third-party
+mascots are not relicensed under the project's Apache-2.0 code license.
+Underlying artwork and trademark rights remain with their respective owners.
+VS Code/Obsidian raster logos of unrecorded provenance were replaced by neutral
+code/notes badges. Their integration and names are retained.
+
+Herdr, OpenAI, Codex, Claude, Anthropic, Gemini, Google, Hermes, Nous Research,
+VS Code and Obsidian are names of their respective owners. This community
+project is not endorsed by them. No trademark rights are granted.

@@ -1,0 +1,266 @@
+// SPDX-License-Identifier: Apache-2.0
+// Herdr Prodsovet: customized interface and behavior, 2026. See NOTICE.
+// A file as its own tab, next to the terminal tabs.
+// Opened by find and my-files: run("tab.new", { name, mod: "file-tab", props: { file, on } }).
+// Edit and Cmd+S to save; double-click the name to rename the file; "Открыть в" sends it to Obsidian or VS Code.
+import { View, div, svg, image } from "gpui-kit";
+import { v_flex, h_flex, Editor, EditorState, InputState, Input, TextView, set_theme } from "gpui-base";
+import { props, exec, readTextFile, writeTextFile, theme, settings, focused, spaces, panes, run, notify, shared, setShared, nextCommand } from "herdr";
+
+import { operation, isLocked, activeDocuments, workspace } from "./filesystem.js";
+
+const LANG = { ts: "js", tsx: "js", mjs: "js", cjs: "js", jsx: "js", js: "js", json: "json", jsonc: "json", md: "markdown", markdown: "markdown", py: "python", sh: "bash", zsh: "bash", yml: "yaml", yaml: "yaml", toml: "yaml", html: "html", css: "css", rs: "rust", go: "go", vue: "html", svelte: "html" };
+const base = (p) => p.split("/").pop();
+
+// The editor paints its selection with Base's "accent" at ~39% opacity, and Herdr maps
+// accent to the theme's hover color, so on dark themes the selection is invisible.
+// Pick an accent that, at that opacity over the background, lands on the theme's "selection".
+const SEL_ALPHA = 0.39;
+const hex = (c) => [1, 3, 5].map((i) => parseInt(c.slice(i, i + 2), 16));
+function selectionAccent(t) {
+  if (!/^#[0-9a-f]{6}/i.test(t.selection ?? "") || !/^#[0-9a-f]{6}/i.test(t.background ?? "")) return null;
+  const bg = hex(t.background), sel = hex(t.selection);
+  return "#" + bg.map((b, i) => Math.max(0, Math.min(255, Math.round(b + (sel[i] - b) / SEL_ALPHA))).toString(16).padStart(2, "0")).join("");
+}
+const OPEN_IN = [
+  { id: "code", label: "VS Code", app: "Visual Studio Code", icon: "mods/file-tab/code.svg" },
+  { id: "obsidian", label: "Obsidian", icon: "mods/file-tab/notes.svg" },
+];
+
+export default class FileTab extends View {
+  init(p, cx) {
+    const pr = { ...(p ?? {}), ...(props() ?? {}) };
+    this.file = pr.file; this.on = pr.on ?? null;
+    const allSpaces = spaces(), allPanes = panes();
+    const validTab = id => allSpaces.some(s => (!pr.space || s.id === pr.space) && s.tabs.some(t => t.id === id)) && allPanes.some(p => p.tab === id && p.mod === "file-tab");
+    const remembered = localStorage.getItem("tab");
+    const previous = (shared("file-tab.open") ?? {})[pr.file];
+    const candidates = allSpaces.flatMap(s => s.tabs.filter(t => t.name === base(pr.file) && validTab(t.id) && (!pr.space || s.id === pr.space)));
+    this.tab = validTab(remembered) ? remembered : pr.space && validTab(focused()?.tab) ? focused().tab : candidates.length === 1 ? candidates[0].id : validTab(previous) && !(shared("files.documents") ?? {})[previous] ? previous : validTab(focused()?.tab) ? focused().tab : null;
+    this.space = pr.space || allSpaces.find(s => s.tabs.some(t => t.id === this.tab))?.id || focused()?.space;
+    const document = (shared("files.documents") ?? {})[this.tab];
+    if (document && document.on === this.on) { this.file = document.file; this.removed = document.removed; }
+    else this.file = localStorage.getItem("file") || this.file;
+    localStorage.setItem("tab", this.tab ?? "");
+    workspace(this.space);
+    this.h = cx.focus_handle();
+    this.code = null; this.original = null; this.preview = false; this.renaming = null; this.openMenu = Boolean(pr.menu);
+    this.ext = (this.file?.includes(".") ? this.file.split(".").pop() : "txt").toLowerCase();
+    this.register();
+    if (!this.file) { this.error = "Нет пути к файлу"; return; }
+    this.load(cx);
+    cx.spawn(async (cx) => {
+      for (;;) {
+        const c = await nextCommand();
+        const name = c?.name ?? c?.command ?? c;
+        if (name === "save") await this.save(cx);
+        else if (name === "focus") this.h.focus();
+        cx.notify();
+      }
+    });
+  }
+
+  // file -> tab id, so opening the same file again just shows its tab
+  register(old) {
+    const map = { ...(shared("file-tab.open") ?? {}) };
+    if (old) delete map[old];
+    if (this.file && this.tab) map[this.file] = this.tab;
+    setShared("file-tab.open", map);
+    this.publish();
+  }
+
+  publish() {
+    if (!this.tab) return;
+    const all = activeDocuments(), old = all[this.tab];
+    const next = { file: this.file, on: this.on, space: this.space, dirty: this.dirty(), saving: Boolean(this.saving), removed: Boolean(this.removed) };
+    if (JSON.stringify(old) !== JSON.stringify(next)) setShared("files.documents", { ...all, [this.tab]: next });
+    localStorage.setItem("file", this.file);
+  }
+
+  snapshot() {
+    this.publish();
+    if (this.dirty()) localStorage.setItem("draft", JSON.stringify({ file: this.file, original: this.original, text: this.code.value() }));
+    else localStorage.removeItem("draft");
+  }
+
+  syncDocument() {
+    const document = (shared("files.documents") ?? {})[this.tab];
+    if (!document || document.on !== this.on) return;
+    if (document.file !== this.file) {
+      this.file = document.file;
+      this.ext = (this.file.includes(".") ? this.file.split(".").pop() : "txt").toLowerCase();
+      localStorage.setItem("file", this.file);
+    }
+    this.removed = Boolean(document.removed);
+  }
+
+  load(cx) {
+    cx.spawn(async (cx) => {
+      try {
+        const file = this.file;
+        const text = await readTextFile(file, { on: this.on });
+        this.syncDocument();
+        if (file !== this.file) { this.load(cx); return; }
+        this.applySelection(cx);
+        if (text === null) this.error = "Файла нет или он больше 1 МБ";
+        else if (text.includes("\0")) this.error = "Бинарный файл, текстом не показать";
+        else {
+          const t = theme();
+          this.editable = !this.on; this.original = text;
+          let draft;
+          try { draft = JSON.parse(localStorage.getItem("draft") ?? "null"); } catch {}
+          if (draft?.file === this.file) this.original = draft.original;
+          this.code = EditorState.new({
+            value: draft?.file === this.file ? draft.text : text, language: LANG[this.ext] ?? this.ext, readonly: !this.editable, soft_wrap: true,
+            line_numbers: !["md", "markdown", "txt"].includes(this.ext),
+            font_family: settings().font_family, font_size: 13,
+            syntax: { keyword: t.ansi5, string: t.ansi2, comment: t.dim, function: t.ansi4, type: t.ansi3, number: t.ansi1, constant: t.ansi6 },
+          });
+          this.code.on("change", (_e, cx) => { this.snapshot(); cx.notify(); });
+          this.publish();
+        }
+      } catch (e) { this.error = `Не открылся: ${e}`; }
+      cx.notify();
+    });
+  }
+
+  // set_theme is only legal in an event handler or a task right after a host call.
+  // Herdr resets Base tokens on its own (opening tabs, etc.) and cx.theme() can lag behind,
+  // so a press or Shift in the editor re-applies it unconditionally (force).
+  applySelection(cx, force) {
+    const t = theme(), accent = selectionAccent(t);
+    this.selKey = `${t.background}/${t.selection}`;
+    if (!accent) return;
+    try {
+      const th = cx.theme();
+      if (!force && th.colors.accent === accent) return;
+      set_theme({ appearance: th.appearance, tokens: { colors: { ...th.colors, accent }, spacing: th.spacing, radius: th.radius } });
+    } catch (e) { console.log("file-tab: selection color not applied", e); }
+  }
+
+  dirty() { return Boolean(this.code && this.editable && this.code.value() !== this.original); }
+
+  async save(cx) {
+    this.syncDocument();
+    if (this.removed || isLocked(this.file)) { notify({ title: "Не сохранено", body: this.removed ? "Файл находится в корзине" : "Дождитесь файловой операции", level: "warning" }); return; }
+    if (!this.dirty() || this.saving) return;
+    const text = this.code.value();
+    this.saving = true; this.publish(); cx.notify();
+    try { await writeTextFile(this.file, text, this.original); this.original = text; this.saveError = null; }
+    catch (e) { this.saveError = "Файл изменился на диске, не сохранено"; }
+    this.saving = false; this.snapshot(); cx.notify();
+  }
+
+  startRename(cx) {
+    if (this.on) return notify({ title: "Файл на другой машине", body: "Переименовать можно только локальный файл", level: "warning" });
+    this.renaming = InputState.new({ value: base(this.file) });
+    this.renaming.on("submit", (_e, cx) => this.rename(cx));
+    this.renaming.focus();
+    cx.notify();
+  }
+
+  async rename(cx) {
+    const name = this.renaming?.value();
+    this.renaming?.release(); this.renaming = null;
+    if (!name || name === base(this.file)) return cx.notify();
+    try {
+      this.syncDocument();
+      await operation({ action: "rename", path: this.file, on: this.on }, name);
+      this.syncDocument(); this.publish();
+    } catch (e) { notify({ title: "Не переименован", body: String(e.message ?? e), level: "error" }); }
+    cx.notify();
+  }
+
+  async openIn(a) {
+    let r;
+    if (a.id === "obsidian") r = await exec("open", [`obsidian://open?path=${encodeURIComponent(this.file)}`]);
+    else r = await exec("open", ["-a", a.app, this.file]);
+    if (r.code !== 0) notify({ title: `Не открылось в ${a.label}`, body: r.stderr.trim(), level: "error" });
+  }
+
+  async agent() {
+    const target = (shared("files.agents") ?? {})[this.space];
+    if (!target) return notify({ title: "Нет агента", body: "Кликни в терминал агента один раз и попробуй снова", level: "warning" });
+    const text = (/\s/.test(this.file) ? `"${this.file}"` : `@${this.file}`) + " ";
+    const copy = (v) => exec("sh", ["-c", 'printf %s "$1" | pbcopy', "copy", v]);
+    const old = await exec("pbpaste", []).catch(() => null);
+    await copy(text);
+    run("pane.focus", { terminal: target });
+    run("terminal.paste");
+    if (old?.code === 0 && old.stdout) exec("sh", ["-c", 'sleep 0.7; printf %s "$1" | pbcopy', "copy", old.stdout]);
+  }
+
+  async close() {
+    this.syncDocument();
+    if (panes().some(p => p.tab === this.tab && p.mod === "file-tab")) {
+      // Hot reload or application quit: retain the path and unsaved buffer.
+      this.snapshot();
+    } else {
+      const docs = activeDocuments(); delete docs[this.tab]; setShared("files.documents", docs);
+      const map = { ...(shared("file-tab.open") ?? {}) };
+      if (map[this.file] === this.tab) { delete map[this.file]; setShared("file-tab.open", map); }
+    }
+  }
+
+  render(cx) {
+    this.syncDocument();
+    const t = theme(), md = ["md", "markdown"].includes(this.ext);
+    // theme switched (light/dark, another theme): re-derive the selection color
+    if (this.code && this.selKey !== `${t.background}/${t.selection}`) {
+      this.selKey = `${t.background}/${t.selection}`;
+      cx.spawn(async (cx) => { await exec("true", []); this.applySelection(cx); cx.notify(); });
+    }
+    // remember the last terminal with focus, for "@ agent"
+    const f = focused();
+    if (f?.terminal) {
+      const agents = shared("files.agents") ?? {};
+      if (agents[f.space] !== f.terminal) setShared("files.agents", { ...agents, [f.space]: f.terminal });
+    }
+    const btn = (id, label, on, active) => div().id(id).px(8).py(3).rounded(6).text_size(12).cursor_pointer()
+      .text_color(active ? t.foreground : t.muted).when(active, (el) => el.bg(t.selected))
+      .hover((s) => s.bg(t.hover).text_color(t.foreground)).on_click(on).child(label);
+    const dir = this.file ? this.file.slice(0, this.file.lastIndexOf("/")).replace(/^\/Users\/[^/]+/, "~") : "";
+
+    return v_flex().id("file-tab").relative().track_focus(this.h).size_full().min_h(0).bg(t.background).text_color(t.foreground).text_size(13)
+      .on_key_down((e, cx) => {
+        if (e.key === "escape" && this.openMenu) { this.openMenu = false; cx.stop_propagation(); cx.notify(); return; }
+        if (e.key === "escape" && this.renaming) { this.renaming.release(); this.renaming = null; cx.stop_propagation(); cx.notify(); }
+      })
+      .child(h_flex().h(40).flex_none().px(14).gap(8).items_center().border_b(1).border_color(t.border).bg(t.chrome)
+        .child(svg("mods/my-files/file.svg").size(14).flex_none().text_color(t.dim))
+        .child(this.renaming
+          ? h_flex().w(320).h(28).px(8).rounded(6).border_1().border_color(t.accent).bg(t.background).items_center()
+              .child(Input.new(this.renaming).flex_1().h_full().text_size(13).text_color(t.foreground))
+          : div().id("ft-name").flex_none().max_w(360).truncate().font_semibold().cursor_pointer().rounded(5).px(4)
+              .hover((s) => s.bg(t.hover)).on_click((e, cx) => { if (e.click_count >= 2) this.startRename(cx); })
+              .child((this.dirty() ? "● " : "") + (this.file ? base(this.file) : "")))
+        .child(div().flex_1().min_w(0).truncate().text_size(11.5).text_color(t.dim).child((this.on ? `${this.on}:` : "") + dir))
+        .when(Boolean(this.saveError), (el) => el.child(div().text_size(11.5).text_color(t.blocked).child(this.saveError)))
+        .when(md && Boolean(this.code), (el) => el
+          .child(btn("ft-edit", "Текст", (_e, cx) => { this.preview = false; cx.notify(); }, !this.preview))
+          .child(btn("ft-prev", "Превью", (_e, cx) => { this.preview = true; cx.notify(); }, this.preview)))
+        .child(btn("ft-agent", "@ агенту", () => this.agent()))
+        .when(Boolean(this.code) && this.editable && !this.removed, (el) => el.child(btn("ft-save", this.saving ? "Сохраняю…" : this.dirty() ? "Сохранить ⌘S" : "Сохранено", (_e, cx) => this.save(cx), this.dirty())))
+        .when(Boolean(this.code) && !this.editable, (el) => el.child(div().text_size(11).text_color(t.dim).child("только чтение")))
+        .when(!this.on, (el) => el.child(btn("ft-open", "Открыть в ▾", (_e, cx) => { this.openMenu = !this.openMenu; cx.notify(); }, this.openMenu))))
+      .when(Boolean(this.removed), el => el.child(div().px(14).py(8).text_color(t.blocked).child("Файл перемещён в корзину. Содержимое вкладки сохранено для просмотра.")))
+      .child(this.code
+        ? (this.preview
+          ? div().id("ft-md").flex_1().min_h(0).overflow_y_scrollbar().px(28).py(18).child(TextView.markdown("ft-md-view", this.code.value()))
+          : div().id("ft-editor").flex_1().min_h(0).px(6)
+              .on_mouse_down("left", (_e, cx) => this.applySelection(cx, true))
+              .on_modifiers_changed((e, cx) => { if (e.modifiers?.shift) this.applySelection(cx, true); })
+              .child(Editor.new(this.code).size_full()))
+        : div().p(16).text_color(this.error ? t.blocked : t.dim).child(this.error ?? "Открываю…"))
+      // the "Открыть в" dropdown: a small box under the button, over the text
+      .when(this.openMenu && !this.on, (el) => el.child(
+        v_flex().id("ft-menu").absolute().top(38).right(12).w(170).p(4).gap(2)
+          .rounded(9).border_1().border_color(t.border).bg(t.popover).shadow_lg()
+          .on_mouse_down_out((_e, cx) => { this.openMenu = false; cx.notify(); })
+          .children(OPEN_IN.map((a) => h_flex().id(`ft-in-${a.id}`).h(32).px(8).gap(9).items_center().rounded(6).cursor_pointer()
+            .text_size(13).text_color(t.foreground).hover((s) => s.bg(t.hover))
+            .on_click((_e, cx) => { this.openMenu = false; this.openIn(a); cx.notify(); })
+            .child(svg(a.icon).size(18).flex_none())
+            .child(a.label)))));
+  }
+}
