@@ -13,9 +13,9 @@ Python 3.15 and Node.js 22.14.0. Published at https://github.com/Dan4eck/herdr-p
 - Renamed layout-scoped keys preserved; installer test checks both the new
   layout scope and existence of the referenced preview image.
 
-- 58 automated cases: 10 real filesystem operations, 13 workspace/document-state
+- 59 automated cases: 10 real filesystem operations, 13 workspace/document-state
   cases, 15 dialog/editor integration cases, 12 installer/disabled-limits cases
-  and 8 appearance isolation cases. Profile switching with different editor font
+  and 9 appearance isolation cases. Profile switching with different editor font
   sizes preserves unsaved text and the disk-conflict baseline in the host mock.
 - Installer dry run, actual install and uninstall via its CLI into a temporary
   Herdr home seeded with the stock dependencies. Existing unrelated keys survived.
@@ -60,3 +60,12 @@ Codex and Claude mascot strips are included following the project owner's
 explicit confirmation that they may be redistributed. Their provenance is
 recorded in NOTICE; the project's code license does not relicense third-party
 mascots. External-editor raster logos were replaced by neutral badges.
+
+## ProdAdvice light update
+
+Reproduced dark-on-dark Codex prompt text with paper and minimum_contrast=1.
+Verified the same live terminal becomes readable with minimum_contrast=4.5,
+then checked the custom ProdAdvice-light palette. All five installed mods
+passed native check; native status reported no errors. The contrast setting is
+user-global, not an invented theme property. A regression case verifies light
+mode removes the dark agent pane background and transparent terminal override.

@@ -58,17 +58,31 @@ def validate(config):
             raise ValueError('Unsafe preview path')
         if not isinstance(p['agentTints'], bool):
             raise ValueError('agentTints must be a boolean')
+        light = p.get('lightPalette')
+        if light is not None and not re.fullmatch(r'[A-Za-z0-9_-]+', p['lightTheme']):
+            raise ValueError('Unsafe light theme name')
         colors = [*p['brandColors'].values(), *p['darkTheme']['ansi'], *p['darkTheme'].get('colors', {}).values()]
         colors += [p['darkTheme'][k] for k in ('background', 'foreground', 'selection', 'cursor') if k in p['darkTheme']]
+        if light is not None:
+            if len(light['ansi']) != 16:
+                raise ValueError('Light palette needs 16 ANSI colors')
+            colors += [light[k] for k in ('background', 'foreground', 'selection', 'cursor')]
+            colors += [*light['ansi'], *light.get('colors', {}).values()]
         colors += [c for palette in p['agentPalettes'].values() for c in palette.values()]
         if any(not isinstance(c, str) or not re.fullmatch(r'#[0-9a-fA-F]{6}', c) for c in colors):
             raise ValueError(f'{name}: colors must be #rrggbb')
     # Each profile owns a complete schema. Missing values must not fall through
     # to the other profile and accidentally couple their appearances.
     def shape(obj):
-        return {k: shape(v) for k, v in obj.items()} if isinstance(obj, dict) else None
+        return {k: shape(v) for k, v in obj.items() if k != 'lightPalette'} if isinstance(obj, dict) else None
     if shape(profiles['ProdAdvice']) != shape(profiles['ProdAdvice2']):
         raise ValueError('Profiles must have the same complete schema')
+    owned = set(profiles)
+    for p in profiles.values():
+        if p.get('lightPalette') is not None:
+            if p['lightTheme'] in owned:
+                raise ValueError('Theme names must be independent')
+            owned.add(p['lightTheme'])
     return profiles
 
 
@@ -90,6 +104,8 @@ def plan(home, config_path=None):
                       theme={'light': p['lightTheme'], 'dark': name}, preview=p['preview'])
         result[path] = json.dumps(layout, ensure_ascii=False, indent=2) + '\n'
         result[home / 'themes' / (name + '.json')] = json.dumps(p['darkTheme'], indent=2) + '\n'
+        if p.get('lightPalette') is not None:
+            result[home / 'themes' / (p['lightTheme'] + '.json')] = json.dumps(p['lightPalette'], indent=2) + '\n'
     keys_path = home / 'keys.json'
     keys = json.loads(keys_path.read_text())
     keys.setdefault('layout:ProdAdvice2', copy.deepcopy(keys['layout:ProdAdvice']))

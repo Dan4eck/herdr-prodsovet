@@ -25,7 +25,7 @@ profile owns a full independent set of values; see APPEARANCE.md.
 
 Dark palette: canvas/chrome #030303, background #090909, foreground #f3f4ef,
 border #262626, accent #39ff14. Focused Codex panes use #090b0e / #7797ba;
-Claude panes use #0b0a09 / #b3927b. Light mode delegates to the shipped paper theme.
+Claude panes use #0b0a09 / #b3927b. ProdAdvice light mode uses the custom ProdAdvice-light sage/green palette.
 
 The illustration in preview.png is made from preview.html and fictional data;
 it is not native rendering evidence. The artwork files are the shipped sprites.

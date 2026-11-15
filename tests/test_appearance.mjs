@@ -20,9 +20,10 @@ const p=palette.namespace;
 let count=0;
 function test(name,fn){fn();console.log(`ok ${++count} - ${name}`);}
 test('unknown layouts keep compatible defaults',()=>{active='main';assert.equal(a.profileName(),'ProdAdvice');assert.equal(a.fontSize('files.body'),13);});
-test('profiles start with identical visual values and independent objects',()=>{
+test('profiles own independent typography and palette objects',()=>{
  const x=JSON.parse(JSON.stringify(a.appearance('ProdAdvice'))),y=JSON.parse(JSON.stringify(a.appearance('ProdAdvice2')));
- delete x.preview;delete y.preview;assert.deepEqual(x,y);
+ assert.equal(x.lightTheme,'ProdAdvice-light');assert.equal(y.lightTheme,'paper');
+ assert.equal(x.lightPalette.background,'#f7f9f4');
  assert.notEqual(a.appearance('ProdAdvice').text,a.appearance('ProdAdvice2').text);
 });
 test('changing the second profile does not change classic typography or colors',()=>{
@@ -51,4 +52,10 @@ test('switching back removes the other profile tint without changing geometry',(
  assert.equal(result.children[0].content.pane.header.height,30);assert.equal(tree.children[0].content.pane.background,'#123456');
 });
 test('missing typography values fail visibly instead of borrowing another profile',()=>{assert.throws(()=>a.fontSize('missing.value'),/Unknown appearance/);});
+test('light mode releases a dark agent background and transparent terminal',()=>{
+ active='ProdAdvice';const tree={id:'root',theme:{dark:'ProdAdvice',light:'ProdAdvice-light'},terminal_opacity:0,children:[{id:'main',content:{pane:{background:'#090b0e',radius:10}}}]};
+ const next=p.styledLayout(tree,{app:'codex',status:'working'},false);
+ assert.equal(next.children[0].content.pane.background,'background');assert.equal(next.terminal_opacity,undefined);
+ assert.equal(p.enabled(tree,false),false);assert.equal(next.children[0].content.pane.radius,10);
+});
 console.log(`${count} appearance tests passed`);

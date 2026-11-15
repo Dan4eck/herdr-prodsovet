@@ -183,7 +183,7 @@
   ],
   "background": "canvas",
   "theme": {
-    "light": "paper",
+    "light": "ProdAdvice-light",
     "dark": "ProdAdvice"
   },
   "terminal_padding": [

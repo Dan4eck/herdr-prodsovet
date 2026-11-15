@@ -1,8 +1,8 @@
 # Two independent appearances
 
 Select **ProdAdvice** or **ProdAdvice2** in Settings > Look (Cmd+Shift+L also
-opens the layout picker). Both initially look the same. ProdAdvice preserves
-the original design; ProdAdvice2 is a separate starting point for a redesign.
+opens the layout picker). ProdAdvice preserves the original dark design and includes its own light palette.
+ProdAdvice2 is an independent profile.
 The feature code, file operations, workspace roots and documents are shared.
 
 ## Editing a profile
@@ -32,7 +32,8 @@ layout and each layout's geometry. Herdr hot-reloads the resulting files.
 | `brandColors` | ProdAdvice subtitle color in dark/light modes |
 | `darkTheme` | Terminal ANSI and semantic interface palette |
 | `agentPalettes`, `agentTints` | Codex/Claude pane colors and whether to apply them |
-| `lightTheme` | Installed light theme name, initially `paper` |
+| `lightTheme` | Installed light theme name |
+| `lightPalette` | Optional owned light palette, generated under `lightTheme`; null uses an existing theme |
 
 For example, set `profiles.ProdAdvice2.fonts.ui` to an installed font family,
 `profiles.ProdAdvice2.text.files.body` to `14`, and
@@ -64,3 +65,16 @@ Before editing, keep a copy of your profile JSON and layouts. The Git tag
 `prodadvice-classic-2026-11-15` preserves the original implementation. Package
 uninstall refuses to remove locally customized files; preserve those edits and
 reconcile them with the installer receipt before updating or uninstalling.
+
+## Light terminal readability
+
+ProdAdvice uses ProdAdvice-light: a pale sage surface, dark ink and deep green
+accents. It no longer depends on paper. ANSI colors and UI tokens are separately
+defined, and dark agent tints are released when switching to light mode.
+
+Some terminal applications retain explicit dark RGB backgrounds after a theme
+switch. In the tested Herdr version, `"minimum_contrast": 4.5` in the user
+settings.json makes foregrounds readable against those cell backgrounds. The
+personal installation was verified with this setting; it applies to all
+terminals, including dark mode. The public installer preserves user settings,
+so users with contrast set to 1 should change it themselves if needed.
