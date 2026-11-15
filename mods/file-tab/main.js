@@ -36,8 +36,13 @@ export default class FileTab extends View {
     const validTab = id => allSpaces.some(s => (!pr.space || s.id === pr.space) && s.tabs.some(t => t.id === id)) && allPanes.some(p => p.tab === id && p.mod === "file-tab");
     const remembered = localStorage.getItem("tab");
     const previous = (shared("file-tab.open") ?? {})[pr.file];
-    const candidates = allSpaces.flatMap(s => s.tabs.filter(t => t.name === base(pr.file) && validTab(t.id) && (!pr.space || s.id === pr.space)));
-    this.tab = validTab(remembered) ? remembered : pr.space && validTab(focused()?.tab) ? focused().tab : candidates.length === 1 ? candidates[0].id : validTab(previous) && !(shared("files.documents") ?? {})[previous] ? previous : validTab(focused()?.tab) ? focused().tab : null;
+    // A tab another file's editor already owns is never taken: a new file tab
+    // can mount while the previous file's tab still has the focus.
+    const docs = shared("files.documents") ?? {};
+    const free = id => !docs[id] || (docs[id].file === pr.file && (docs[id].on ?? null) === this.on);
+    const candidates = allSpaces.flatMap(s => s.tabs.filter(t => t.name === base(pr.file) && validTab(t.id) && free(t.id) && (!pr.space || s.id === pr.space)));
+    const focusedTab = validTab(focused()?.tab) && free(focused().tab) ? focused().tab : null;
+    this.tab = validTab(remembered) ? remembered : candidates.length === 1 ? candidates[0].id : pr.space && focusedTab ? focusedTab : validTab(previous) && !docs[previous] ? previous : focusedTab;
     this.space = pr.space || allSpaces.find(s => s.tabs.some(t => t.id === this.tab))?.id || focused()?.space;
     const document = (shared("files.documents") ?? {})[this.tab];
     if (document && document.on === this.on) { this.file = document.file; this.removed = document.removed; }

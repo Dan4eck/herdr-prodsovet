@@ -24,6 +24,15 @@ export function workspace(id) {
   }
   return { space: s.id, cwd, on: s.machine ?? null };
 }
+// What to call a space: its own name when someone named it; otherwise its
+// project root (Herdr would name it after its first terminal's folder, which
+// turns into "~" once that tab is a shell at home).
+export function spaceLabel(s) {
+  if (!s || s.named) return s?.name ?? "";
+  const root = (shared("files.workspace-roots") ?? {})[s.id];
+  if (!root) return s.name;
+  return !s.machine && root === home() ? "~" : basename(root) || s.name;
+}
 export function location() {
   const w = workspace(), browsed = (shared("files.browsed") ?? {})[w.space];
   return { ...w, cwd: browsed || w.cwd };

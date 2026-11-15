@@ -12,6 +12,7 @@ import { appearance, fontSize, radius, labelFont, L } from "./appearance.js";
 
 import { div, svg } from "gpui-kit";
 import { selected, glitchy, px } from "./agency.js";
+import { spaceLabel } from "./filesystem.js";
 import { v_flex, h_flex } from "gpui-base";
 import { spaces, machines, panes, run, openOverlay, exec, hc, theme, shared, setShared, watchFolder, window, layout } from "herdr";
 
@@ -445,9 +446,9 @@ export class Spaces {
           .when(Boolean(tree), el => el.pl(22).child(svg(px("branch")).size(15).text_color(t.dim)))
           // A square letter tile, like the page's AGENCY chip: ink on the space's color.
           .when(!tree, el => el.child(h_flex().size(18).flex_none().bg(fill).items_center().justify_center()
-            .font_family(appearance().fonts.mono).text_size(10.5).font_weight(appearance().weights.bold).text_color("#000000").child([...w.name][0]?.toUpperCase() ?? "?")))
-          .child(div().flex_shrink(0).max_w(150).truncate().text_color(t.foreground).child(w.name))
-          .child(g ? this.gitTail(g, tree, w.name, t) : div().flex_1()),
+            .font_family(appearance().fonts.mono).text_size(10.5).font_weight(appearance().weights.bold).text_color("#000000").child([...spaceLabel(w)][0]?.toUpperCase() ?? "?")))
+          .child(div().flex_shrink(0).max_w(150).truncate().text_color(t.foreground).child(spaceLabel(w)))
+          .child(g ? this.gitTail(g, tree, spaceLabel(w), t) : div().flex_1()),
       );
   }
 

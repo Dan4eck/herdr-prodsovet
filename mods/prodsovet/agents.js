@@ -5,6 +5,7 @@ import { appearance, fontSize, metric, radius, style, labelFont, L } from "./app
 
 import { div, image, svg } from "gpui-kit";
 import { word, artPath, ART_FRAMES } from "./creatures.js";
+import { spaceLabel } from "./filesystem.js";
 import { agency, accentOf, selected, glitchy, halftone, typed, icon } from "./agency.js";
 import { v_flex, h_flex } from "gpui-base";
 import { agents, terminals, panes, focused, spaces, run, theme, shared, setShared, setAgentOrder, openOverlay, closeOverlay, props, window, layout, appHome, exec } from "herdr";
@@ -278,6 +279,9 @@ export class Agents {
       });
       listed.add(p.terminal);
     }
+    // Spaces read as in the Spaces list: a project root rather than "~".
+    const spaceById = new Map(spaces().map((s) => [s.id, s]));
+    list = list.map((a) => (spaceById.has(a.space) ? { ...a, space_name: spaceLabel(spaceById.get(a.space)) } : a));
     this.listed = new Map(list.map((a) => [a.address, a.status]));
     this.migratePins(all);
     const shown = focused()?.agent;
