@@ -66,7 +66,7 @@ class Brand {
         .child(image("frame/welcome/herdr.png").size(20).flex_none().rounded(5))
         .child(v_flex().min_w(0)
           .child(div().text_size(13.5).line_height("17px").font_semibold().text_color(t.foreground).child("Herdr"))
-          .child(div().font_family(MONO).font_bold().text_size(9.5).line_height("12px").text_color(t.accent).truncate().child("ProdAdvice")))))
+          .child(div().font_semibold().text_size(9.5).line_height("12px").text_color(settings().dark ? "#7d9a72" : "#527148").truncate().child("ProdAdvice")))))
       .when(!collapsed, (el) => el.child(this.button(t, "search", "search", () => run("mod.open", { name: "picker" }))))
       .when(!(collapsed && mac), (el) => el.child(this.button(t, "sidebar-toggle", "sidebar", toggleSidebar)));
   }
