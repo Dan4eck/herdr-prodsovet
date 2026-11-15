@@ -4,11 +4,12 @@ import { appearance, fontSize, metric, radius, labelFont, style, L } from "./app
 // Derived from Herdr App's stock "changes" mod (Apache-2.0): the profile's
 // typography and radii, status colors (added mint, modified orange, deleted or
 // conflicted coral), tinted selection, pixel icons and EN/RU strings.
-// The git logic is unchanged.
+// Commit messages are prefilled from a read-only snapshot; manual edits win.
 import { div, svg } from "gpui-kit";
 import { fileGlyph } from "./filesystem.js";
+import { CommitSuggestion } from "./commit-suggestion.js";
 import { v_flex, h_flex, InputState, Input, Scrollbar, v_virtual_list } from "gpui-base";
-import { spaces, panes, focused, exec, readTextFile, watchFolder, theme, settings } from "herdr";
+import { spaces, panes, focused, exec, readTextFile, watchFolder, theme, settings, appHome } from "herdr";
 
 function location() {
   const space = spaces().find((s) => s.active), f = focused();
@@ -41,12 +42,18 @@ function diffRows(lines) {
 
 export class Changes {
   init(_props, cx) {
-    this.files = []; this.rows = []; this.diffWidth = 0; this.message = ""; this.handle = cx.focus_handle();
+    this.files = []; this.rows = []; this.diffWidth = 0; this.message = ""; this.messageOrigin = "empty"; this.handle = cx.focus_handle();
+    this.suggestion = new CommitSuggestion(async (mode, value) => {
+      const r = await exec("python3", [`${appHome()}/mods/prodsovet/commit-message.py`, mode, value], { timeout: 90000 });
+      const data = JSON.parse(r.stdout);
+      if (r.code || data.error) throw new Error(data.error || "Cannot suggest a commit message");
+      return data;
+    });
     this.input = InputState.new({ placeholder: L("Commit message", "Сообщение коммита") });
     this.input.on("change", (_e, cx) => {
-      const hadMessage = Boolean(this.message.trim());
-      this.message = this.input.value();
-      if (hadMessage !== Boolean(this.message.trim())) cx.notify();
+      const value = this.input.value();
+      if (value !== this.message) { this.message = value; this.messageOrigin = "manual"; this.input.set_loading(false); }
+      cx.notify();
     });
     this.input.on("submit", (_e, cx) => this.commit(cx));
     this.input.on("focus", (_e, cx) => { this.typing = true; cx.notify(); });
@@ -72,8 +79,9 @@ export class Changes {
     if (this.loading || this.busy) return;
     const { cwd, on } = location(), context = key();
     if (context !== this.context) {
+      this.suggestion.reset(); this.suggestSeq = (this.suggestSeq ?? 0) + 1;
       this.context = context; this.root = null; this.files = []; this.open = null;
-      this.setLines([]); this.message = ""; this.input.set_value(""); this.error = null; this.note = null; this.watched = null; this.closed = false; this.limited = false;
+      this.setLines([]); this.setMessage("", "empty"); this.error = null; this.note = null; this.watched = null; this.closed = false; this.limited = false;
     }
     if (!cwd) return;
     this.loading = true;
@@ -116,9 +124,40 @@ export class Changes {
           try { await this.load(this.open, context); }
           catch { if (key() === context) this.setLines([L("Cannot preview this diff (too large or unreadable)", "Diff не показать (слишком большой или нечитаемый)")]); }
         }
+        if (key() === context) this.suggest(cx);
       } catch (e) { if (key() === context) this.error = String(e); }
       finally { this.loading = false; cx.notify(); }
     });
+  }
+
+  suggest(cx) {
+    if (!this.root || this.on || !this.files.length || this.messageOrigin === "manual" || this.files.some(f => f.status === "U")) {
+      if (!this.files.length || this.on || this.files.some(f => f.status === "U")) { this.suggestion.reset(); this.syncSuggestion(cx); }
+      return;
+    }
+    const seq = this.suggestSeq = (this.suggestSeq ?? 0) + 1;
+    const context = this.context, root = this.root;
+    cx.timer.after(1500, cx => {
+      if (seq !== this.suggestSeq || this.context !== context || key() !== context || this.messageOrigin === "manual" || this.busy) return;
+      cx.spawn(async cx => this.suggestion.update(root, L("en", "ru"),
+        () => this.context === context && key() === context && !this.busy,
+        () => this.syncSuggestion(cx)));
+    });
+  }
+
+  setMessage(value, origin) {
+    if (this.message === value && this.messageOrigin === origin) return;
+    this.message = value; this.messageOrigin = origin; this.input.set_value(value);
+  }
+
+  syncSuggestion(cx) {
+    if (this.context !== key()) return;
+    if (this.messageOrigin !== "manual" && !this.busy) {
+      if (!this.suggestion.busy && this.suggestion.value) this.setMessage(this.suggestion.value, "auto");
+      else if (!this.suggestion.value && this.messageOrigin === "auto") this.setMessage("", "empty");
+    }
+    this.input.set_loading(this.suggestion.busy && this.messageOrigin !== "manual");
+    cx.notify();
   }
 
   async load(path, context) {
@@ -162,14 +201,25 @@ export class Changes {
   commit(cx) {
     if (!this.message.trim() || !this.root || this.busy || this.loading || this.context !== key()) return;
     const root = this.root, on = this.on, context = this.context, message = this.message.trim();
+    const automatic = this.messageOrigin === "auto", fingerprint = this.suggestion.fingerprint;
+    if (automatic && this.suggestion.busy) return;
     this.busy = true; this.note = null;
     cx.spawn(async (cx) => {
       try {
+        if (automatic) {
+          const latest = await this.suggestion.call("snapshot", root);
+          if (key() !== context) return;
+          if (latest.fingerprint !== fingerprint || latest.empty || latest.conflict) {
+            this.setMessage("", "empty"); this.suggestion.reset();
+            this.note = L("Changes updated; refreshing the message", "Изменения обновились; составляю новое сообщение");
+            return;
+          }
+        }
         for (const args of [["add", "-A"], ["commit", "-m", message]]) {
           const r = await exec("git", args, { cwd: root, on });
           if (r.code !== 0) throw new Error((r.stderr || r.stdout).trim());
         }
-        if (key() === context) { this.message = ""; this.input.set_value(""); }
+        if (key() === context) { this.setMessage("", "empty"); this.suggestion.reset(); }
       } catch (e) { if (key() === context) this.note = `${L("Commit failed", "Коммит не прошёл")}: ${e}`; }
       finally { this.busy = false; this.refresh(cx); cx.notify(); }
     });
@@ -186,7 +236,7 @@ export class Changes {
   render(cx) {
     if (key() !== this.context) this.refresh(cx);
     const t = theme(), add = this.files.reduce((n, f) => n + f.add, 0), del = this.files.reduce((n, f) => n + f.del, 0);
-    const enabled = Boolean(this.message.trim() && this.root && !this.busy && !this.loading);
+    const enabled = Boolean(this.message.trim() && this.root && !this.busy && !this.loading && !(this.messageOrigin === "auto" && this.suggestion.busy));
     const agency = style("agency") === true;
     const tone = (st) => (st === "A" ? t.done : st === "M" ? t.working : t.blocked);
     return v_flex().id("changes").size_full().min_h(0).rounded(radius(10)).overflow_hidden().bg(t.background).border_1().border_color(t.border).text_color(t.foreground).text_size(13).track_focus(this.handle)
@@ -218,6 +268,12 @@ export class Changes {
         .child(Scrollbar.vertical("changes-diff").viewport_from_layout().absolute().inset_0())
         .when(!this.open && this.files.length > 0, (e) => e.child(div().absolute().top(6).px(12).text_color(t.dim).child(L("Select a file to view its changes", "Выбери файл, чтобы увидеть изменения")))))
       .when(Boolean(this.note), (e) => e.child(div().px(10).pb(8).text_size(11).text_color(t.ansi1).child(this.note)))
+      .when(!this.message && Boolean(this.suggestion.error), e => e.child(
+        h_flex().flex_none().px(10).py(6).gap(8).text_size(11)
+          .child(div().flex_1().text_color(t.dim).child(L("Could not fill the message", "Не удалось заполнить сообщение")))
+          .child(div().id("commit-suggestion-retry").text_color(t.accent).cursor_pointer()
+            .on_click((_e, cx) => { this.suggestion.tried = null; this.suggestion.error = null; this.suggest(cx); cx.notify(); })
+            .child(L("Retry", "Повторить")))))
       .child(h_flex().flex_none().p(10).gap(8).border_t(1).border_color(t.border)
         .child(div().id("commit-message").flex_1().min_w(0).h(32).px(10).flex().items_center().rounded(radius(8)).border_1().border_color(this.typing ? t.accent : t.border).cursor_text().on_mouse_down("left", (_e, cx) => cx.stop_propagation()).child(Input.new(this.input).h_full().text_size(12).text_color(t.foreground)))
         .child(div().id("commit").h(32).px(14).flex().items_center().rounded(radius(8)).bg(enabled ? t.solid : t.raised).text_color(enabled ? t.solid_foreground : t.dim).text_size(12).when(enabled, (e) => e.cursor_pointer()).on_click((_e, cx) => this.commit(cx)).child(this.busy ? L("Committing…", "Коммичу…") : L("Commit", "Коммит"))));

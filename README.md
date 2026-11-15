@@ -120,6 +120,24 @@ Status cards show what Herdr reports. A running process with no reported
 `working` status will not count as working. This package does not install
 Codex/Claude lifecycle hooks or change their global configurations.
 
+## Commit message suggestions
+
+Both layouts' Changes panels suggest a commit subject from the current local
+diff using GPT-6-Luna with low reasoning effort through an installed, logged-in
+Codex CLI. A Conventional Commits subject (`fix:`, `feat:`, `refactor:`, etc.)
+appears directly in the message field after changes settle, with no shortcut
+hint. Enter or Commit then commits all changes, as before.
+Typing your own message takes precedence. Changed diffs invalidate old
+suggestions; identical diffs reuse the result. Failed requests have a Retry link.
+Remote repositories keep manual commit messages.
+
+The CLI runs ephemerally in a temporary directory with a read-only sandbox,
+without user configuration, hooks or shell tools. A bounded diff excerpt and
+file names are sent through your Codex account; known credential-file contents
+and binary contents are omitted. Large changes may be summarized incompletely.
+Generation uses your normal Codex allowance. Review the proposed message before
+committing; generating or prefilling a message does not stage or commit files.
+
 ## Limits of this release
 
 One selected item at a time; no drag-and-drop. Directory listing is capped at

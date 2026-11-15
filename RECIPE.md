@@ -75,7 +75,11 @@ and work(tabs, work-body(main, panel(panel-body(files, changes))), status).
 See layouts/ProdAdvice.json for exact weights and content props.
 
 prodsovet implements brand, agents, pane, status, toast, zoo, tabs, new-menu and
-tab-menu roles. The default pane/header role and overlay role are selected by
+tab-menu roles, plus the Changes panel in both layouts. Its commit suggestion
+helper reads a local diff and runs an isolated GPT-6-Luna request. A Conventional
+Commits subject fills the input directly; manual edits win. The explicit commit
+action stages and commits files.
+The default pane/header role and overlay role are selected by
 props. my-files implements tree/menu/dialog views; file-tab is an editor view;
 find and session_fork are popup mods. The layout's toast delegates to prodsovet.
 
