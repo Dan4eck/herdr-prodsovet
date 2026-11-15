@@ -9,6 +9,16 @@ import re
 
 ROOT = Path(__file__).resolve().parent
 MODS = ('prodsovet', 'my-files', 'file-tab', 'find', 'session_fork')
+# Optional per-profile drawing style. A profile without `style` draws exactly as
+# the classic ProdAdvice code did; these constants are that classic look, not
+# values borrowed from another profile.
+CLASSIC_STYLE = {
+    'radiusScale': 1,      # multiplier for every custom-mod corner radius
+    'brandFont': None,     # brand title font; null keeps fonts.ui
+    'labelFont': 'ui',     # section labels/status strip: "ui" or "mono"
+    'brandChip': False,    # subtitle as an accent chip with inverse text
+    'selectionBar': False, # 2 px accent bar at the left of selected rows
+}
 
 
 def generated(profiles):
@@ -31,6 +41,15 @@ function value(group, key) {
 }
 export const fontSize = key => value("text", key);
 export const metric = key => value("metrics", key);
+const CLASSIC_STYLE = ''' + json.dumps(CLASSIC_STYLE) + ''';
+export function style(key) {
+  const own = appearance().style;
+  if (!Object.prototype.hasOwnProperty.call(CLASSIC_STYLE, key)) throw new Error(`Unknown appearance style: ${key}`);
+  return own && Object.prototype.hasOwnProperty.call(own, key) ? own[key] : CLASSIC_STYLE[key];
+}
+export const radius = n => n * style("radiusScale");
+export const labelFont = () => (style("labelFont") === "mono" ? appearance().fonts.mono : null);
+export const brandFont = () => style("brandFont") ?? appearance().fonts.ui;
 '''
 
 
@@ -61,6 +80,21 @@ def validate(config):
         light = p.get('lightPalette')
         if light is not None and not re.fullmatch(r'[A-Za-z0-9_-]+', p['lightTheme']):
             raise ValueError('Unsafe light theme name')
+        own_style = p.get('style')
+        if own_style is not None:
+            if not isinstance(own_style, dict) or set(own_style) - set(CLASSIC_STYLE):
+                raise ValueError(f'{name}: unknown style keys')
+            scale = own_style.get('radiusScale', 1)
+            if not isinstance(scale, (int, float)) or isinstance(scale, bool) or not 0 <= scale <= 2:
+                raise ValueError(f'{name}: radiusScale must be 0..2')
+            font = own_style.get('brandFont')
+            if font is not None and (not isinstance(font, str) or not font.strip()):
+                raise ValueError(f'{name}: invalid brandFont')
+            if own_style.get('labelFont', 'ui') not in ('ui', 'mono'):
+                raise ValueError(f'{name}: labelFont must be ui or mono')
+            for key in ('brandChip', 'selectionBar'):
+                if not isinstance(own_style.get(key, False), bool):
+                    raise ValueError(f'{name}: {key} must be a boolean')
         colors = [*p['brandColors'].values(), *p['darkTheme']['ansi'], *p['darkTheme'].get('colors', {}).values()]
         colors += [p['darkTheme'][k] for k in ('background', 'foreground', 'selection', 'cursor') if k in p['darkTheme']]
         if light is not None:
@@ -74,7 +108,7 @@ def validate(config):
     # Each profile owns a complete schema. Missing values must not fall through
     # to the other profile and accidentally couple their appearances.
     def shape(obj):
-        return {k: shape(v) for k, v in obj.items() if k != 'lightPalette'} if isinstance(obj, dict) else None
+        return {k: shape(v) for k, v in obj.items() if k not in ('lightPalette', 'style')} if isinstance(obj, dict) else None
     if shape(profiles['ProdAdvice']) != shape(profiles['ProdAdvice2']):
         raise ValueError('Profiles must have the same complete schema')
     owned = set(profiles)

@@ -1,4 +1,4 @@
-import { appearance, fontSize, metric } from "./appearance.js";
+import { appearance, fontSize, metric, radius } from "./appearance.js";
 // SPDX-License-Identifier: Apache-2.0
 // ProdAdvice for Herdr: customized interface and behavior, 2026. See NOTICE.
 import { newTerminal } from "./filesystem.js";
@@ -44,7 +44,7 @@ export default class NewMenu extends View {
   }
   row(id, icon, name, action, hint = "", enabled = true) {
     const t = theme();
-    return h_flex().id(id).h(metric("newMenu.row")).px(9).gap(10).rounded(7).items_center().flex_none()
+    return h_flex().id(id).h(metric("newMenu.row")).px(9).gap(10).rounded(radius(7)).items_center().flex_none()
       .text_color(enabled ? t.foreground : t.dim).when(enabled, el => el.hover(s => s.bg(t.selected)))
       .on_click(() => { if (enabled) { closeOverlay(props().overlay); action(); } })
       .child(icon).child(div().flex_1().child(name)).child(div().text_size(fontSize("newMenu.hint")).text_color(t.dim).child(hint));

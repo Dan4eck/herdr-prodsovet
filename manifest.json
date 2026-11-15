@@ -1,6 +1,6 @@
 {
   "name": "herdr-prodsovet",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "herdr_tested": "0.1.15",
   "platform": "macOS",
   "mods": [
@@ -40,6 +40,7 @@
     "layouts/prodadvice2.svg",
     "themes/ProdAdvice.json",
     "themes/ProdAdvice2.json",
-    "themes/ProdAdvice-light.json"
+    "themes/ProdAdvice-light.json",
+    "themes/ProdAdvice2-light.json"
   ]
 }

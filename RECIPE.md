@@ -23,9 +23,13 @@ right panel 294 px, min 280 / max 900, a files/changes stack. Pane headers are
 Status type is 10 px with 10 px horizontal spacing. Mod type sizes and main row heights come from appearance_profiles.json. Each
 profile owns a full independent set of values; see APPEARANCE.md.
 
-Dark palette: canvas/chrome #030303, background #090909, foreground #f3f4ef,
+ProdAdvice dark palette: canvas/chrome #030303, background #090909, foreground #f3f4ef,
 border #262626, accent #39ff14. Focused Codex panes use #090b0e / #7797ba;
 Claude panes use #0b0a09 / #b3927b. ProdAdvice light mode uses the custom ProdAdvice-light sage/green palette.
+ProdAdvice2 uses the agency-page look: canvas #000000, chrome #030403, terminal
+#050705, rules #292a29, square frames (pane radius 0, style.radiusScale 0),
+Avenir Next UI, Bodoni 72 brand title, JetBrains Mono labels and its own
+ProdAdvice2-light paper palette. Geometry matches ProdAdvice. See APPEARANCE.md.
 
 The illustration in preview.png is made from preview.html and fictional data;
 it is not native rendering evidence. The artwork files are the shipped sprites.
@@ -132,5 +136,6 @@ layout key scope. Herdr forbids imports across mod directories, so generated
 helpers are identical copies. Each reads the active shared layout name; both
 layouts reference the same feature modules and use the same runtime documents.
 Layout geometry remains in each native layout JSON and survives regeneration.
-The second profile initially matches the first. Original pre-refactor code is
+The optional profile `style` block switches drawing details (radius scale,
+brand font/chip, label font, selection bar); without it the classic look is drawn. Original pre-refactor code is
 preserved by the tag prodadvice-classic-2026-11-15.

@@ -1,4 +1,4 @@
-import { appearance, fontSize, metric } from "./appearance.js";
+import { appearance, fontSize, metric, radius, style, labelFont } from "./appearance.js";
 // SPDX-License-Identifier: Apache-2.0
 // ProdAdvice for Herdr: customized interface and behavior, 2026. See NOTICE.
 // Agents in grouped or priority views; parents take their most urgent sub-agent's place.
@@ -179,7 +179,7 @@ export class Agents {
         .h(metric("agents.menuRow"))
         .px(8)
         .gap(9)
-        .rounded(7)
+        .rounded(radius(7))
         .items_center()
         .text_color(t.foreground)
         .hover((el) => el.bg(t.hover))
@@ -217,7 +217,7 @@ export class Agents {
       .id(`sub-${k.address}`)
       .pl(39)
       .pr(8)
-      .rounded(8)
+      .rounded(radius(8))
       .h(metric("agents.compactRow"))
       .flex_none()
       .gap(0)
@@ -228,7 +228,7 @@ export class Agents {
       .on_click(() => (this.listed.has(k.address) ? run("pane.focus", { terminal: k.address }) : this.peek(k.address)))
       .children(s.lines.map(l => div().self_start().mt(-4).w(9).h(17).mr(4).flex_none()
         .when(Boolean(l), el => el.border_l(1.5).border_color(t.input))
-        .when(l === "└" || l === "├", el => el.border_b(1.5).rounded_bl(6))))
+        .when(l === "└" || l === "├", el => el.border_b(1.5).rounded_bl(radius(6)))))
       .child(div().flex_1().truncate().text_color(on ? t.foreground : t.muted).child(k.name || k.template || k.program?.name || k.address))
       .child(this.status(t, { ...k, status: st }, compact));
   }
@@ -237,11 +237,11 @@ export class Agents {
   status(t, a, compact = false) {
     const color = t[a.status] ?? t.dim;
     if (a.status === "working") return svg("mods/workspace-chrome/spinner.svg").size(12).mx(1).flex_none().text_color(t.working).spin(900);
-    if (a.status === "blocked" && compact) return div().size(14).flex_none().rounded(4).bg(t.blocked + "26").text_size(fontSize("agents.badge")).font_weight(appearance().weights.bold).text_color(t.blocked).flex().items_center().justify_center().child("!");
-    if (a.status === "blocked") return div().flex_none().px(6).h(18).rounded(5).bg(t.blocked + "26").text_size(fontSize("agents.badge")).font_weight(appearance().weights.semibold).text_color(t.blocked).flex().items_center().child("Needs you");
+    if (a.status === "blocked" && compact) return div().size(14).flex_none().rounded(radius(4)).bg(t.blocked + "26").text_size(fontSize("agents.badge")).font_weight(appearance().weights.bold).text_color(t.blocked).flex().items_center().justify_center().child("!");
+    if (a.status === "blocked") return div().flex_none().px(6).h(18).rounded(radius(5)).bg(t.blocked + "26").text_size(fontSize("agents.badge")).font_weight(appearance().weights.semibold).text_color(t.blocked).flex().items_center().child("Needs you");
     // Idle: a ring; done: a dot.
-    if (a.status === "idle") return div().size(7).mx(3).flex_none().rounded(4).border(1.5).border_color(t.idle ?? t.dim);
-    return div().size(7).mx(3).flex_none().rounded(4).bg(a.status === "done" ? color : t.dim + "00");
+    if (a.status === "idle") return div().size(7).mx(3).flex_none().rounded(radius(4)).border(1.5).border_color(t.idle ?? t.dim);
+    return div().size(7).mx(3).flex_none().rounded(radius(4)).bg(a.status === "done" ? color : t.dim + "00");
   }
 
   render(cx) {
@@ -313,7 +313,7 @@ export class Agents {
         .gap(3)
         .flex()
         .items_center()
-        .rounded(4)
+        .rounded(radius(4))
         .text_size(fontSize("agents.meta"))
         .text_color(open ? t.dim : (t[top] ?? t.dim))
         .cursor_pointer()
@@ -371,7 +371,7 @@ export class Agents {
         .id(`pin-${a.address}`)
         .flex_none()
         .p(2)
-        .rounded(4)
+        .rounded(radius(4))
         .text_color(t.dim)
         .cursor_pointer()
         .hover((s) => s.bg(t.hover).text_color(t.foreground))
@@ -397,8 +397,8 @@ export class Agents {
         .flex_none()
         .items_center()
         .gap(8)
-        .rounded(8)
-        .when(a.focused, (el) => el.bg(t.selected))
+        .rounded(radius(8))
+        .when(a.focused, (el) => el.bg(t.selected).when(style("selectionBar"), (e) => e.border_l(2).border_color(t.accent).pl(4)))
         .cursor_pointer()
         .hover((s) => s.bg(t.hover))
         .on_hover((on, cx) => {
@@ -453,6 +453,7 @@ export class Agents {
         .items_center()
         .text_size(fontSize("agents.meta"))
         .font_weight(appearance().weights.medium)
+        .when(Boolean(labelFont()), (el) => el.font_family(labelFont()))
         .cursor_pointer()
         .hover((s) => s.text_color(t.foreground))
         .on_click((_e, cx) => {
@@ -487,7 +488,7 @@ export class Agents {
             .flex_none()
             .items_center()
             .justify_between()
-            .child(div().text_size(fontSize("agents.group")).font_weight(appearance().weights.medium).text_color(t.dim).child("МАСТЕРСКАЯ"))
+            .child(div().when(Boolean(labelFont()), (el) => el.font_family(labelFont())).text_size(fontSize("agents.group")).font_weight(appearance().weights.medium).text_color(t.dim).child("МАСТЕРСКАЯ"))
             .child(
               div()
                 .id("ag-sort")

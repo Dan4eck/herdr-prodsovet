@@ -1,4 +1,4 @@
-import { appearance, fontSize, metric } from "./appearance.js";
+import { appearance, fontSize, metric, radius } from "./appearance.js";
 // SPDX-License-Identifier: Apache-2.0
 // ProdAdvice for Herdr: customized interface and behavior, 2026. See NOTICE.
 // A file as its own tab, next to the terminal tabs.
@@ -248,7 +248,7 @@ export default class FileTab extends View {
       const agents = shared("files.agents") ?? {};
       if (agents[f.space] !== f.terminal) setShared("files.agents", { ...agents, [f.space]: f.terminal });
     }
-    const btn = (id, label, on, active) => div().id(id).px(8).py(3).rounded(6).text_size(fontSize("fileTab.action")).cursor_pointer()
+    const btn = (id, label, on, active) => div().id(id).px(8).py(3).rounded(radius(6)).text_size(fontSize("fileTab.action")).cursor_pointer()
       .text_color(active ? t.foreground : t.muted).when(active, (el) => el.bg(t.selected))
       .hover((s) => s.bg(t.hover).text_color(t.foreground)).on_click(on).child(label);
     const dir = this.file ? this.file.slice(0, this.file.lastIndexOf("/")).replace(/^\/Users\/[^/]+/, "~") : "";
@@ -261,9 +261,9 @@ export default class FileTab extends View {
       .child(h_flex().h(metric("fileTab.toolbar")).flex_none().px(14).gap(8).items_center().border_b(1).border_color(t.border).bg(t.chrome)
         .child(svg("mods/my-files/file.svg").size(14).flex_none().text_color(t.dim))
         .child(this.renaming
-          ? h_flex().w(320).h(metric("fileTab.input")).px(8).rounded(6).border_1().border_color(t.accent).bg(t.background).items_center()
+          ? h_flex().w(320).h(metric("fileTab.input")).px(8).rounded(radius(6)).border_1().border_color(t.accent).bg(t.background).items_center()
               .child(Input.new(this.renaming).flex_1().h_full().text_size(fontSize("fileTab.body")).text_color(t.foreground))
-          : div().id("ft-name").flex_none().max_w(360).truncate().font_weight(appearance().weights.semibold).cursor_pointer().rounded(5).px(4)
+          : div().id("ft-name").flex_none().max_w(360).truncate().font_weight(appearance().weights.semibold).cursor_pointer().rounded(radius(5)).px(4)
               .hover((s) => s.bg(t.hover)).on_click((e, cx) => { if (e.click_count >= 2) this.startRename(cx); })
               .child((this.dirty() ? "● " : "") + (this.file ? base(this.file) : "")))
         .child(div().flex_1().min_w(0).truncate().text_size(fontSize("fileTab.meta")).text_color(t.dim).child((this.on ? `${this.on}:` : "") + dir))
@@ -287,9 +287,9 @@ export default class FileTab extends View {
       // the "Открыть в" dropdown: a small box under the button, over the text
       .when(this.openMenu && !this.on, (el) => el.child(
         v_flex().id("ft-menu").absolute().top(38).right(12).w(170).p(4).gap(2)
-          .rounded(9).border_1().border_color(t.border).bg(t.popover).shadow_lg()
+          .rounded(radius(9)).border_1().border_color(t.border).bg(t.popover).shadow_lg()
           .on_mouse_down_out((_e, cx) => { this.openMenu = false; cx.notify(); })
-          .children(OPEN_IN.map((a) => h_flex().id(`ft-in-${a.id}`).h(metric("fileTab.menuRow")).px(8).gap(9).items_center().rounded(6).cursor_pointer()
+          .children(OPEN_IN.map((a) => h_flex().id(`ft-in-${a.id}`).h(metric("fileTab.menuRow")).px(8).gap(9).items_center().rounded(radius(6)).cursor_pointer()
             .text_size(fontSize("fileTab.body")).text_color(t.foreground).hover((s) => s.bg(t.hover))
             .on_click((_e, cx) => { this.openMenu = false; this.openIn(a); cx.notify(); })
             .child(svg(a.icon).size(18).flex_none())

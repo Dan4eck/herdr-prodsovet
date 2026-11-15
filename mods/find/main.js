@@ -1,4 +1,4 @@
-import { appearance, fontSize, metric } from "./appearance.js";
+import { appearance, fontSize, metric, radius } from "./appearance.js";
 // SPDX-License-Identifier: Apache-2.0
 // ProdAdvice for Herdr: customized interface and behavior, 2026. See NOTICE.
 // Find: one popup to search files by name, text inside files, and the text of open terminals.
@@ -193,7 +193,7 @@ export default class Find extends View {
 
     const tab = (m) => {
       const on = m.id === this.mode;
-      return div().id(`fd-mode-${m.id}`).px(10).py(4).rounded(6).text_size(fontSize("find.action")).cursor_pointer()
+      return div().id(`fd-mode-${m.id}`).px(10).py(4).rounded(radius(6)).text_size(fontSize("find.action")).cursor_pointer()
         .text_color(on ? t.foreground : t.dim).when(on, (el) => el.bg(t.selected).font_weight(appearance().weights.semibold))
         .hover((s) => s.bg(t.hover).text_color(t.foreground))
         .on_click((_e, cx) => this.setMode(m.id, cx)).child(m.label);
@@ -201,7 +201,7 @@ export default class Find extends View {
 
     const row = (r, i) => {
       const on = i === this.at;
-      const base = h_flex().id(`fd-r-${i}`).mx(4).px(10).min_h(30).py(4).rounded(7).gap(10).items_center().cursor_pointer()
+      const base = h_flex().id(`fd-r-${i}`).mx(4).px(10).min_h(30).py(4).rounded(radius(7)).gap(10).items_center().cursor_pointer()
         .when(on, (el) => el.bg(t.hover)).hover((s) => s.bg(t.hover))
         .on_click((e, cx) => this.open(r, e.modifiers?.platform ? "agent" : e.modifiers?.alt ? "app" : "open", cx));
       if (r.kind === "file") {
@@ -244,12 +244,12 @@ export default class Find extends View {
       .child(h_flex().items_center().gap(4)
         .children(MODES.map(tab))
         .child(div().flex_1())
-        .child(div().id("fd-up").px(6).py(2).rounded(5).text_size(fontSize("find.meta")).text_color(t.dim).cursor_pointer().truncate().max_w(260)
+        .child(div().id("fd-up").px(6).py(2).rounded(radius(5)).text_size(fontSize("find.meta")).text_color(t.dim).cursor_pointer().truncate().max_w(260)
           .hover((s) => s.bg(t.hover).text_color(t.foreground)).on_click((_e, cx) => this.up(cx))
           .child((this.on ? `${this.on}:` : "") + home(this.root)))
-        .child(div().id("fd-esc").px(6).py(2).rounded(5).text_size(fontSize("find.meta")).text_color(t.dim).cursor_pointer()
+        .child(div().id("fd-esc").px(6).py(2).rounded(radius(5)).text_size(fontSize("find.meta")).text_color(t.dim).cursor_pointer()
           .hover((s) => s.bg(t.hover).text_color(t.foreground)).on_click(() => this.close()).child("Esc")))
-      .child(h_flex().h(metric("find.input")).flex_none().px(10).gap(8).items_center().rounded(9).border_1().border_color(t.accent).bg(t.background)
+      .child(h_flex().h(metric("find.input")).flex_none().px(10).gap(8).items_center().rounded(radius(9)).border_1().border_color(t.accent).bg(t.background)
         .child(svg("mods/workspace-chrome/search.svg").size(15).text_color(t.dim))
         .child(Input.new(this.input).flex_1().h_full().text_size(fontSize("find.input")).text_color(t.foreground)))
       .child(div().text_size(fontSize("find.meta")).text_color(this.error ? t.blocked : t.dim).child(status))

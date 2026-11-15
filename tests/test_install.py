@@ -44,6 +44,7 @@ class InstallTests(unittest.TestCase):
         self.assertFalse((self.home / 'layouts/prodsovet.json').exists())
         self.assertTrue((self.home / 'layouts/ProdAdvice2.json').is_file())
         self.assertTrue((self.home / 'themes/ProdAdvice2.json').is_file())
+        self.assertTrue((self.home / 'themes/ProdAdvice2-light.json').is_file())
         self.assertIn('layout:ProdAdvice2', json.loads((self.home / 'keys.json').read_text()))
         self.assertTrue((self.home / 'appearance_profiles.json').is_file())
         self.assertTrue((self.home / 'sync_appearance.py').is_file())
@@ -122,6 +123,19 @@ class LimitsTests(unittest.TestCase):
         with patch.object(limits, 'claude', side_effect=AssertionError('credentials accessed')), patch.object(limits, 'codex', side_effect=AssertionError('sessions accessed')), contextlib.redirect_stdout(io.StringIO()) as output:
             limits.main()
         self.assertEqual(set(json.loads(output.getvalue())), {'at'})
+
+
+    def test_style_block_is_optional_and_strictly_validated(self):
+        spec = importlib.util.spec_from_file_location('sync_appearance', ROOT / 'sync_appearance.py')
+        sync = importlib.util.module_from_spec(spec); spec.loader.exec_module(sync)
+        config = json.loads((ROOT / 'appearance_profiles.json').read_text())
+        self.assertNotIn('style', config['profiles']['ProdAdvice'])
+        sync.validate(json.loads(json.dumps(config)))
+        for bad in ({'unknown': 1}, {'radiusScale': -1}, {'labelFont': 'serif'}, {'brandChip': 'yes'}):
+            broken = json.loads(json.dumps(config))
+            broken['profiles']['ProdAdvice2']['style'] = bad
+            with self.assertRaises(ValueError):
+                sync.validate(broken)
 
 
 if __name__ == '__main__':

@@ -1,6 +1,6 @@
 # Validation record
 
-Date: 2026-11-15. Source package: 0.2.0. Host: macOS, Herdr App 0.1.15,
+Date: 2026-11-15. Source package: 0.3.0. Host: macOS, Herdr App 0.1.15,
 Python 3.15 and Node.js 22.14.0. Published at https://github.com/Dan4eck/herdr-prodsovet.
 
 ## Passed
@@ -13,9 +13,9 @@ Python 3.15 and Node.js 22.14.0. Published at https://github.com/Dan4eck/herdr-p
 - Renamed layout-scoped keys preserved; installer test checks both the new
   layout scope and existence of the referenced preview image.
 
-- 59 automated cases: 10 real filesystem operations, 13 workspace/document-state
-  cases, 15 dialog/editor integration cases, 12 installer/disabled-limits cases
-  and 9 appearance isolation cases. Profile switching with different editor font
+- 62 automated cases: 10 real filesystem operations, 13 workspace/document-state
+  cases, 15 dialog/editor integration cases, 13 installer/disabled-limits/profile-validation cases
+  and 11 appearance isolation cases. Profile switching with different editor font
   sizes preserves unsaved text and the disk-conflict baseline in the host mock.
 - Installer dry run, actual install and uninstall via its CLI into a temporary
   Herdr home seeded with the stock dependencies. Existing unrelated keys survived.
@@ -69,3 +69,13 @@ then checked the custom ProdAdvice-light palette. All five installed mods
 passed native check; native status reported no errors. The contrast setting is
 user-global, not an invented theme property. A regression case verifies light
 mode removes the dark agent pane background and transparent terminal override.
+
+## Agency-inspired ProdAdvice2
+
+Claude Code inspected the current local /agency page and implemented its palette,
+typography, square frames, brand chip and mono labels. It passed package tests
+and native checks for all five mods with both the default profile and forced
+ProdAdvice2. The primary agent then installed the changes and checked the live
+render. The classic profile JSON, classic layout and both classic themes remain
+identical to the preceding light-theme commit. Stock Herdr components retain
+their own shapes; custom mods and the main pane use the new square styling.

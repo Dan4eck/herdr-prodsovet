@@ -1,4 +1,4 @@
-import { appearance, fontSize, metric } from "./appearance.js";
+import { appearance, fontSize, metric, radius, style, labelFont, brandFont } from "./appearance.js";
 // SPDX-License-Identifier: Apache-2.0
 // ProdAdvice for Herdr: customized interface and behavior, 2026. See NOTICE.
 // ПродСовет: custom workspace features with the standard Herdr styling.
@@ -50,10 +50,17 @@ const counts = () => {
 // ── brand: the stock Herdr logo and name, search, sidebar toggle ──
 class Brand {
   button(t, id, icon, action) {
-    return div().id(id).size(26).flex_none().flex().items_center().justify_center().rounded(6).text_color(t.dim)
+    return div().id(id).size(26).flex_none().flex().items_center().justify_center().rounded(radius(6)).text_color(t.dim)
       .hover((s) => s.bg(t.hover).text_color(t.foreground))
       .on_mouse_down("left", (_e, cx) => cx.stop_propagation()).on_click(action)
       .child(svg(`mods/workspace-chrome/${icon}.svg`).size(15));
+  }
+  // Classic: muted green text. Chip style: inverse label on the accent, as on /agency.
+  subtitle(t) {
+    const color = appearance().brandColors[settings().dark ? "dark" : "light"];
+    const text = div().font_weight(appearance().weights.semibold).text_size(fontSize("brand.subtitle")).line_height(`${metric("brand.subtitleLine")}px`).truncate();
+    if (!style("brandChip")) return text.text_color(color).child("ProdAdvice");
+    return h_flex().child(text.font_family(labelFont() ?? appearance().fonts.ui).px(4).bg(color).text_color(t.accent_foreground).child("PRODADVICE"));
   }
   render() {
     const t = theme();
@@ -63,10 +70,10 @@ class Brand {
       .border_b(1).border_color(t.border)
       .when(mac && !collapsed, (el) => el.pl(80))
       .when(!collapsed, (el) => el.child(h_flex().flex_1().min_w(0).gap(8).items_center()
-        .child(image("frame/welcome/herdr.png").size(20).flex_none().rounded(5))
+        .child(image("frame/welcome/herdr.png").size(20).flex_none().rounded(radius(5)))
         .child(v_flex().min_w(0)
-          .child(div().text_size(fontSize("brand.title")).line_height(`${metric("brand.titleLine")}px`).font_weight(appearance().weights.semibold).text_color(t.foreground).child("Herdr"))
-          .child(div().font_weight(appearance().weights.semibold).text_size(fontSize("brand.subtitle")).line_height(`${metric("brand.subtitleLine")}px`).text_color(appearance().brandColors[settings().dark ? "dark" : "light"]).truncate().child("ProdAdvice")))))
+          .child(div().when(style("brandFont") != null, (el) => el.font_family(brandFont())).text_size(fontSize("brand.title")).line_height(`${metric("brand.titleLine")}px`).font_weight(style("brandFont") != null ? 400 : appearance().weights.semibold).text_color(t.foreground).child("Herdr"))
+          .child(this.subtitle(t)))))
       .when(!collapsed, (el) => el.child(this.button(t, "search", "search", () => run("mod.open", { name: "picker" }))))
       .when(!(collapsed && mac), (el) => el.child(this.button(t, "sidebar-toggle", "sidebar", toggleSidebar)));
   }
@@ -76,7 +83,7 @@ class Brand {
 class PaneHead {
   init() { this.hovered = false; }
   button(t, id, icon, command, args) {
-    return div().id(id).p(3).rounded(4).text_color(t.dim).hover((s) => s.bg(t.hover).text_color(t.foreground))
+    return div().id(id).p(3).rounded(radius(4)).text_color(t.dim).hover((s) => s.bg(t.hover).text_color(t.foreground))
       .on_click((_e, cx) => { cx.stop_propagation(); if (command === "pane.split") { run("pane.focus", { pane: args.pane }); newTerminal(args.direction); } else run(command, args); })
       .child(svg(`mods/pane/${icon}.svg`).size(14));
   }
@@ -171,6 +178,7 @@ class Status {
     const c = counts();
     const cell = (text, color) => div().flex_none().text_color(color ?? t.muted).child(text);
     return h_flex().size_full().px(10).gap(10).items_center().bg(t.chrome).border_t(1).border_color(t.border)
+      .when(Boolean(labelFont()), (el) => el.font_family(labelFont()))
       .text_size(fontSize("status.body")).text_color(t.muted)
       .child(cell((space?.machine ?? "THIS MAC").toUpperCase()))
       .when(Boolean(space?.branch), (el) => el.child(cell(`⎇ ${space.branch}`)))
@@ -210,7 +218,7 @@ class Toast {
     return h_flex().id("toast").size_full().px(18).gap(12).items_center().bg(t.popover).cursor_pointer()
       .hover((s) => s.bg(t.hover))
       .on_click(() => { if (n.action?.name) run(n.action.name, n.action.args ?? {}); closeOverlay(n.overlay); })
-      .child(n.icon ? image(n.icon).w(18).h(18).flex_none() : div().size(8).rounded(4).flex_none().bg(t[TOAST_DOT[n.level] ?? "accent"]))
+      .child(n.icon ? image(n.icon).w(18).h(18).flex_none() : div().size(8).rounded(radius(4)).flex_none().bg(t[TOAST_DOT[n.level] ?? "accent"]))
       .child(v_flex().flex_1().overflow_hidden()
         .child(div().truncate().font_weight(appearance().weights.semibold).text_size(fontSize("toast.title")).text_color(t.foreground).child(n.title ?? ""))
         .when(Boolean(n.body), (el) => el.child(div().truncate().tooltip(n.body).text_size(fontSize("toast.body")).text_color(t.muted).child(n.body ?? ""))));

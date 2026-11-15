@@ -22,9 +22,21 @@ function test(name,fn){fn();console.log(`ok ${++count} - ${name}`);}
 test('unknown layouts keep compatible defaults',()=>{active='main';assert.equal(a.profileName(),'ProdAdvice');assert.equal(a.fontSize('files.body'),13);});
 test('profiles own independent typography and palette objects',()=>{
  const x=JSON.parse(JSON.stringify(a.appearance('ProdAdvice'))),y=JSON.parse(JSON.stringify(a.appearance('ProdAdvice2')));
- assert.equal(x.lightTheme,'ProdAdvice-light');assert.equal(y.lightTheme,'paper');
- assert.equal(x.lightPalette.background,'#f7f9f4');
+ assert.equal(x.lightTheme,'ProdAdvice-light');assert.equal(y.lightTheme,'ProdAdvice2-light');
+ assert.equal(x.lightPalette.background,'#f7f9f4');assert.notEqual(y.lightPalette.background,x.lightPalette.background);
  assert.notEqual(a.appearance('ProdAdvice').text,a.appearance('ProdAdvice2').text);
+});
+test('classic profile without a style block keeps the original drawing style',()=>{
+ active='ProdAdvice';assert.equal(a.appearance().style,undefined);
+ assert.equal(a.radius(7),7);assert.equal(a.labelFont(),null);assert.equal(a.brandFont(),a.appearance().fonts.ui);
+ assert.equal(a.style('brandChip'),false);assert.equal(a.style('selectionBar'),false);
+});
+test('second profile owns its drawing style without touching classic',()=>{
+ active='ProdAdvice2';const own=a.appearance().style;
+ assert.equal(a.radius(7),7*own.radiusScale);assert.equal(a.labelFont(),own.labelFont==='mono'?a.appearance().fonts.mono:null);
+ own.radiusScale=0.5;assert.equal(a.radius(8),4);
+ active='ProdAdvice';assert.equal(a.radius(8),8);
+ assert.throws(()=>a.style('missing'),/Unknown appearance style/);
 });
 test('changing the second profile does not change classic typography or colors',()=>{
  const second=a.appearance('ProdAdvice2');second.text.files.body=17;second.brandColors.dark='#123456';
@@ -32,7 +44,8 @@ test('changing the second profile does not change classic typography or colors',
  active='ProdAdvice';assert.equal(a.fontSize('files.body'),13);assert.equal(a.appearance().brandColors.dark,'#7d9a72');
 });
 test('changing classic does not change second typography',()=>{
- a.appearance('ProdAdvice').text.files.meta=22;active='ProdAdvice2';assert.equal(a.fontSize('files.meta'),11);
+ active='ProdAdvice2';const own=a.fontSize('files.meta');
+ a.appearance('ProdAdvice').text.files.meta=22;assert.equal(a.fontSize('files.meta'),own);assert.notEqual(own,22);
 });
 test('agent tint uses the active profile and respects an overriding theme',()=>{
  active='ProdAdvice2';a.appearance().agentPalettes.codex.background='#123456';

@@ -113,16 +113,16 @@
                     "height": 30,
                     "position": "top"
                   },
-                  "background": "#090b0e",
+                  "background": "background",
                   "border": {
                     "width": 1,
                     "color": "border"
                   },
                   "focus": {
                     "width": 1,
-                    "color": "#7797ba"
+                    "color": "accent"
                   },
-                  "radius": 10,
+                  "radius": 0,
                   "gap": 8,
                   "lone": true
                 }
@@ -183,7 +183,7 @@
   ],
   "background": "canvas",
   "theme": {
-    "light": "paper",
+    "light": "ProdAdvice2-light",
     "dark": "ProdAdvice2"
   },
   "terminal_padding": [
@@ -202,7 +202,7 @@
   ],
   "toast": "prodsovet",
   "preview": "layouts/prodadvice2.png",
-  "ui_font": "Geist",
+  "ui_font": "Avenir Next",
   "font": "JetBrains Mono",
   "font_size": 14
 }

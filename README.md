@@ -8,8 +8,10 @@ a practical file manager, full-project search and a compact status bar.
 The preview is an illustration of the layout, not a screenshot of a live session.
 
 Settings > Look includes **ProdAdvice** and **ProdAdvice2**, each with its own
-illustrated thumbnail. They start with the same appearance and share feature code;
-fonts, colors and main row sizes can be changed independently. See [APPEARANCE.md](APPEARANCE.md). Internal mod identifiers remain `prodsovet` for compatibility.
+illustrated thumbnail. ProdAdvice is the original rounded dark design.
+ProdAdvice2 follows the ProdAdvice agency page: ink and paper colors, square
+frames, Avenir Next interface text, a Bodoni 72 brand mark and monospace labels.
+Both share feature code; fonts, colors and main row sizes are independent. See [APPEARANCE.md](APPEARANCE.md). Internal mod identifiers remain `prodsovet` for compatibility.
 
 ## What is included
 
