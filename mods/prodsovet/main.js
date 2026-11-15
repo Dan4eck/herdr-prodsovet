@@ -1,4 +1,4 @@
-import { appearance, fontSize, metric, radius, style, labelFont, brandFont } from "./appearance.js";
+import { appearance, fontSize, metric, radius, style, labelFont, brandFont, L, lang } from "./appearance.js";
 // SPDX-License-Identifier: Apache-2.0
 // ProdAdvice for Herdr: customized interface and behavior, 2026. See NOTICE.
 // ПродСовет: custom workspace features with the standard Herdr styling.
@@ -9,7 +9,10 @@ import { h_flex, v_flex } from "gpui-base";
 import { agents, panes, props, run, theme, home, layout, window, shared, setShared, spaces, keys, focused, exec, appHome, closeOverlay, settings, terminals, nextCommand, openOverlay } from "herdr";
 import { agentTheme, enabled, styledLayout, withTerminal } from "./palette.js";
 import { Agents } from "./agents.js";
-import { mini, WORD, artPath, ART_FRAMES } from "./creatures.js";
+import { Spaces } from "./spaces.js";
+import { Picker } from "./picker.js";
+import { mini, word, artPath, ART_FRAMES } from "./creatures.js";
+import { agency, accentOf, railFrames, glitchy, icon } from "./agency.js";
 
 import { workspace, newTerminal } from "./filesystem.js";
 import Tabs from "./file-tabs.js";
@@ -47,13 +50,19 @@ const counts = () => {
   };
 };
 
+// Go to: the agency picker in agency profiles, Herdr's own otherwise.
+function openPicker() {
+  if (agency()) openOverlay({ mod: "prodsovet", kind: "dialog", width: 640, height: 470, props: { role: "picker" } });
+  else run("mod.open", { name: "picker" });
+}
+
 // ── brand: the stock Herdr logo and name, search, sidebar toggle ──
 class Brand {
-  button(t, id, icon, action) {
+  button(t, id, name, action) {
     return div().id(id).size(26).flex_none().flex().items_center().justify_center().rounded(radius(6)).text_color(t.dim)
       .hover((s) => s.bg(t.hover).text_color(t.foreground))
       .on_mouse_down("left", (_e, cx) => cx.stop_propagation()).on_click(action)
-      .child(svg(`mods/workspace-chrome/${icon}.svg`).size(15));
+      .child(svg(icon(name, `mods/workspace-chrome/${name}.svg`)).size(15));
   }
   // Classic: muted green text. Chip style: inverse label on the accent, as on /agency.
   subtitle(t) {
@@ -61,6 +70,13 @@ class Brand {
     const text = div().font_weight(appearance().weights.semibold).text_size(fontSize("brand.subtitle")).line_height(`${metric("brand.subtitleLine")}px`).truncate();
     if (!style("brandChip")) return text.text_color(color).child("ProdAdvice");
     return h_flex().child(text.font_family(labelFont() ?? appearance().fonts.ui).px(4).bg(color).text_color(t.accent_foreground).child("PRODADVICE"));
+  }
+  // The title; with agency decoration, two offset copies flash a glitch every ~9 s.
+  title(t) {
+    const text = () => div().when(style("brandFont") != null, (el) => el.font_family(brandFont())).text_size(fontSize("brand.title"))
+      .line_height(`${metric("brand.titleLine")}px`).font_weight(style("brandFont") != null ? 400 : appearance().weights.semibold);
+    if (!agency()) return text().text_color(t.foreground).child("Herdr");
+    return glitchy(text, "Herdr", t);
   }
   render() {
     const t = theme();
@@ -72,9 +88,9 @@ class Brand {
       .when(!collapsed, (el) => el.child(h_flex().flex_1().min_w(0).gap(8).items_center()
         .child(image("frame/welcome/herdr.png").size(20).flex_none().rounded(radius(5)))
         .child(v_flex().min_w(0)
-          .child(div().when(style("brandFont") != null, (el) => el.font_family(brandFont())).text_size(fontSize("brand.title")).line_height(`${metric("brand.titleLine")}px`).font_weight(style("brandFont") != null ? 400 : appearance().weights.semibold).text_color(t.foreground).child("Herdr"))
-          .child(this.subtitle(t)))))
-      .when(!collapsed, (el) => el.child(this.button(t, "search", "search", () => run("mod.open", { name: "picker" }))))
+          .child(this.title(t))
+          .when(!agency(), (el) => el.child(this.subtitle(t))))))
+      .when(!collapsed, (el) => el.child(this.button(t, "search", "search", () => openPicker())))
       .when(!(collapsed && mac), (el) => el.child(this.button(t, "sidebar-toggle", "sidebar", toggleSidebar)));
   }
 }
@@ -82,10 +98,10 @@ class Brand {
 // Pane header: a one-line creature, standard UI typography, and the folder.
 class PaneHead {
   init() { this.hovered = false; }
-  button(t, id, icon, command, args) {
+  button(t, id, name, command, args) {
     return div().id(id).p(3).rounded(radius(4)).text_color(t.dim).hover((s) => s.bg(t.hover).text_color(t.foreground))
       .on_click((_e, cx) => { cx.stop_propagation(); if (command === "pane.split") { run("pane.focus", { pane: args.pane }); newTerminal(args.direction); } else run(command, args); })
-      .child(svg(`mods/pane/${icon}.svg`).size(14));
+      .child(svg(agency() ? icon(name) : `mods/pane/${name}.svg`).size(agency() ? 15 : 14));
   }
   render() {
     const t = theme();
@@ -95,18 +111,20 @@ class PaneHead {
     const pt = agentTheme(t, withTerminal(p, terminals()), enabled(layout(), settings().dark));
     const st = p.status;
     const pane = p.pane;
-    const m = st ? mini(st) : null;
+    const m = st ? (agency() ? railFrames(st) : mini(st)) : null;
+    // Agency: working is the agent's own color; blocked/done stay the shared status colors.
+    const tone = (s) => (agency() && s === "working" ? accentOf(p.program, t) : pt[s] ?? t.dim);
     return h_flex().id(`ps-head-${pane}`).size_full().px(10).gap(8).items_center().text_size(fontSize("pane.body"))
       .bg(pt.background).border_b(1).border_color(st === "working" ? pt.border : t.border)
       .on_hover((h, cx) => { this.hovered = h; cx.notify(); })
       .on_click(() => run("pane.focus", { pane }))
-      .when(Boolean(m), (el) => el.child(div().flex_none().font_family(appearance().fonts.mono).text_size(fontSize("pane.status")).text_color(pt[st] ?? t.dim).frames(m.frames, m.ms)))
+      .when(Boolean(m), (el) => el.child(div().flex_none().font_family(appearance().fonts.mono).text_size(fontSize("pane.status")).text_color(tone(st)).frames(m.frames, m.ms)))
       .when(!m, (el) => el.child(div().flex_none().font_family(appearance().fonts.mono).text_size(fontSize("pane.status")).text_color(t.dim).child(">_")))
       .child(div().flex_none().truncate().max_w(260).font_weight(appearance().weights.medium).text_color(t.foreground).child(name))
       .child(div().flex_1().truncate().text_color(t.dim).child(folder(p.cwd)))
-      .when(Boolean(st) && st !== "idle" && st !== "working", (el) => el.child(div().flex_none().text_size(fontSize("pane.state")).text_color(pt[st] ?? t.dim)
+      .when(Boolean(st) && st !== "idle" && st !== "working", (el) => el.child(div().flex_none().text_size(fontSize("pane.state")).text_color(tone(st))
         .when(st === "blocked", (e) => e.loop("opacity", { from: 0.3, to: 1, period: 700 }))
-        .child(WORD[st] ?? "")))
+        .child(word(st))))
       .when(this.hovered, (el) => el
         .child(this.button(t, `ps-r-${pane}`, "split-right", "pane.split", { direction: "right", pane }))
         .child(this.button(t, `ps-d-${pane}`, "split-down", "pane.split", { direction: "down", pane }))
@@ -116,20 +134,55 @@ class PaneHead {
 }
 
 // Status bar: machine, branch, crew counts, and Claude/Codex limits.
-const DAYS = ["ВС", "ПН", "ВТ", "СР", "ЧТ", "ПТ", "СБ"];
+const DAYS = () => (lang() === "ru" ? ["ВС", "ПН", "ВТ", "СР", "ЧТ", "ПТ", "СБ"] : ["SU", "MO", "TU", "WE", "TH", "FR", "SA"]);
 function resetIn(sec) {
   if (!sec) return "";
   const left = sec * 1000 - Date.now();
   if (left <= 0) return "";
-  if (left < 3600e3) return `↻${Math.ceil(left / 60e3)}М`;
-  if (left < 24 * 3600e3) return `↻${Math.round(left / 3600e3)}Ч`;
-  return `↻${DAYS[new Date(sec * 1000).getDay()]}`;
+  if (left < 3600e3) return `↻${Math.ceil(left / 60e3)}${L("M", "М")}`;
+  if (left < 24 * 3600e3) return `↻${Math.round(left / 3600e3)}${L("H", "Ч")}`;
+  return `↻${DAYS()[new Date(sec * 1000).getDay()]}`;
 }
+// Activity: whether agents worked, per 2-minute bucket, for the last hour.
+const BUCKET = 120000, BUCKETS = 30;
+const WINDOW_SEC = { "5h": 5 * 3600, "7d": 7 * 86400 };
 class Status {
   init(_p, cx) {
     this.limits = null;
     this.refresh(cx);
     cx.timer.every(180000, (cx) => this.refresh(cx));
+    try { this.activity = JSON.parse(localStorage.getItem("activity") ?? "{}"); } catch { this.activity = {}; }
+    this.sample(cx);
+    cx.timer.every(20000, (cx) => this.sample(cx));
+  }
+  sample(cx) {
+    if (!agency()) return;
+    const now = Math.floor(Date.now() / BUCKET);
+    const working = counts().working;
+    let dirty = false;
+    if ((this.activity[now] ?? -1) < working) { this.activity[now] = working; dirty = true; }
+    for (const k of Object.keys(this.activity)) if (k <= now - BUCKETS) { delete this.activity[k]; dirty = true; }
+    if (!dirty) return;
+    localStorage.setItem("activity", JSON.stringify(this.activity));
+    cx?.notify();
+  }
+  // Minutes in the last hour with at least one agent working (2-minute buckets).
+  busyMinutes() {
+    const now = Math.floor(Date.now() / BUCKET);
+    let busy = 0;
+    for (let i = 0; i < BUCKETS; i++) if ((this.activity?.[now - i] ?? 0) > 0) busy++;
+    return Math.min(60, busy * (BUCKET / 60000));
+  }
+  // Plan/fact bar: the fill is what's used, the tick is where an even pace would be.
+  bar(t, used, resets, key) {
+    const span = WINDOW_SEC[key];
+    const plan = resets && span ? Math.min(1, Math.max(0, 1 - (resets - Date.now() / 1000) / span)) : null;
+    const fact = Math.min(1, Math.max(0, used / 100));
+    const color = used >= 80 ? t.blocked : plan != null && fact > plan + 0.05 ? t.working : t.done;
+    const W = 34;
+    return div().w(W).h(5).flex_none().relative().bg(t.input + "66")
+      .child(div().absolute().top(0).left(0).h(5).w(Math.max(1, Math.round(W * fact))).bg(color))
+      .when(plan != null, (el) => el.child(div().absolute().top(-2).left(Math.min(W - 1, Math.round(W * plan))).w(1).h(9).bg(t.foreground)));
   }
   refresh(cx) {
     cx.spawn(async (cx) => {
@@ -141,15 +194,31 @@ class Status {
   }
   limit(t, label, src) {
     const parts = [];
-    if (!src || src.error) return div().flex_none().text_color(t.dim).child(`${label} —`);
+    if (!src || src.error) return div().flex_none().text_color(t.dim).child(`${label} -`);
     for (const key of ["5h", "7d"]) {
       const w = src[key];
       if (!w) continue;
       const used = Math.round(w.used);
       const color = used >= 80 ? t.blocked : used >= 50 ? t.foreground : t.muted;
-      parts.push(div().flex_none().text_color(color).child(`${key === "5h" ? "5Ч" : "7Д"} ${used}% ${resetIn(w.resets)}`.trim()));
+      if (agency()) {
+        parts.push(h_flex().flex_none().gap(4).items_center()
+          .child(div().text_color(t.dim).child(key === "5h" ? L("5H", "5Ч") : L("7D", "7Д")))
+          .child(this.bar(t, used, w.resets, key))
+          .child(div().text_color(color).child(`${used}% ${resetIn(w.resets)}`.trim())));
+        continue;
+      }
+      parts.push(div().flex_none().text_color(color).child(`${key === "5h" ? L("5H", "5Ч") : L("7D", "7Д")} ${used}% ${resetIn(w.resets)}`.trim()));
     }
     return h_flex().flex_none().gap(5).items_center().child(div().text_color(t.dim).child(label)).children(parts);
+  }
+  // EN / RU: the whole ProdAdvice interface follows shared("ui.lang").
+  language(t) {
+    const option = (code) => div().id(`lang-${code}`).flex_none().px(3).cursor_pointer()
+      .when(lang() === code, (el) => el.bg(t.foreground).text_color(t.background))
+      .when(lang() !== code, (el) => el.text_color(t.dim).hover((s) => s.text_color(t.foreground)))
+      .on_click(() => setShared("ui.lang", code))
+      .child(code.toUpperCase());
+    return h_flex().flex_none().gap(2).items_center().child(option("en")).child(option("ru"));
   }
   hint() {
     const mac = window()?.platform === "macos";
@@ -157,7 +226,7 @@ class Status {
     const b = keys().find((k) => k.section === "global" && k.action === "app.palette");
     const parts = b && b.keys.endsWith("--") ? [...b.keys.slice(0, -2).split("-"), "-"] : b?.keys.split("-");
     const key = parts && parts.map((x) => mod[x.toLowerCase()] ?? x.toUpperCase()).join("");
-    return key ? `${key}  КОМАНДЫ` : "КОМАНДЫ";
+    return key ? `${key}  ${L("COMMANDS", "КОМАНДЫ")}` : L("COMMANDS", "КОМАНДЫ");
   }
   // Reconcile only on focus/theme/status changes; no redraw timer.
   syncFrame() {
@@ -182,13 +251,16 @@ class Status {
       .text_size(fontSize("status.body")).text_color(t.muted)
       .child(cell((space?.machine ?? "THIS MAC").toUpperCase()))
       .when(Boolean(space?.branch), (el) => el.child(cell(`⎇ ${space.branch}`)))
-      .child(cell(`АГЕНТЫ ${c.total}`))
-      .when(c.working > 0, (el) => el.child(cell(`РАБОТАЮТ ${c.working}`, t.working)))
-      .when(c.blocked > 0, (el) => el.child(cell(`! ЖДУТ ${c.blocked}`, t.blocked).loop("opacity", { from: 0.35, to: 1, period: 800 })))
-      .when(c.done > 0, (el) => el.child(cell(`✓ ГОТОВО ${c.done}`, t.done)))
+      .child(cell(`${L("AGENTS", "АГЕНТЫ")} ${c.total}`))
+      .when(c.working > 0, (el) => el.child(cell(`${L("WORKING", "РАБОТАЮТ")} ${c.working}`, t.working)))
+      .when(agency(), (el) => el.child(h_flex().flex_none().gap(5).items_center()
+        .child(cell(L("1H", "ЧАС"), t.dim)).child(cell(`${this.busyMinutes()}${L("m", "м")}`, c.working > 0 ? t.working : t.muted))))
+      .when(c.blocked > 0, (el) => el.child(cell(`! ${L("WAITING", "ЖДУТ")} ${c.blocked}`, t.blocked).loop("opacity", { from: 0.35, to: 1, period: 800 })))
+      .when(c.done > 0, (el) => el.child(cell(`✓ ${L("DONE", "ГОТОВО")} ${c.done}`, t.done)))
       .when(Boolean(this.limits?.claude), el => el.child(this.limit(t, "CLAUDE", this.limits.claude)))
       .when(Boolean(this.limits?.codex), el => el.child(this.limit(t, "CODEX", this.limits.codex)))
       .child(div().flex_1().min_w(0))
+      .child(this.language(t))
       .child(div().id("palette").flex_none().text_color(t.dim).hover((s) => s.text_color(t.foreground))
         .on_click(() => run("app.palette")).child(this.hint()));
   }
@@ -240,7 +312,7 @@ class Zoo {
   }
 }
 
-const ROLES = { tabs: Tabs, "new-menu": NewMenu, "tab-menu": TabMenu, toast: Toast, zoo: Zoo, brand: Brand, agents: Agents, pane: PaneHead, status: Status };
+const ROLES = { tabs: Tabs, "new-menu": NewMenu, "tab-menu": TabMenu, toast: Toast, zoo: Zoo, brand: Brand, agents: Agents, spaces: Spaces, picker: Picker, pane: PaneHead, status: Status };
 
 export default class ProdSovet extends View {
   init(p, cx) {
@@ -257,6 +329,7 @@ export default class ProdSovet extends View {
         if (name === "new-terminal") newTerminal();
         else if (name === "split-right") newTerminal("right");
         else if (name === "split-down") newTerminal("down");
+        else if (name === "picker") openPicker();
         else if (name === "new-menu") openOverlay({ mod: "prodsovet", kind: "popup", width: 250, height: 512, props: { role: "new-menu" } });
         cx.notify();
       } });

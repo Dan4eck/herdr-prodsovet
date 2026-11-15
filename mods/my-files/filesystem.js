@@ -1,5 +1,6 @@
 // Shared workspace context and disk operations for the personal Herdr mods.
-import { spaces, panes, focused, home, shared, setShared, exec, appHome, run, openOverlay, window } from "herdr";
+import { spaces, panes, focused, home, shared, setShared, exec, appHome, run, openOverlay, window, settings } from "herdr";
+import { L, style } from "./appearance.js";
 
 export const basename = p => p?.split("/").filter(Boolean).pop() || "/";
 export const parent = p => p?.slice(0, p.lastIndexOf("/")) || "/";
@@ -40,6 +41,28 @@ export function openFile(file, on = null, space = workspace().space) {
   if (tab) return run("tab.select", { id: tab });
   run("tab.new", { space, folder: workspace(space).cwd, name: basename(file), mod: "file-tab", props: { file, on, space } });
 }
+// File icons: Herdr's line icons, or in agency profiles dot-matrix icons
+// colored by kind like the page's dashboards. Paths are app-relative.
+const KINDS = [
+  ["code", /\.(js|mjs|cjs|ts|tsx|jsx|py|rs|go|sh|zsh|rb|swift|kt|java|c|h|cpp|css|scss|html|lua|sql)$/i],
+  ["text", /\.(md|mdx|txt|rtf|org|canvas|base)$/i],
+  ["data", /\.(json|jsonl|ya?ml|toml|csv|tsv|xml|ini|env|lock|plist)$/i],
+  ["media", /\.(png|jpe?g|gif|webp|svg|ico|heic|mp4|mov|webm|mkv|mp3|wav|m4a|ogg|pdf)$/i],
+];
+const KIND_COLORS = { folder: ["#a6bbff", "#3b55c4"], code: ["#85dee7", "#16707c"], text: ["#cc9bfa", "#7a3fb8"], data: ["#ffad55", "#9a5300"], media: ["#ff8176", "#c4352b"] };
+export function fileKind(name, dir) {
+  if (dir) return "folder";
+  return KINDS.find(([, re]) => re.test(name ?? ""))?.[0] ?? "file";
+}
+export function kindColor(t, kind) {
+  const pick = KIND_COLORS[kind];
+  return pick ? pick[settings()?.dark === false ? 1 : 0] : t.muted;
+}
+export function fileGlyph(t, name, dir) {
+  if (!style("agency")) return { path: `mods/my-files/${dir ? "folder" : "file"}.svg`, color: t.muted, size: 14 };
+  const kind = fileKind(name, dir);
+  return { path: `mods/my-files/px-${kind}.svg`, color: kindColor(t, kind), size: 12 };
+}
 export function context(path, dir, on, space, action) {
   return { path, dir, on: on ?? null, space, action };
 }
@@ -52,7 +75,7 @@ export function showDialog(target, action) {
 export async function localOperation(request) {
   const result = await exec("python3", [`${appHome()}/mods/my-files/file-ops.py`, JSON.stringify(request)], { timeout: 600000 });
   let value;
-  try { value = JSON.parse(result.stdout); } catch { throw new Error(result.stderr || "Не удалось выполнить операцию"); }
+  try { value = JSON.parse(result.stdout); } catch { throw new Error(result.stderr || L("The operation failed", "Не удалось выполнить операцию")); }
   if (result.code || value.error) throw new Error(value.error || result.stderr);
   return value;
 }
@@ -62,18 +85,18 @@ export function activeDocuments() {
 }
 export function assertClean(path, on = null) {
   const dirty = Object.values(activeDocuments()).find(d => d.on === on && within(d.file, path) && (d.dirty || d.saving));
-  if (dirty) throw new Error(`Сначала сохраните открытый файл: ${basename(dirty.file)}`);
+  if (dirty) throw new Error(L(`Save the open file first: ${basename(dirty.file)}`, `Сначала сохраните открытый файл: ${basename(dirty.file)}`));
 }
 export function isLocked(file) {
   const l = shared("files.operation");
   return Boolean(l && Date.now() - l.at < 610000 && within(file, l.path));
 }
 export async function operation(target, name) {
-  if (target.on) throw new Error("Изменение файлов пока доступно только на этом Mac");
-  if (window()?.platform !== "macos") throw new Error("Эти операции настроены для macOS");
+  if (target.on) throw new Error(L("File changes work only on this Mac for now", "Изменение файлов пока доступно только на этом Mac"));
+  if (window()?.platform !== "macos") throw new Error(L("These operations are set up for macOS", "Эти операции настроены для macOS"));
   const action = target.action, destructive = ["rename", "move", "trash"].includes(action);
   const existing = shared("files.operation");
-  if (existing && Date.now() - existing.at < 610000) throw new Error("Дождитесь завершения предыдущей операции");
+  if (existing && Date.now() - existing.at < 610000) throw new Error(L("Wait for the previous operation to finish", "Дождитесь завершения предыдущей операции"));
   if (destructive) assertClean(target.path);
   setShared("files.operation", { path: target.path, at: Date.now() });
   try {
@@ -105,8 +128,8 @@ export function clipboard(target, cut) {
 }
 export async function paste(target, name) {
   const source = shared("files.clipboard");
-  if (!source) throw new Error("Сначала скопируйте или вырежьте файл");
-  if (source.on !== target.on) throw new Error("Копирование между машинами пока не поддерживается");
+  if (!source) throw new Error(L("Copy or cut a file first", "Сначала скопируйте или вырежьте файл"));
+  if (source.on !== target.on) throw new Error(L("Copying between machines is not supported yet", "Копирование между машинами пока не поддерживается"));
   const result = await operation({ ...source, action: source.cut ? "move" : "copy", destination: target.dir ? target.path : parent(target.path) }, name);
   if (source.cut) setShared("files.clipboard", null);
   return result;

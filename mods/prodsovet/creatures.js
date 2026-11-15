@@ -1,3 +1,4 @@
+import { lang } from "./appearance.js";
 // SPDX-License-Identifier: Apache-2.0
 // ProdAdvice for Herdr: customized interface and behavior, 2026. See NOTICE.
 // Agent characters: animated sprite strips by kind and status, plus the
@@ -16,7 +17,11 @@ export function mini(status) {
 }
 
 // Status words, the site's small caps labels.
-export const WORD = { working: "РАБОТАЕТ", blocked: "ЖДЁТ ТЕБЯ", done: "ГОТОВО", idle: "СПИТ" };
+const WORDS = {
+  en: { working: "WORKING", blocked: "NEEDS YOU", done: "DONE", idle: "ASLEEP" },
+  ru: { working: "РАБОТАЕТ", blocked: "ЖДЁТ ТЕБЯ", done: "ГОТОВО", idle: "СПИТ" },
+};
+export const word = (status) => WORDS[lang()][status] ?? "";
 
 // Animated characters (Codex's build.py), as 16-frame horizontal sprite strips.
 // Herdr plays an animated WebP only once, so the mod steps the strip itself.

@@ -20,7 +20,7 @@
             }
           },
           "size": {
-            "px": 46
+            "px": 42
           },
           "window_drag": true
         },
@@ -32,7 +32,10 @@
               "id": "spaces",
               "type": "block",
               "content": {
-                "mod": "spaces"
+                "mod": "prodsovet",
+                "props": {
+                  "role": "spaces"
+                }
               },
               "size": {
                 "weight": 0.8730701208114624

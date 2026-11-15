@@ -6,7 +6,7 @@ import path from 'node:path';
 import vm from 'node:vm';
 import {spawnSync} from 'node:child_process';
 const app=fileURLToPath(new URL('..',import.meta.url)).replace(/\/$/,''), root=fs.mkdtempSync(path.join(os.tmpdir(),'herdr-files-ui-test-'));
-const shared=new Map(), storage=new Map(), calls=[];
+const shared=new Map([['ui.lang','ru']]), storage=new Map(), calls=[]; // assertions read the Russian strings
 let props={}, focus={space:'test',tab:'terminal',terminal:'t1'}, space={id:'test',active:true,folder:root,machine:null,tabs:[{id:'terminal',name:'Terminal'},{id:'file',name:'sample.md'}]};
 const extraSpaces=[];
 const allPanes=[{tab:'terminal',terminal:'t1',cwd:root},{tab:'file',mod:'file-tab',cwd:null}];

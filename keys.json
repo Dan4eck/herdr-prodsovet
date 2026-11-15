@@ -24,6 +24,7 @@
     "cmd-t": "prodsovet.new-terminal",
     "ctrl-t": "prodsovet.new-terminal",
     "cmd-d": "prodsovet.split-right",
-    "cmd-shift-d": "prodsovet.split-down"
+    "cmd-shift-d": "prodsovet.split-down",
+    "cmd-p": "prodsovet.picker"
   }
 }

@@ -331,8 +331,8 @@
       },
       "metrics": {
         "brand": {
-          "titleLine": 19,
-          "subtitleLine": 13
+          "titleLine": 18,
+          "subtitleLine": 12
         },
         "agents": {
           "row": 52,
@@ -379,40 +379,40 @@
       "agentTints": true,
       "agentPalettes": {
         "codex": {
-          "background": "#04060a",
-          "border": "#1d2633",
-          "accent": "#7aa8ff",
-          "working": "#7aa8ff"
+          "background": "#04070a",
+          "border": "#1b2a33",
+          "accent": "#81d4ff",
+          "working": "#81d4ff"
         },
         "claude": {
-          "background": "#070504",
-          "border": "#2e2620",
-          "accent": "#e8a27a",
-          "working": "#e8a27a"
+          "background": "#080604",
+          "border": "#33281c",
+          "accent": "#ffad55",
+          "working": "#ffad55"
         }
       },
       "lightTheme": "ProdAdvice2-light",
       "darkTheme": {
         "background": "#050705",
         "foreground": "#c9ccc5",
-        "selection": "#24521a",
+        "selection": "#2c2838",
         "cursor": "#39ff14",
         "ansi": [
           "#1c201c",
-          "#ff5a4f",
-          "#39ff14",
-          "#ffb02e",
-          "#4a8bff",
-          "#b884ff",
+          "#ff8176",
           "#7ee7ad",
+          "#ffad55",
+          "#a6bbff",
+          "#cc9bfa",
+          "#85dee7",
           "#c9ccc5",
           "#7a8079",
-          "#ff7b72",
-          "#7dff5e",
-          "#ffc861",
-          "#7aa8ff",
-          "#cfa2ff",
+          "#ffa49c",
           "#a8f5cb",
+          "#ffc98a",
+          "#c4d2ff",
+          "#ddbdfc",
+          "#b0eef3",
           "#f3f4ef"
         ],
         "colors": {
@@ -423,18 +423,18 @@
           "popover": "#0a0c0a",
           "raised": "#141813",
           "hover": "#0d100d",
-          "selected": "#121611",
+          "selected": "#141414",
           "border": "#292a29",
           "input": "#464745",
           "foreground": "#f3f4ef",
           "muted": "#969b92",
           "dim": "#767f7a",
-          "accent": "#39ff14",
+          "accent": "#f3f4ef",
           "accent_foreground": "#000000",
           "solid": "#f3f4ef",
           "solid_foreground": "#000000",
-          "working": "#39ff14",
-          "blocked": "#ff5a4f",
+          "working": "#ffad55",
+          "blocked": "#ff8176",
           "done": "#7ee7ad",
           "idle": "#767f7a",
           "unknown": "#767f7a"
@@ -449,20 +449,20 @@
       "lightPalette": {
         "background": "#f3f4ef",
         "foreground": "#0b0d0b",
-        "selection": "#c9e8bd",
+        "selection": "#ded6ec",
         "cursor": "#1f7a0e",
         "ansi": [
           "#030403",
           "#c4352b",
-          "#1f7a0e",
-          "#855600",
-          "#1f5fd6",
-          "#7a3fb8",
           "#13705a",
+          "#9a5300",
+          "#2c5fc8",
+          "#7a3fb8",
+          "#16707c",
           "#d7d9d2",
           "#5d6259",
           "#b8322a",
-          "#2a7f17",
+          "#1b7d63",
           "#8a5c00",
           "#2c62c8",
           "#8045b8",
@@ -477,17 +477,17 @@
           "popover": "#fafbf7",
           "raised": "#ffffff",
           "hover": "#e6e8e0",
-          "selected": "#dde5d4",
+          "selected": "#e2e3dc",
           "border": "#c3c6c0",
           "input": "#8e938a",
           "foreground": "#0b0d0b",
           "muted": "#4b5049",
           "dim": "#5d6259",
-          "accent": "#1f7a0e",
+          "accent": "#0b0d0b",
           "accent_foreground": "#ffffff",
           "solid": "#030403",
           "solid_foreground": "#f3f4ef",
-          "working": "#1f7a0e",
+          "working": "#9a5300",
           "blocked": "#c4352b",
           "done": "#13705a",
           "idle": "#5d6259",
@@ -499,7 +499,30 @@
         "brandFont": "Bodoni 72",
         "labelFont": "mono",
         "brandChip": true,
-        "selectionBar": true
+        "selectionBar": true,
+        "agency": true,
+        "agentAccents": {
+          "claude": {
+            "dark": "#ffad55",
+            "light": "#9a5300"
+          },
+          "codex": {
+            "dark": "#81d4ff",
+            "light": "#1d6a99"
+          },
+          "gemini": {
+            "dark": "#a6bbff",
+            "light": "#3b55c4"
+          },
+          "hermes": {
+            "dark": "#cc9bfa",
+            "light": "#7a3fb8"
+          },
+          "other": {
+            "dark": "#85dee7",
+            "light": "#16707c"
+          }
+        }
       }
     }
   }

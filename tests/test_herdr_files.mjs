@@ -7,7 +7,7 @@ let spaces = [], panes = [], focus = null, pending = null;
 const host = {
   spaces: () => spaces, panes: () => panes, focused: () => focus,
   home: () => '/Users/test', shared: k => state.get(k), setShared: (k,v) => state.set(k,v),
-  appHome: () => '/app', window: () => ({platform:'macos'}),
+  appHome: () => '/app', window: () => ({platform:'macos'}), settings: () => ({dark:true}),
   run: (name,args) => calls.push({name,args}), openOverlay: value => calls.push(value),
   exec: async (_cmd,args) => {
     const request = JSON.parse(args[1]);
@@ -18,7 +18,9 @@ const host = {
 const context = vm.createContext({console,Date,JSON,Set,Map,Error,Object,String});
 const shim = new vm.SyntheticModule(Object.keys(host), function() { for (const [k,v] of Object.entries(host)) this.setExport(k,v); }, {context});
 const module = new vm.SourceTextModule(fs.readFileSync(new URL('../mods/my-files/filesystem.js',import.meta.url),'utf8'), {context});
-await module.link(() => shim); await module.evaluate(); const api = module.namespace;
+// The interface language helper: these checks read the Russian messages.
+const strings = new vm.SyntheticModule(['L', 'style'], function() { this.setExport('L', (_en, ru) => ru); this.setExport('style', () => false); }, {context});
+await module.link(spec => spec === './appearance.js' ? strings : shim); await module.evaluate(); const api = module.namespace;
 let n = 0;
 async function test(name, fn) { await fn(); console.log(`ok ${++n} - ${name}`); }
 function reset() {state.clear(); calls.length=0; pending=null;

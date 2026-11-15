@@ -1,4 +1,4 @@
-import { appearance, fontSize, metric, radius } from "./appearance.js";
+import { appearance, fontSize, metric, radius, L, style } from "./appearance.js";
 // SPDX-License-Identifier: Apache-2.0
 // ProdAdvice for Herdr: customized interface and behavior, 2026. See NOTICE.
 // A file as its own tab, next to the terminal tabs.
@@ -8,7 +8,7 @@ import { View, div, svg, image } from "gpui-kit";
 import { v_flex, h_flex, Editor, EditorState, InputState, Input, TextView, set_theme } from "gpui-base";
 import { props, exec, readTextFile, writeTextFile, theme, settings, focused, spaces, panes, run, notify, shared, setShared, nextCommand } from "herdr";
 
-import { operation, isLocked, activeDocuments, workspace } from "./filesystem.js";
+import { operation, isLocked, activeDocuments, workspace, fileGlyph } from "./filesystem.js";
 
 const LANG = { ts: "js", tsx: "js", mjs: "js", cjs: "js", jsx: "js", js: "js", json: "json", jsonc: "json", md: "markdown", markdown: "markdown", py: "python", sh: "bash", zsh: "bash", yml: "yaml", yaml: "yaml", toml: "yaml", html: "html", css: "css", rs: "rust", go: "go", vue: "html", svelte: "html" };
 const base = (p) => p.split("/").pop();
@@ -48,7 +48,7 @@ export default class FileTab extends View {
     this.code = null; this.original = null; this.preview = false; this.renaming = null; this.openMenu = Boolean(pr.menu);
     this.ext = (this.file?.includes(".") ? this.file.split(".").pop() : "txt").toLowerCase();
     this.register();
-    if (!this.file) { this.error = "Нет пути к файлу"; return; }
+    if (!this.file) { this.error = L("No file path", "Нет пути к файлу"); return; }
     this.load(cx);
     cx.spawn(async (cx) => {
       for (;;) {
@@ -103,8 +103,8 @@ export default class FileTab extends View {
         this.syncDocument();
         if (file !== this.file) { this.load(cx); return; }
         this.applySelection(cx);
-        if (text === null) this.error = "Файла нет или он больше 1 МБ";
-        else if (text.includes("\0")) this.error = "Бинарный файл, текстом не показать";
+        if (text === null) this.error = L("The file is missing or larger than 1 MB", "Файла нет или он больше 1 МБ");
+        else if (text.includes("\0")) this.error = L("Binary file, cannot show as text", "Бинарный файл, текстом не показать");
         else {
           const t = theme();
           this.editable = !this.on; this.original = text;
@@ -114,7 +114,7 @@ export default class FileTab extends View {
           this.code = this.makeEditor(draft?.file === this.file ? draft.text : text);
           this.publish();
         }
-      } catch (e) { this.error = `Не открылся: ${e}`; }
+      } catch (e) { this.error = L(`Could not open: ${e}`, `Не открылся: ${e}`); }
       cx.notify();
     });
   }
@@ -172,17 +172,17 @@ export default class FileTab extends View {
 
   async save(cx) {
     this.syncDocument();
-    if (this.removed || isLocked(this.file)) { notify({ title: "Не сохранено", body: this.removed ? "Файл находится в корзине" : "Дождитесь файловой операции", level: "warning" }); return; }
+    if (this.removed || isLocked(this.file)) { notify({ title: L("Not saved", "Не сохранено"), body: this.removed ? L("The file is in the Trash", "Файл находится в корзине") : L("Wait for the file operation", "Дождитесь файловой операции"), level: "warning" }); return; }
     if (!this.dirty() || this.saving) return;
     const text = this.code.value();
     this.saving = true; this.publish(); cx.notify();
     try { await writeTextFile(this.file, text, this.original); this.original = text; this.saveError = null; }
-    catch (e) { this.saveError = "Файл изменился на диске, не сохранено"; }
+    catch (e) { this.saveError = L("The file changed on disk, not saved", "Файл изменился на диске, не сохранено"); }
     this.saving = false; this.snapshot(); cx.notify();
   }
 
   startRename(cx) {
-    if (this.on) return notify({ title: "Файл на другой машине", body: "Переименовать можно только локальный файл", level: "warning" });
+    if (this.on) return notify({ title: L("File on another machine", "Файл на другой машине"), body: L("Only a local file can be renamed", "Переименовать можно только локальный файл"), level: "warning" });
     this.renaming = InputState.new({ value: base(this.file) });
     this.renaming.on("submit", (_e, cx) => this.rename(cx));
     this.renaming.focus();
@@ -197,7 +197,7 @@ export default class FileTab extends View {
       this.syncDocument();
       await operation({ action: "rename", path: this.file, on: this.on }, name);
       this.syncDocument(); this.publish();
-    } catch (e) { notify({ title: "Не переименован", body: String(e.message ?? e), level: "error" }); }
+    } catch (e) { notify({ title: L("Not renamed", "Не переименован"), body: String(e.message ?? e), level: "error" }); }
     cx.notify();
   }
 
@@ -205,12 +205,12 @@ export default class FileTab extends View {
     let r;
     if (a.id === "obsidian") r = await exec("open", [`obsidian://open?path=${encodeURIComponent(this.file)}`]);
     else r = await exec("open", ["-a", a.app, this.file]);
-    if (r.code !== 0) notify({ title: `Не открылось в ${a.label}`, body: r.stderr.trim(), level: "error" });
+    if (r.code !== 0) notify({ title: L(`Could not open in ${a.label}`, `Не открылось в ${a.label}`), body: r.stderr.trim(), level: "error" });
   }
 
   async agent() {
     const target = (shared("files.agents") ?? {})[this.space];
-    if (!target) return notify({ title: "Нет агента", body: "Кликни в терминал агента один раз и попробуй снова", level: "warning" });
+    if (!target) return notify({ title: L("No agent", "Нет агента"), body: L("Click the agent terminal once and try again", "Кликни в терминал агента один раз и попробуй снова"), level: "warning" });
     const text = (/\s/.test(this.file) ? `"${this.file}"` : `@${this.file}`) + " ";
     const copy = (v) => exec("sh", ["-c", 'printf %s "$1" | pbcopy', "copy", v]);
     const old = await exec("pbpaste", []).catch(() => null);
@@ -250,6 +250,7 @@ export default class FileTab extends View {
     }
     const btn = (id, label, on, active) => div().id(id).px(8).py(3).rounded(radius(6)).text_size(fontSize("fileTab.action")).cursor_pointer()
       .text_color(active ? t.foreground : t.muted).when(active, (el) => el.bg(t.selected))
+      .when(style("agency"), (el) => el.font_family(appearance().fonts.mono))
       .hover((s) => s.bg(t.hover).text_color(t.foreground)).on_click(on).child(label);
     const dir = this.file ? this.file.slice(0, this.file.lastIndexOf("/")).replace(/^\/Users\/[^/]+/, "~") : "";
 
@@ -259,7 +260,7 @@ export default class FileTab extends View {
         if (e.key === "escape" && this.renaming) { this.renaming.release(); this.renaming = null; cx.stop_propagation(); cx.notify(); }
       })
       .child(h_flex().h(metric("fileTab.toolbar")).flex_none().px(14).gap(8).items_center().border_b(1).border_color(t.border).bg(t.chrome)
-        .child(svg("mods/my-files/file.svg").size(14).flex_none().text_color(t.dim))
+        .child((() => { const g = fileGlyph(t, this.file ? base(this.file) : "", false); return svg(g.path).size(g.size).flex_none().text_color(g.color === t.muted ? t.dim : g.color); })())
         .child(this.renaming
           ? h_flex().w(320).h(metric("fileTab.input")).px(8).rounded(radius(6)).border_1().border_color(t.accent).bg(t.background).items_center()
               .child(Input.new(this.renaming).flex_1().h_full().text_size(fontSize("fileTab.body")).text_color(t.foreground))
@@ -269,13 +270,13 @@ export default class FileTab extends View {
         .child(div().flex_1().min_w(0).truncate().text_size(fontSize("fileTab.meta")).text_color(t.dim).child((this.on ? `${this.on}:` : "") + dir))
         .when(Boolean(this.saveError), (el) => el.child(div().text_size(fontSize("fileTab.meta")).text_color(t.blocked).child(this.saveError)))
         .when(md && Boolean(this.code), (el) => el
-          .child(btn("ft-edit", "Текст", (_e, cx) => { this.preview = false; cx.notify(); }, !this.preview))
-          .child(btn("ft-prev", "Превью", (_e, cx) => { this.preview = true; cx.notify(); }, this.preview)))
-        .child(btn("ft-agent", "@ агенту", () => this.agent()))
-        .when(Boolean(this.code) && this.editable && !this.removed, (el) => el.child(btn("ft-save", this.saving ? "Сохраняю…" : this.dirty() ? "Сохранить ⌘S" : "Сохранено", (_e, cx) => this.save(cx), this.dirty())))
-        .when(Boolean(this.code) && !this.editable, (el) => el.child(div().text_size(fontSize("fileTab.hint")).text_color(t.dim).child("только чтение")))
-        .when(!this.on, (el) => el.child(btn("ft-open", "Открыть в ▾", (_e, cx) => { this.openMenu = !this.openMenu; cx.notify(); }, this.openMenu))))
-      .when(Boolean(this.removed), el => el.child(div().px(14).py(8).text_color(t.blocked).child("Файл перемещён в корзину. Содержимое вкладки сохранено для просмотра.")))
+          .child(btn("ft-edit", L("Text", "Текст"), (_e, cx) => { this.preview = false; cx.notify(); }, !this.preview))
+          .child(btn("ft-prev", L("Preview", "Превью"), (_e, cx) => { this.preview = true; cx.notify(); }, this.preview)))
+        .child(btn("ft-agent", L("@ to agent", "@ агенту"), () => this.agent()))
+        .when(Boolean(this.code) && this.editable && !this.removed, (el) => el.child(btn("ft-save", this.saving ? L("Saving…", "Сохраняю…") : this.dirty() ? L("Save ⌘S", "Сохранить ⌘S") : L("Saved", "Сохранено"), (_e, cx) => this.save(cx), this.dirty())))
+        .when(Boolean(this.code) && !this.editable, (el) => el.child(div().text_size(fontSize("fileTab.hint")).text_color(t.dim).child(L("read only", "только чтение"))))
+        .when(!this.on, (el) => el.child(btn("ft-open", L("Open in ▾", "Открыть в ▾"), (_e, cx) => { this.openMenu = !this.openMenu; cx.notify(); }, this.openMenu))))
+      .when(Boolean(this.removed), el => el.child(div().px(14).py(8).text_color(t.blocked).child(L("The file was moved to the Trash. The tab keeps its contents for viewing.", "Файл перемещён в корзину. Содержимое вкладки сохранено для просмотра."))))
       .child(this.code
         ? (this.preview
           ? div().id("ft-md").flex_1().min_h(0).overflow_y_scrollbar().px(28).py(18).child(TextView.markdown("ft-md-view", this.code.value()))
@@ -283,7 +284,7 @@ export default class FileTab extends View {
               .on_mouse_down("left", (_e, cx) => this.applySelection(cx, true))
               .on_modifiers_changed((e, cx) => { if (e.modifiers?.shift) this.applySelection(cx, true); })
               .child(Editor.new(this.code).size_full()))
-        : div().p(16).text_color(this.error ? t.blocked : t.dim).child(this.error ?? "Открываю…"))
+        : div().p(16).text_color(this.error ? t.blocked : t.dim).child(this.error ?? L("Opening…", "Открываю…")))
       // the "Открыть в" dropdown: a small box under the button, over the text
       .when(this.openMenu && !this.on, (el) => el.child(
         v_flex().id("ft-menu").absolute().top(38).right(12).w(170).p(4).gap(2)

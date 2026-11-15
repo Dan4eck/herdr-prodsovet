@@ -44,6 +44,10 @@ header/path and the status strip), `brandChip` (subtitle as an inverse chip
 filled with `brandColors`), `selectionBar` (2 px accent bar on selected agent
 and file rows). The classic values are 1, null, `"ui"`, false, false; they are
 constants in `sync_appearance.py`, not values borrowed from the other profile.
+`agency` (true/false) turns on the agency-page decoration described below.
+`agentAccents` maps agent kinds (`claude`, `codex`, `gemini`, `hermes`,
+`other`) to `{dark, light}` colors; with it, working states, rails, spinners,
+selection bars and the active tab's strip use the agent's own color.
 ProdAdvice has no `style` block and draws exactly as before.
 
 For example, set `profiles.ProdAdvice2.fonts.ui` to an installed font family,
@@ -131,3 +135,48 @@ declared fallback after SF Mono. Users who install SF Mono from Apple
 (https://developer.apple.com/fonts/) may set `fonts.mono` (and terminal/editor)
 to `SF Mono`. Apple's license does not allow bundling it here. Fonts are not
 bundled; on other systems missing families fall back to Herdr defaults.
+
+## ProdAdvice2 agency decoration (`style.agency`)
+
+Added on 2026-11-15 after the agency page's dashboards. Neon `#39ff14` stays a
+brand signal only (PRODADVICE chip, terminal cursor, the title glitch). The
+interface accent is paper `#f3f4ef`; statuses use the dashboard colors: working
+orange `#ffad55`, blocked coral `#ff8176`, done mint `#7ee7ad`. Agents have
+their own colors: Claude orange, Codex sky `#81d4ff`, Gemini periwinkle
+`#a6bbff`, Hermes violet `#cc9bfa`, others cyan `#85dee7`. ANSI green, yellow,
+blue, magenta and cyan follow the same palette; selection is violet graphite.
+
+Native equivalents of the page's details (tinted one-color SVGs: 15 x 15
+solid pixel icons in `mods/prodsovet/art/px`, the halftone in
+`mods/prodsovet/art/agency`, and text frames, no canvas):
+
+- brand: "Herdr" alone in one 42 px row, aligned with the tab bar; it flashes an
+  offset neon/coral glitch for two frames every ~9 s. SPACES and WORKSHOP glitch
+  the same way, much more rarely;
+- section titles SPACES, WORKSHOP and FILES share one style: mono, semibold,
+  foreground color, the Files text size;
+- one "selected" look everywhere (active tab, focused agent, active space,
+  selected file): only a quiet fill in the owner's color;
+- Spaces (`prodsovet` role `spaces`, derived from Herdr's stock mod): square
+  letter tiles in the dashboard colors, mono machine headers, pixel icons;
+- Workshop: both sort orders as pixel buttons (clock = urgency, layers =
+  spaces); section labels get a colored square; done characters get a mint
+  scan line;
+- icons: a 15 px grid, 1 px solid strokes and rounded corners; the Files tree
+  keeps dot-matrix type icons and Herdr's chevrons;
+- pane headers: a lead running along a dotted rail; pixel split/zoom/close;
+- sub-agents: box-drawing tree text, the working branch lit in the agent color;
+- empty workshop: a typewriter prompt; a 7 px halftone fades in at the bottom;
+- status strip: "1H 34m" (minutes in the last hour with an agent working), plan/fact limit bars (fill is
+  usage, the paper tick is an even pace; orange above pace, coral from 80%) and
+  the EN/RU language switch.
+
+## Language
+
+Every ProdAdvice mod reads `shared("ui.lang")` through `L(en, ru)` from the
+generated `appearance.js`. English is the default; EN/RU in the status strip
+switches all mods at once. Stock Herdr blocks (footer, settings) keep Herdr's own
+language. Input placeholders take the language their view was opened with.
+
+Rollback: Git tag `prodadvice2-pre-agency-2026-11-15` holds the previous
+ProdAdvice2 look.

@@ -7,7 +7,8 @@ const root=fileURLToPath(new URL('..',import.meta.url));
 let active='ProdAdvice';
 const context=vm.createContext({JSON,Object,Number,Error});
 const modules=new Map();
-const host=new vm.SyntheticModule(['shared'],function(){this.setExport('shared',key=>key==='layout'?active:undefined)},{context});
+let dark=true;
+const host=new vm.SyntheticModule(['shared','settings'],function(){this.setExport('shared',key=>key==='layout'?active:undefined);this.setExport('settings',()=>({dark}))},{context});
 async function load(file){
  if(modules.has(file))return modules.get(file);
  const mod=new vm.SourceTextModule(fs.readFileSync(file,'utf8'),{context,identifier:file});modules.set(file,mod);
@@ -30,6 +31,12 @@ test('classic profile without a style block keeps the original drawing style',()
  active='ProdAdvice';assert.equal(a.appearance().style,undefined);
  assert.equal(a.radius(7),7);assert.equal(a.labelFont(),null);assert.equal(a.brandFont(),a.appearance().fonts.ui);
  assert.equal(a.style('brandChip'),false);assert.equal(a.style('selectionBar'),false);
+});
+test('agent accents follow the profile and the light/dark mode',()=>{
+ active='ProdAdvice';assert.equal(a.agentAccent('claude'),null);assert.equal(a.style('agency'),false);
+ active='ProdAdvice2';const own=a.appearance().style.agentAccents;
+ dark=true;assert.equal(a.agentAccent('claude'),own.claude.dark);assert.equal(a.agentAccent('unknown-kind'),own.other.dark);
+ dark=false;assert.equal(a.agentAccent('codex'),own.codex.light);dark=true;
 });
 test('second profile owns its drawing style without touching classic',()=>{
  active='ProdAdvice2';const own=a.appearance().style;

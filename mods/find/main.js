@@ -1,4 +1,4 @@
-import { appearance, fontSize, metric, radius } from "./appearance.js";
+import { appearance, fontSize, metric, radius, L, style, labelFont } from "./appearance.js";
 // SPDX-License-Identifier: Apache-2.0
 // ProdAdvice for Herdr: customized interface and behavior, 2026. See NOTICE.
 // Find: one popup to search files by name, text inside files, and the text of open terminals.
@@ -11,13 +11,18 @@ import { v_flex, h_flex, InputState, Input, ScrollHandle } from "gpui-base";
 import { spaces, panes, focused, exec, hc, run, theme, settings, props, closeOverlay, notify, shared } from "herdr";
 
 const MODES = [
-  { id: "files", label: "Файлы", hint: "имя файла, можно частями: pa news 11" },
-  { id: "text", label: "Текст", hint: "текст внутри файлов (ripgrep)" },
-  { id: "terms", label: "Терминалы", hint: "экран и история открытых терминалов" },
+  { id: "files", get label() { return L("Files", "Файлы"); }, get hint() { return L("file name, in parts too: pa news 11", "имя файла, можно частями: pa news 11"); } },
+  { id: "text", get label() { return L("Text", "Текст"); }, get hint() { return L("text inside files (ripgrep)", "текст внутри файлов (ripgrep)"); } },
+  { id: "terms", get label() { return L("Terminals", "Терминалы"); }, get hint() { return L("screen and history of open terminals", "экран и история открытых терминалов"); } },
 ];
 const MAX_ROWS = 200, TERM_LINES = 3000;
 
-import { openFile, location } from "./filesystem.js";
+import { openFile, location, fileGlyph, fileKind, kindColor } from "./filesystem.js";
+
+// Agency profiles: pixel icons and tinted selection, as in the sidebar.
+const agency = () => style("agency") === true;
+const px = (name) => `mods/prodsovet/art/px/${name}.svg`;
+const glyph = (t, name) => { const g = fileGlyph(t, name, false); return svg(g.path).size(g.size).mx(g.size < 14 ? 1 : 0).flex_none().text_color(agency() ? g.color : t.dim); };
 function where() { return { ...location(), terminal: focused()?.terminal ?? null }; }
 
 // Each space-separated part must match; whole-word hits in the file name rank first.
@@ -49,7 +54,7 @@ export default class Find extends View {
     this.mode = "files"; this.at = 0; this.query = ""; this.seq = 0;
     this.files = null; this.hits = []; this.termText = null; this.busy = false; this.error = null;
     this.scroll = ScrollHandle.new();
-    this.input = InputState.new({ placeholder: "Что ищем…" });
+    this.input = InputState.new({ placeholder: L("Search for…", "Что ищем…") });
     this.input.on("change", (_e, cx) => { this.query = this.input.value(); this.at = 0; this.search(cx); });
     this.input.on("submit", (_e, cx) => this.open(this.rows()[this.at], "open", cx));
     this.input.focus();
@@ -60,7 +65,7 @@ export default class Find extends View {
   // ---------- data ----------
 
   loadFiles(cx) {
-    if (!this.root) { this.error = "Не понял, какая папка: кликни в нужную панель и открой ещё раз"; return; }
+    if (!this.root) { this.error = L("Which folder? Click the panel you need and open search again", "Не понял, какая папка: кликни в нужную панель и открой ещё раз"); return; }
     this.files = null; this.busy = true;
     const root = this.root;
     cx.spawn(async (cx) => {
@@ -68,8 +73,8 @@ export default class Find extends View {
         const r = await exec("rg", ["--files", "--hidden", "-g", "!.git", "-g", "!.obsidian", "-g", "!.trash", "-g", "!*.pyc", "-g", "!.DS_Store", "--sortr", "modified"], { cwd: root, on: this.on, timeout: 20000 });
         if (root !== this.root) return;
         this.files = r.stdout.split("\n").filter(Boolean);
-        this.error = r.code === 0 || this.files.length ? null : (r.stderr || "rg не смог прочитать папку").trim();
-      } catch (e) { this.error = `Нужен ripgrep (rg): ${e}`; this.files = []; }
+        this.error = r.code === 0 || this.files.length ? null : (r.stderr || L("rg could not read the folder", "rg не смог прочитать папку")).trim();
+      } catch (e) { this.error = L(`ripgrep (rg) is required: ${e}`, `Нужен ripgrep (rg): ${e}`); this.files = []; }
       this.busy = false; cx.notify();
     });
   }
@@ -163,7 +168,7 @@ export default class Find extends View {
     const abs = `${this.root.replace(/\/$/, "")}/${r.path}`;
     if (how === "agent") {
       const term = this.agent;
-      if (!term) return notify({ title: "Нет терминала", body: "Кликни в терминал агента и попробуй снова", level: "warning" });
+      if (!term) return notify({ title: L("No terminal", "Нет терминала"), body: L("Click the agent terminal and try again", "Кликни в терминал агента и попробуй снова"), level: "warning" });
       this.close();
       const text = (/\s/.test(abs) ? `"${abs}"` : `@${abs}`) + " ";
       const copy = (v) => exec("sh", ["-c", 'printf %s "$1" | pbcopy', "copy", v]);
@@ -175,7 +180,7 @@ export default class Find extends View {
       return;
     }
     if (how === "app") {
-      if (this.on) return notify({ title: "Файл на другой машине", body: "Открыть в приложении можно только локальные файлы", level: "warning" });
+      if (this.on) return notify({ title: L("File on another machine", "Файл на другой машине"), body: L("Only local files open in an app", "Открыть в приложении можно только локальные файлы"), level: "warning" });
       this.close();
       exec("open", [abs]);
       return;
@@ -194,39 +199,40 @@ export default class Find extends View {
     const tab = (m) => {
       const on = m.id === this.mode;
       return div().id(`fd-mode-${m.id}`).px(10).py(4).rounded(radius(6)).text_size(fontSize("find.action")).cursor_pointer()
-        .text_color(on ? t.foreground : t.dim).when(on, (el) => el.bg(t.selected).font_weight(appearance().weights.semibold))
+        .when(agency(), (el) => el.font_family(labelFont() ?? appearance().fonts.mono))
+        .text_color(on ? t.foreground : t.dim).when(on, (el) => el.bg(agency() ? t.foreground + "1f" : t.selected).font_weight(appearance().weights.semibold))
         .hover((s) => s.bg(t.hover).text_color(t.foreground))
-        .on_click((_e, cx) => this.setMode(m.id, cx)).child(m.label);
+        .on_click((_e, cx) => this.setMode(m.id, cx)).child(agency() ? m.label.toUpperCase() : m.label);
     };
 
     const row = (r, i) => {
       const on = i === this.at;
       const base = h_flex().id(`fd-r-${i}`).mx(4).px(10).min_h(30).py(4).rounded(radius(7)).gap(10).items_center().cursor_pointer()
-        .when(on, (el) => el.bg(t.hover)).hover((s) => s.bg(t.hover))
+        .when(on, (el) => el.bg(agency() ? (r.kind === "term" ? t.foreground : kindColor(t, fileKind(r.path, false))) + "24" : t.hover)).hover((s) => s.bg(t.hover))
         .on_click((e, cx) => this.open(r, e.modifiers?.platform ? "agent" : e.modifiers?.alt ? "app" : "open", cx));
       if (r.kind === "file") {
         const cut = r.path.lastIndexOf("/");
         return base
-          .child(svg("mods/my-files/file.svg").size(14).flex_none().text_color(t.dim))
+          .child(glyph(t, r.path))
           .child(div().flex_none().max_w(300).truncate().text_color(t.foreground).child(r.path.slice(cut + 1)))
           .child(div().flex_1().truncate().text_size(fontSize("find.meta")).text_color(t.dim).child(cut > 0 ? r.path.slice(0, cut) : ""));
       }
       if (r.kind === "hit") {
-        return base.child(v_flex().flex_1().min_w(0).gap(1)
+        return base.when(agency(), (el) => el.child(glyph(t, r.path))).child(v_flex().flex_1().min_w(0).gap(1)
           .child(div().truncate().text_size(fontSize("find.meta")).text_color(t.dim).child(`${r.path}:${r.line}`))
           .child(div().truncate().text_color(t.foreground).child(r.text || " ")));
       }
-      return base.child(v_flex().flex_1().min_w(0).gap(1)
+      return base.when(agency(), (el) => el.child(svg(px("terminal")).size(15).flex_none().text_color(t.muted))).child(v_flex().flex_1().min_w(0).gap(1)
         .child(div().truncate().text_size(fontSize("find.meta")).text_color(t.dim).child(`${r.pane.title || r.pane.terminal} · ${r.pane.terminal}`))
         .child(div().truncate().text_color(t.foreground).child(r.text || " ")));
     };
 
     let status;
     if (this.error) status = this.error;
-    else if (this.busy) status = this.mode === "terms" ? "Читаю терминалы…" : "Ищу…";
-    else if (this.mode === "files") status = q ? `${rows.length}${rows.length === MAX_ROWS ? "+" : ""} из ${this.files?.length ?? 0} файлов` : `${this.files?.length ?? 0} файлов, сначала недавно изменённые · имя можно частями: pa news 11`;
-    else if (this.mode === "text") status = q.length < 2 ? "Текст внутри файлов, хотя бы 2 символа" : `${rows.length} совпадений`;
-    else status = q ? `${rows.length} строк в ${this.termText?.length ?? 0} терминалах` : `Ищу по ${panes().filter((p) => p.terminal).length} терминалам`;
+    else if (this.busy) status = this.mode === "terms" ? L("Reading terminals…", "Читаю терминалы…") : L("Searching…", "Ищу…");
+    else if (this.mode === "files") status = q ? L(`${rows.length}${rows.length === MAX_ROWS ? "+" : ""} of ${this.files?.length ?? 0} files`, `${rows.length}${rows.length === MAX_ROWS ? "+" : ""} из ${this.files?.length ?? 0} файлов`) : L(`${this.files?.length ?? 0} files, recently changed first · name in parts: pa news 11`, `${this.files?.length ?? 0} файлов, сначала недавно изменённые · имя можно частями: pa news 11`);
+    else if (this.mode === "text") status = q.length < 2 ? L("Text inside files, at least 2 characters", "Текст внутри файлов, хотя бы 2 символа") : L(`${rows.length} matches`, `${rows.length} совпадений`);
+    else status = q ? L(`${rows.length} lines in ${this.termText?.length ?? 0} terminals`, `${rows.length} строк в ${this.termText?.length ?? 0} терминалах`) : L(`Searching ${panes().filter((p) => p.terminal).length} terminals`, `Ищу по ${panes().filter((p) => p.terminal).length} терминалам`);
 
     return v_flex().id("find").track_focus(this.h).w_full().min_h(0).p(16).gap(10).bg(t.popover).text_size(fontSize("find.body"))
       .on_key_down((e, cx) => {
@@ -250,12 +256,12 @@ export default class Find extends View {
         .child(div().id("fd-esc").px(6).py(2).rounded(radius(5)).text_size(fontSize("find.meta")).text_color(t.dim).cursor_pointer()
           .hover((s) => s.bg(t.hover).text_color(t.foreground)).on_click(() => this.close()).child("Esc")))
       .child(h_flex().h(metric("find.input")).flex_none().px(10).gap(8).items_center().rounded(radius(9)).border_1().border_color(t.accent).bg(t.background)
-        .child(svg("mods/workspace-chrome/search.svg").size(15).text_color(t.dim))
+        .child(svg(agency() ? px("search") : "mods/workspace-chrome/search.svg").size(15).text_color(t.dim))
         .child(Input.new(this.input).flex_1().h_full().text_size(fontSize("find.input")).text_color(t.foreground)))
       .child(div().text_size(fontSize("find.meta")).text_color(this.error ? t.blocked : t.dim).child(status))
       .child(v_flex().id("fd-list").h(Math.min(420, Math.max(rows.length, 1) * (this.mode === "files" ? metric("find.fileRow") : metric("find.resultRow"))) * 1).flex_none().overflow_y_scrollbar().track_scroll(this.scroll)
         .children(rows.map(row)))
       .child(div().text_size(fontSize("find.hint")).text_color(t.dim)
-        .child("Tab режим · Enter открыть во вкладке · ⌘Enter в агента · ⌥Enter в приложении · ⌃↑ папка выше"));
+        .child(L("Tab mode · Enter open in a tab · ⌘Enter to agent · ⌥Enter in app · ⌃↑ folder up", "Tab режим · Enter открыть во вкладке · ⌘Enter в агента · ⌥Enter в приложении · ⌃↑ папка выше")));
   }
 }
