@@ -297,6 +297,16 @@ try {
    assert.deepEqual(heads().slice(0,2),[second,first]);assert.ok(state.get('projects.order.v1').length>=2);
    sp.pop();state.delete('projects.order.v1');tree=owner.render(cx);
  });
+ await test('a press released on a header button is not a drag: hovering another project later moves nothing',async()=>{
+   const plainDir=path.join(temp,'plain2');fs.mkdirSync(plainDir);sp.push({id:'plain2',name:'plain2',machine:null,folder:plainDir,tabs:[]});
+   owner.render(cx);await flush();tree=owner.render(cx);
+   const heads=()=>nodes(owner.render(cx)).map(n=>String(n.attrs.id)).filter(id=>/^project-\[/.test(id)&&!/-(fold|add)$/.test(id));
+   const [first,second]=heads();
+   byId(owner.render(cx),second).events.on_mouse_down();byId(owner.render(cx),`${second}-fold`).events.on_click({},cx);
+   byId(owner.render(cx),first).events.on_mouse_move({},cx);byId(owner.render(cx),first).events.on_mouse_up({},cx);
+   assert.deepEqual(heads().slice(0,2),[first,second]);assert.equal(state.get('projects.order.v1'),undefined);
+   byId(owner.render(cx),`${second}-fold`).events.on_click({},cx);sp.pop();tree=owner.render(cx);
+ });
  await test('only the window-focused session is current; hovering it never changes its look; project rows have no fill',()=>{
    ag.find(a=>a.address==='a2').focused=true;tree=owner.render(cx);
    const a1=byId(tree,'ag-a1'),a2=byId(tree,'ag-a2');

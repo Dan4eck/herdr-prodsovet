@@ -339,6 +339,7 @@ export class Agents {
         .hover((s) => s.bg(t.hover).text_color(t.foreground))
         .on_click((_e, cx) => {
           cx.stop_propagation();
+          this.dragEnd?.();
           open ? this.folded.add(a.address) : this.folded.delete(a.address);
           cx.notify();
         })
@@ -399,6 +400,7 @@ export class Agents {
         .tooltip(isPinned ? L("Unpin", "Открепить") : L("Pin to the top", "Закрепить сверху"))
         .on_click((_e, cx) => {
           cx.stop_propagation();
+          this.dragEnd?.();
           run("terminal.pin", { terminal: a.address, pinned: !isPinned });
           // The row moves away from under the pointer, and no hover-out comes.
           this.hovered = null;
@@ -437,6 +439,7 @@ export class Agents {
         .child(div().id(`agent-fold-${a.address}`).flex_none().w(52).flex().items_center().justify_center()
           .when(subs.length > 0, el => el.on_click((_e, cx) => {
             cx.stop_propagation();
+            this.dragEnd?.();
             this.folded.has(a.address) ? this.folded.delete(a.address) : this.folded.add(a.address);
             cx.notify();
           }))

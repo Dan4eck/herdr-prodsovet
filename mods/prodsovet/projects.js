@@ -89,6 +89,10 @@ export class ProjectTree {
     openSessionMenu(space);
   }
 
+  // Inner buttons stop their click, so the row under them never sees the
+  // release: they end the press here, or hovering later would draw a drop line.
+  release() { this.pressed = null; this.over = null; }
+
   // Press, move onto another row of the same kind and scope, release: `drop(from, to)`.
   // A plain click never moves (the row's own on_click still runs).
   drag(el, t, kind, id, scope, list, drop) {
@@ -141,6 +145,7 @@ export class ProjectTree {
       setShared(SESSION_ORDER, [...next, ...sessionOrder.filter(x => !next.includes(x) && all.some(k => k.address === x))]);
     };
     owner.dragCard = null;
+    owner.dragEnd = () => this.release();
     owner.rail = false;
     const view = shared(VIEW) === "sessions" ? "sessions" : "projects";
     owner.caption = null;
@@ -164,7 +169,7 @@ export class ProjectTree {
       .reduce((best, s) => (ranks[s] ?? 0) > (ranks[best] ?? 0) ? s : best, null);
     const button = (id, icon, hint, act, size = 14) => div().id(id).size(22).flex_none().flex().items_center().justify_center()
       .text_color(t.dim).hover(s => s.bg(t.hover).text_color(t.foreground)).tooltip(hint)
-      .on_click((_e, cx) => { cx.stop_propagation(); act(cx); }).child(svg(px(icon)).size(size));
+      .on_click((_e, cx) => { cx.stop_propagation(); this.release(); act(cx); }).child(svg(px(icon)).size(size));
     // Only an informative branch: the usual trunk names say nothing new.
     const TRUNK = new Set(["main", "master", "trunk", "develop", "dev"]);
     const branchMark = branch => h_flex().flex_none().max_w(96).gap(3).items_center().text_color(t.dim)

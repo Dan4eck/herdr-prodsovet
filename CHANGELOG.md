@@ -6,7 +6,8 @@ committed; the release moves it under the new version.
 
 ## Unreleased
 
-- Nothing yet.
+- PA-Advanced: a drop line no longer shows on hover after a click on a
+  row's fold, `+` or pin button.
 
 ## 0.4.0 (2026-11-16)
 
