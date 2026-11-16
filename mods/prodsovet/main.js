@@ -1,4 +1,4 @@
-import { appearance, fontSize, metric, radius, style, labelFont, brandFont, L, lang } from "./appearance.js";
+import { appearance, fontSize, metric, radius, style, labelFont, brandFont, L, lang, advanced } from "./appearance.js";
 // SPDX-License-Identifier: Apache-2.0
 // ProdAdvice for Herdr: customized interface and behavior, 2026. See NOTICE.
 // ПродСовет: custom workspace features with the standard Herdr styling.
@@ -337,7 +337,7 @@ export default class ProdSovet extends View {
         else if (name === "open-project") openProjectDialog();
         else if (name === "next-tab") nextProjectTab(1);
         else if (name === "prev-tab") nextProjectTab(-1);
-        else if (name === "new-menu" && shared("layout") === "ProdAdvice2") openSessionMenu();
+        else if (name === "new-menu" && advanced()) openSessionMenu();
         else if (name === "new-menu") openOverlay({ mod: "prodsovet", kind: "popup", width: 250, height: 512, props: { role: "new-menu" } });
         cx.notify();
       } });

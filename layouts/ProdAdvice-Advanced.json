@@ -182,8 +182,8 @@
   ],
   "background": "canvas",
   "theme": {
-    "light": "ProdAdvice2-light",
-    "dark": "ProdAdvice2"
+    "light": "ProdAdvice-Advanced-Day",
+    "dark": "ProdAdvice-Advanced-Night"
   },
   "terminal_padding": [
     14,
@@ -200,7 +200,7 @@
     16
   ],
   "toast": "prodsovet",
-  "preview": "layouts/prodadvice2.png",
+  "preview": "layouts/prodadvice-advanced.png",
   "ui_font": "Avenir Next",
   "font": "JetBrains Mono",
   "font_size": 14

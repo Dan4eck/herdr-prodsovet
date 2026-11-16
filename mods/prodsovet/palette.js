@@ -1,4 +1,4 @@
-import { appearance, profileName, allProfiles } from "./appearance.js";
+import { appearance, allProfiles } from "./appearance.js";
 // SPDX-License-Identifier: Apache-2.0
 // ProdAdvice for Herdr: customized interface and behavior, 2026. See NOTICE.
 // Only Codex and Claude receive an almost-black terminal tint.
@@ -16,7 +16,7 @@ export function withTerminal(agent, all) {
 }
 export function enabled(tree, dark) {
   const name = typeof tree?.theme === "string" ? tree.theme : tree?.theme?.[dark ? "dark" : "light"];
-  return dark && appearance().agentTints && name === profileName();
+  return dark && appearance().agentTints && name === appearance().darkThemeName;
 }
 export function agentTheme(t, agent, active) {
   const p = active && paletteFor(agent);

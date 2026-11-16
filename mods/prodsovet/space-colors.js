@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // ProdAdvice for Herdr: customized interface and behavior, 2026. See NOTICE.
-// Space colors, shared by the agency picker and the ProdAdvice2 project tree
+// Space colors, shared by the agency picker and the ProdAdvice-Advanced project tree
 // (moved here unchanged from picker.js).
 import { spaces, shared, setShared } from "herdr";
 

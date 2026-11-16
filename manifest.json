@@ -1,7 +1,7 @@
 {
   "name": "herdr-prodsovet",
-  "version": "0.3.0",
-  "herdr_tested": "0.1.15",
+  "version": "0.4.0",
+  "herdr_tested": "0.1.16",
   "platform": "macOS",
   "mods": [
     "prodsovet",
@@ -24,23 +24,27 @@
     "license_commit": "5216e6f9f8c0c281a65e09816c66e4319e671784"
   },
   "display_name": "ProdAdvice",
-  "layout": "ProdAdvice",
+  "layout": "ProdAdvice-Advanced",
   "layouts": [
-    "ProdAdvice",
-    "ProdAdvice2"
+    "ProdAdvice-Advanced",
+    "ProdAdvice-Light"
   ],
   "appearance_files": [
     "appearance_profiles.json",
     "sync_appearance.py",
-    "layouts/ProdAdvice.json",
-    "layouts/ProdAdvice2.json",
-    "layouts/prodadvice.png",
-    "layouts/prodadvice.svg",
-    "layouts/prodadvice2.png",
-    "layouts/prodadvice2.svg",
-    "themes/ProdAdvice.json",
-    "themes/ProdAdvice2.json",
-    "themes/ProdAdvice-light.json",
-    "themes/ProdAdvice2-light.json"
-  ]
+    "layouts/ProdAdvice-Advanced.json",
+    "layouts/ProdAdvice-Light.json",
+    "layouts/prodadvice-advanced.png",
+    "layouts/prodadvice-advanced.svg",
+    "layouts/prodadvice-light.png",
+    "layouts/prodadvice-light.svg",
+    "themes/ProdAdvice-Advanced-Night.json",
+    "themes/ProdAdvice-Advanced-Day.json",
+    "themes/ProdAdvice-Light-Night.json",
+    "themes/ProdAdvice-Light-Day.json"
+  ],
+  "former_layouts": {
+    "ProdAdvice": "ProdAdvice-Light",
+    "ProdAdvice2": "ProdAdvice-Advanced"
+  }
 }

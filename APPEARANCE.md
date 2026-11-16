@@ -1,15 +1,16 @@
 # Two independent appearances
 
-Select **ProdAdvice** or **ProdAdvice2** in Settings > Look (Cmd+Shift+L also
-opens the layout picker). ProdAdvice preserves the original dark design and includes its own light palette.
-ProdAdvice2 is an independent profile modeled on the ProdAdvice agency page
-(see "ProdAdvice2 design source" below).
+Select **ProdAdvice-Advanced** or **ProdAdvice-Light** in Settings > Look (Cmd+Shift+L also
+opens the layout picker). ProdAdvice-Light preserves the original dark design and includes its own light palette.
+ProdAdvice-Advanced is an independent profile modeled on the ProdAdvice agency page
+(see "ProdAdvice-Advanced design source" below).
 The feature code, file operations, workspace roots and documents are shared.
 
 ## Editing a profile
 
 Edit `appearance_profiles.json` in the installed Herdr home, normally
-`~/.config/herdr-app`. Change only `profiles.ProdAdvice2` for the new design.
+`~/.config/herdr-app`. Change only `profiles["ProdAdvice-Advanced"]` for the new design. Each profile names its own
+themes: `darkThemeName` (`…-Night`) and `lightTheme` (`…-Day`).
 Then run:
 
 ```sh
@@ -35,7 +36,7 @@ layout and each layout's geometry. Herdr hot-reloads the resulting files.
 | `agentPalettes`, `agentTints` | Codex/Claude pane colors and whether to apply them |
 | `lightTheme` | Installed light theme name |
 | `lightPalette` | Optional owned light palette, generated under `lightTheme`; null uses an existing theme |
-| `style` | Optional drawing style (below); omitted means the classic ProdAdvice drawing |
+| `style` | Optional drawing style (below); omitted means the ProdAdvice-Light drawing |
 
 `style` keys, each optional: `radiusScale` (0..2, multiplies every custom-mod
 corner radius; 0 gives square frames), `brandFont` (brand title font, null uses
@@ -48,11 +49,11 @@ constants in `sync_appearance.py`, not values borrowed from the other profile.
 `agentAccents` maps agent kinds (`claude`, `codex`, `gemini`, `hermes`,
 `other`) to `{dark, light}` colors; with it, working states, rails, spinners,
 selection bars and the active tab's strip use the agent's own color.
-ProdAdvice has no `style` block and draws exactly as before.
+ProdAdvice-Light has no `style` block and draws exactly as before.
 
-For example, set `profiles.ProdAdvice2.fonts.ui` to an installed font family,
-`profiles.ProdAdvice2.text.files.body` to `14`, and
-`profiles.ProdAdvice2.brandColors.dark` to `#8dabb5`. Colors use `#rrggbb`.
+For example, set `profiles.ProdAdvice-Advanced.fonts.ui` to an installed font family,
+`profiles.ProdAdvice-Advanced.text.files.body` to `14`, and
+`profiles.ProdAdvice-Advanced.brandColors.dark` to `#8dabb5`. Colors use `#rrggbb`.
 Font files are not bundled; install a custom font before selecting it.
 Increase the corresponding row height if larger text needs more room.
 
@@ -63,7 +64,7 @@ must not be edited directly; regeneration replaces them.
 ## Layout and host boundaries
 
 For panel widths, padding and overall arrangement, edit the corresponding
-`layouts/ProdAdvice.json` or `layouts/ProdAdvice2.json`. These are independent.
+`layouts/ProdAdvice.json` or `layouts/ProdAdvice-Advanced.json`. These are independent.
 The generator updates their font/theme/preview fields while retaining geometry.
 Stock Herdr components retain their own sizing rules; `text` and `metrics`
 control the custom mods. Some small icon sizes and padding remain in mod code.
@@ -84,7 +85,7 @@ reconcile them with the installer receipt before updating or uninstalling.
 
 ## Light terminal readability
 
-ProdAdvice uses ProdAdvice-light: a pale sage surface, dark ink and deep green
+ProdAdvice uses ProdAdvice-Light-Day: a pale sage surface, dark ink and deep green
 accents. It no longer depends on paper. ANSI colors and UI tokens are separately
 defined, and dark agent tints are released when switching to light mode.
 
@@ -95,12 +96,12 @@ personal installation was verified with this setting; it applies to all
 terminals, including dark mode. The public installer preserves user settings,
 so users with contrast set to 1 should change it themselves if needed.
 
-## ProdAdvice2 design source
+## ProdAdvice-Advanced design source
 
 Tokens come from the agency page source (`.ag2-*` page tokens and the site
 theme), checked against a local render on 2026-11-15:
 
-| Page token | Value | ProdAdvice2 use |
+| Page token | Value | ProdAdvice-Advanced use |
 |---|---|---|
 | `--site-ink` | `#000000` | dark `canvas` |
 | `--ag2-ink` | `#030403` | dark `chrome` (sidebar, tabs, status) |
@@ -122,7 +123,7 @@ monospace section labels and a left accent bar on the selected row (the case
 list). Halftone, hatch and glitch effects are page decoration and are not
 reproduced in a native terminal workspace.
 
-ProdAdvice2-light is the paper version: `#f3f4ef` surfaces, ink text `#0b0d0b`,
+ProdAdvice-Advanced-Day is the paper version: `#f3f4ef` surfaces, ink text `#0b0d0b`,
 rules `#c3c6c0` and a deep signal green `#1f7a0e` (about 4.9:1 on paper) instead of
 the neon accent, which is unreadable on light backgrounds.
 
@@ -136,7 +137,7 @@ declared fallback after SF Mono. Users who install SF Mono from Apple
 to `SF Mono`. Apple's license does not allow bundling it here. Fonts are not
 bundled; on other systems missing families fall back to Herdr defaults.
 
-## ProdAdvice2 agency decoration (`style.agency`)
+## ProdAdvice-Advanced agency decoration (`style.agency`)
 
 Added on 2026-11-15 after the agency page's dashboards. Neon `#39ff14` stays a
 brand signal only (PRODADVICE chip, terminal cursor, the title glitch). The
@@ -159,14 +160,14 @@ solid pixel icons in `mods/prodsovet/art/px`, the halftone in
   row): a 10% paper fill, never an agent's color; the one session with the
   window's focus also gets a 2 px paper bar. Hover is a 4% fill and only on
   rows that are not selected, so pointing at a selected row never changes it.
-  In ProdAdvice2 project rows have no fill: the active project reads bright,
+  In ProdAdvice-Advanced project rows have no fill: the active project reads bright,
   others are muted. Agent colors stay on mascots, icons and working spinners;
 - Spaces (`prodsovet` role `spaces`, derived from Herdr's stock mod): square
   letter tiles in the dashboard colors, mono machine headers, pixel icons;
 - Workshop: both sort orders as pixel buttons (clock = urgency, layers =
-  spaces); section labels get a colored square; ProdAdvice2 SESSIONS uses the
+  spaces); section labels get a colored square; ProdAdvice-Advanced SESSIONS uses the
   same pair (clock = status sections, `order` grip = your own order);
-- ProdAdvice2 PROJECTS: a 1 px rail ties a project's sessions and worktrees to
+- ProdAdvice-Advanced PROJECTS: a 1 px rail ties a project's sessions and worktrees to
   it; each worktree branches off that rail with its own rail, a mono branch
   name and a `WORKTREE` tag; fold arrows are solid chevrons, not pixel ones;
   the current session lights its stretch of that rail (one 2 px paper bar, `onRail`)
@@ -182,7 +183,7 @@ solid pixel icons in `mods/prodsovet/art/px`, the halftone in
 
 ## Right panel: Files, Changes, GitHub
 
-ProdAdvice2's right panel stacks three blocks, switched by buttons in the tab bar:
+ProdAdvice-Advanced's right panel stacks three blocks, switched by buttons in the tab bar:
 Files (`my-files`), Changes (`prodsovet` role `changes`, derived from Herdr's
 stock diff panel: status colors, file-type icons, the profile's type) and GitHub
 (`prodsovet` role `github`, new). GitHub reads the focused folder's repository
@@ -200,4 +201,4 @@ switches all mods at once. Stock Herdr blocks (footer, settings) keep Herdr's ow
 language. Input placeholders take the language their view was opened with.
 
 Rollback: Git tag `prodadvice2-pre-agency-2026-11-15` holds the previous
-ProdAdvice2 look.
+ProdAdvice-Advanced look.

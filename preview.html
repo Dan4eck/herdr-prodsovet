@@ -1,3 +1,82 @@
-<!doctype html><html lang="ru"><meta charset="utf-8"><title>ProdAdvice - illustrated preview</title><style>
-*{box-sizing:border-box}body{margin:0;background:#111611;color:#f3f4ef;font:14px -apple-system,BlinkMacSystemFont,sans-serif;padding:38px}h1{font-size:29px;margin:0 0 8px}p{color:#a6aaa4;margin:0 0 28px}.window{height:578px;display:flex;background:#030303;border:1px solid #333;border-radius:12px;overflow:hidden}.side{width:222px;border-right:1px solid #262626;padding:16px}.brand{color:#39ff14;font-weight:800;letter-spacing:3px;margin:16px 0 30px}.muted{color:#6a6a6a;font-size:11px;letter-spacing:1px}.space{padding:11px 8px}.active{background:#0e1a0c;border-radius:6px}.agents{margin-top:32px}.agent{display:flex;align-items:center;gap:8px;margin:18px 0}.sprite{width:48px;height:48px;background-size:768px 48px;background-position:0 0;flex:none}.agent small{display:block;font-size:9px;margin-top:7px;color:#a6aaa4}.work{flex:1;min-width:0;display:flex;flex-direction:column}.tabs{height:42px;border-bottom:1px solid #262626;display:flex;align-items:center;gap:24px;padding:0 17px;font-size:12px}.body{padding:8px;gap:8px;display:flex;flex:1;min-height:0}.terminal{flex:1;border:1px solid #7797ba;border-radius:10px;background:#090b0e;overflow:hidden}.panehead{height:30px;background:#11151b;font-size:11px;padding:8px 12px;color:#91abc9}.code{padding:20px;font:12px/1.9 monospace}.code span{color:#7797ba}.code b{color:#39ff14;font-weight:400}.files{width:246px;padding:12px 10px;background:#090909;border-radius:8px;font-size:12px}.toolbar{display:flex;justify-content:space-between;color:#a6aaa4;margin-bottom:18px}.filter{border:1px solid #333;border-radius:5px;color:#6a6a6a;padding:7px;margin:15px 0}.row{padding:8px 6px}.indent{padding-left:25px}.status{height:20px;border-top:1px solid #262626;font-size:10px;color:#a6aaa4;display:flex;align-items:center;gap:10px;padding:0 10px;white-space:nowrap}.status b{color:#39ff14;font-weight:400}.caption{margin:17px 0 0;font-size:11px;color:#a6aaa4}
-</style><h1>ProdAdvice <span style="font-size:15px;color:#a6aaa4;font-weight:400">/ Herdr</span></h1><p>Агенты, файлы и терминалы в одном рабочем пространстве.</p><div class="window"><aside class="side"><div style="color:#777">● ● ●</div><div class="brand" style="letter-spacing:0"><span style="color:#f3f4ef;font-size:17px">Herdr</span><br><span style="font-size:10px;font-weight:600;color:#7d9a72">ProdAdvice</span></div><div class="muted">ПРОСТРАНСТВА</div><div class="space active">▣ Demo project</div><div class="space">▣ Notes</div><div class="agents"><div class="muted">АГЕНТЫ</div><div class="agent"><div class="sprite" style="background-image:url(mods/prodsovet/art/creatures/codex-working.png)"></div><div>Codex<small>РАБОТАЕТ</small></div></div><div class="agent"><div class="sprite" style="background-image:url(mods/prodsovet/art/creatures/claude-idle.png)"></div><div>Claude<small>СПИТ</small></div></div><div class="agent"><div class="sprite" style="background-image:url(mods/prodsovet/art/creatures/hermes-blocked.png)"></div><div>Hermes<small>ЖДЁТ ТЕБЯ</small></div></div><div class="agent"><div class="sprite" style="background-image:url(mods/prodsovet/art/creatures/gemini-done.png)"></div><div>Gemini<small>ГОТОВО</small></div></div></div></aside><main class="work"><div class="tabs"><span style="color:#7797ba">▰▰▱▱▱ Codex</span><span>README.md</span><span>+</span></div><div class="body"><section class="terminal"><div class="panehead">Codex · demo_project</div><div class="code"><span>~/projects/demo_project</span><br><br>› Добавь поиск по заметкам<br><br>Проверяю структуру проекта.<br><br><b>✓</b> Индекс файлов<br><b>✓</b> Фильтрация результатов<br><span>▰▰▱▱▱</span> Проверка интерфейса<br><br><span>Изменения: src/search.js</span></div></section><aside class="files"><div class="toolbar"><span>demo_project</span><span>↑　↓　⌕　⋯</span></div><div class="filter">Фильтр дерева</div><div class="row">⌄　src</div><div class="row indent">◇　app.js</div><div class="row indent active">◇　search.js</div><div class="row">›　tests</div><div class="row">◇　README.md</div><div class="row">◇　package.json</div></aside></div><footer class="status">THIS MAC　 ⎇ main　 АГЕНТЫ 4 <b>РАБОТАЮТ 1</b>　! ЖДУТ 1　 ✓ ГОТОВО 1 <span style="margin-left:auto">⌘⇧P КОМАНДЫ</span></footer></main></div><p class="caption">Иллюстрация расположения панелей с вымышленными данными. Лимиты включаются отдельно.</p></html>
+<!doctype html><html lang="en"><meta charset="utf-8"><title>ProdAdvice-Advanced - illustrated preview</title><style>
+*{box-sizing:border-box}
+body{margin:0;width:1280px;height:800px;background:#0b0d0b;color:#f3f4ef;font:14px "Avenir Next",-apple-system,sans-serif;padding:34px 38px}
+.mono{font-family:"JetBrains Mono",Menlo,monospace}
+h1{font:400 34px "Bodoni 72",Didot,serif;margin:0 0 6px}h1 span{font:13px "JetBrains Mono",Menlo,monospace;color:#969b92;margin-left:10px;letter-spacing:1px}
+.lead{color:#969b92;margin:0 0 22px;font-size:14px}
+.window{height:600px;display:flex;flex-direction:column;background:#000;border:1px solid #292a29}
+.top{display:flex;flex:1;min-height:0}
+.side{width:300px;background:#030403;border-right:1px solid #292a29;display:flex;flex-direction:column}
+.brand{height:42px;display:flex;align-items:center;padding:0 16px;font:400 20px "Bodoni 72",Didot,serif;border-bottom:1px solid #292a29}
+.tabs{height:36px;display:flex;align-items:center;gap:14px;padding:0 12px;font:12px "JetBrains Mono",Menlo,monospace;letter-spacing:.5px}
+.tabs .on{border-bottom:2px solid #f3f4ef;padding:9px 0 8px}.tabs .off{color:#767f7a}
+.open{margin-left:auto;border:1px solid #292a29;color:#969b92;font:11px "Avenir Next",sans-serif;padding:3px 8px}
+.machine{display:flex;align-items:center;gap:7px;padding:6px 10px;font:10.5px "JetBrains Mono",Menlo,monospace;color:#969b92;font-weight:600}
+.machine i{flex:1;height:1px;background:#292a29}
+.proj{display:flex;align-items:center;gap:7px;height:32px;padding:0 10px 0 6px;font-size:14px}
+.proj.dim{color:#969b92}.proj b{font-weight:600}
+.fold{width:14px;color:#767f7a;font-size:13px;text-align:center}
+.tile{width:18px;height:18px;display:flex;align-items:center;justify-content:center;color:#000;font:700 10.5px "JetBrains Mono",Menlo,monospace}
+.count{margin-left:auto;border:1px solid #292a29;font:10px "JetBrains Mono",Menlo,monospace;color:#767f7a;padding:0 3px;min-width:16px;text-align:center}
+.plus{color:#767f7a;width:14px;text-align:center}
+.rail{margin-left:19px;padding-left:5px;border-left:1px solid #292a29}
+.card{display:flex;align-items:center;gap:8px;height:58px;padding:0 6px;position:relative}
+.card.on{background:#f3f4ef1a}.card.on:before{content:"";position:absolute;left:-6px;top:0;bottom:0;width:2px;background:#f3f4ef}
+.sprite{width:44px;height:44px;background-size:704px 44px;background-position:0 0;flex:none;image-rendering:pixelated}
+.card .t{font-size:13.5px}.card small{display:block;color:#767f7a;font-size:11px;margin-top:3px}
+.wt{display:flex;align-items:center;gap:6px;height:28px;padding-right:10px;font:12px "JetBrains Mono",Menlo,monospace}
+.wt .tick{width:6px;height:1px;background:#292a29;margin-left:-5px}
+.tag{border:1px solid #292a29;font-size:9px;color:#767f7a;padding:0 4px}
+.work{flex:1;min-width:0;display:flex;flex-direction:column}
+.bar{height:42px;display:flex;align-items:center;gap:8px;padding:0 10px;border-bottom:1px solid #292a29;font-size:13px}
+.ftab{padding:6px 12px;background:#f3f4ef1a;display:flex;gap:8px;align-items:center}.ftab.off{background:none;color:#969b92}
+.right{margin-left:auto;display:flex;gap:18px;color:#969b92;font-size:12.5px}.right .on{color:#f3f4ef}
+.body{flex:1;display:flex;gap:10px;padding:10px;min-height:0}
+.term{flex:1;border:1px solid #ffad55;background:#050705;display:flex;flex-direction:column}
+.ph{height:30px;display:flex;align-items:center;gap:10px;padding:0 12px;font-size:12px;color:#969b92;border-bottom:1px solid #292a29}
+.code{padding:16px 18px;font:12.5px/1.95 "JetBrains Mono",Menlo,monospace;color:#c9ccc5}.code .p{color:#a6bbff}.code .g{color:#7ee7ad}.code .w{color:#ffad55}
+.gh{width:270px;border:1px solid #292a29;background:#050705;padding:12px;font-size:12px}
+.gh h4{margin:0 0 12px;font:600 12px "JetBrains Mono",Menlo,monospace;letter-spacing:1px}.gh h4 span{color:#767f7a;font-weight:400;letter-spacing:0;margin-left:6px}
+.box{background:#0a0c0a;padding:9px 10px;margin-bottom:12px}.box .row{display:flex;justify-content:space-between}.box small{display:block;color:#969b92;margin-top:5px}
+.flow{display:flex;gap:8px;align-items:center;margin:9px 0}.flow i{width:8px;height:8px;background:#7ee7ad}.flow.r i{background:#ffad55}.flow span{margin-left:auto;color:#767f7a;font:10px "JetBrains Mono",Menlo,monospace}
+.status{height:22px;border-top:1px solid #292a29;display:flex;align-items:center;gap:14px;padding:0 12px;font:10px "JetBrains Mono",Menlo,monospace;color:#969b92;white-space:nowrap}.status b{color:#ffad55;font-weight:400}
+.caption{margin:14px 0 0;font-size:11.5px;color:#767f7a}
+</style>
+<h1>ProdAdvice<span>ADVANCED · HERDR</span></h1>
+<p class="lead">Projects, worktrees and agent sessions in one sidebar; files, changes and GitHub beside the terminal.</p>
+<div class="window"><div class="top">
+<aside class="side">
+ <div class="brand">Herdr</div>
+ <div class="tabs"><span class="on">PROJECTS</span><span class="off">SESSIONS</span><span class="open">Open</span></div>
+ <div class="machine">▭ THIS MAC <i></i></div>
+ <div class="proj"><span class="fold">⌄</span><span class="tile" style="background:#85dee7">N</span><b>notes-app</b><span class="count">3</span><span class="plus">+</span></div>
+ <div class="rail">
+  <div class="card on"><div class="sprite" style="background-image:url(mods/prodsovet/art/creatures/codex-working.png)"></div><div><div class="t">Add search to notes</div><small>4m</small></div></div>
+  <div class="card"><div class="sprite" style="background-image:url(mods/prodsovet/art/creatures/claude-done.png)"></div><div><div class="t">Review the sync module</div><small>12m</small></div></div>
+  <div class="wt"><span class="tick"></span><span class="fold">⌄</span><span style="color:#767f7a">⑂</span><span>feature/export</span><span class="tag">WORKTREE</span><span class="count">1</span><span class="plus">+</span></div>
+  <div class="rail" style="margin-left:13px"><div class="card"><div class="sprite" style="background-image:url(mods/prodsovet/art/creatures/gemini-blocked.png)"></div><div><div class="t">Export to Markdown</div><small>waiting for you · 2m</small></div></div></div>
+ </div>
+ <div class="proj dim"><span class="fold">›</span><span class="tile" style="background:#ffad55;opacity:.55">W</span>website<span class="count">1</span><span class="plus">+</span></div>
+ <div class="proj dim"><span class="fold">›</span><span class="tile" style="background:#a6bbff;opacity:.55">D</span>dotfiles<span class="plus" style="margin-left:auto">+</span></div>
+ <div class="machine" style="margin-top:10px">▤ BUILD-SERVER <i></i></div>
+ <div class="proj dim"><span class="fold">›</span><span class="tile" style="background:#cc9bfa;opacity:.55">A</span>api<span class="count">1</span><span class="plus">+</span></div>
+</aside>
+<main class="work">
+ <div class="bar"><span class="ftab"><span style="color:#a6bbff">▰▰▱</span>Codex 1</span><span class="ftab off">README.md</span><span class="ftab off">+</span><span class="right"><span>Files</span><span>Changes</span><span class="on">GitHub</span></span></div>
+ <div class="body">
+  <section class="term"><div class="ph"><span style="color:#ffad55">●</span>Codex <span style="color:#767f7a">~/projects/notes-app</span></div>
+  <div class="code"><span class="p">›</span> Add search to notes<br><br>Reading the project structure.<br><span class="g">✓</span> Build the file index<br><span class="g">✓</span> Filter results by title and text<br><span class="w">▰▰▱▱</span> Check the search panel<br><br><span class="p">Edited src/search.ts (+48 −6)</span></div></section>
+  <aside class="gh"><h4>GITHUB<span>you/notes-app</span></h4>
+   <div class="box"><div class="row"><span>⑂ main</span><span style="color:#7ee7ad">in sync</span></div><small>feat: add note tags and filters · 2h</small></div>
+   <div style="color:#767f7a;margin-bottom:10px">No pull request for this branch</div>
+   <div class="mono" style="font-size:10px;color:#969b92;letter-spacing:1px">WORKFLOWS 3</div>
+   <div class="flow"><i></i>Build and test<span>main 2h</span></div>
+   <div class="flow r"><i></i>Deploy preview<span>main now</span></div>
+   <div class="flow"><i></i>Lint<span>main 1d</span></div>
+  </aside>
+ </div>
+</main></div>
+<footer class="status">THIS MAC <span>⎇ main</span><span>AGENTS 4</span><b>WORKING 1</b><span style="color:#ff8176">WAITING 1</span><span style="margin-left:auto">⌘⇧P COMMANDS</span></footer>
+</div>
+<p class="caption">Illustration of the layout with fictional data, not a screenshot. Limits are opt-in.</p>
+</html>

@@ -14,13 +14,13 @@
   "mod:file-tab": {
     "cmd-s": "file-tab.save"
   },
-  "layout:ProdAdvice": {
+  "layout:ProdAdvice-Light": {
     "cmd-t": "prodsovet.new-terminal",
     "ctrl-t": "prodsovet.new-terminal",
     "cmd-d": "prodsovet.split-right",
     "cmd-shift-d": "prodsovet.split-down"
   },
-  "layout:ProdAdvice2": {
+  "layout:ProdAdvice-Advanced": {
     "cmd-t": "prodsovet.new-terminal",
     "ctrl-t": "prodsovet.new-terminal",
     "cmd-d": "prodsovet.split-right",

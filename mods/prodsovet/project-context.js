@@ -3,6 +3,7 @@
 import { spaces, panes, shared, run, openOverlay } from "herdr";
 import { workspace } from "./filesystem.js";
 import { pathKey } from "./project-model.js";
+import { advanced } from "./appearance.js";
 
 export function checkoutIdentity(space) {
   const cwd = workspace(space.id).cwd || space.folder;
@@ -21,7 +22,7 @@ export function checkoutContext(id) {
   const all = spaces(), active = all.find(s => id ? s.id === id : s.active);
   if (!active) return { space: null, key: null, spaces: [], tabs: [] };
   const key = checkoutIdentity(active);
-  const related = shared("layout") === "ProdAdvice2" ? all.filter(s => checkoutIdentity(s) === key) : [active];
+  const related = advanced() ? all.filter(s => checkoutIdentity(s) === key) : [active];
   return { space: active, key, spaces: related, tabs: related.flatMap(s => s.tabs.map(t => ({ ...t, active: Boolean(s.active && t.active), owner: s.id }))) };
 }
 

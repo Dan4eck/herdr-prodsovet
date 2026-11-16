@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Shared drawing pieces for ProdAdvice2's project dialogs and tree: mono step
+// Shared drawing pieces for ProdAdvice-Advanced's project dialogs and tree: mono step
 // labels, keyboard chips, agent glyph tiles and square project letter tiles.
 // Only the profile's own tokens, pixel icons and Herdr program icons are used.
 import { div, svg, image } from "gpui-kit";

@@ -1,4 +1,4 @@
-import { appearance, fontSize, metric, radius, L } from "./appearance.js";
+import { appearance, fontSize, metric, radius, L, advanced } from "./appearance.js";
 import { agency, accentOf, selected as selectedLook, hovered, icon } from "./agency.js";
 // SPDX-License-Identifier: Apache-2.0
 // ProdAdvice for Herdr: customized interface and behavior, 2026. See NOTICE.
@@ -55,7 +55,7 @@ export default class Tabs extends View {
     const t = theme();
     const context = checkoutContext();
     const space = context.space;
-    const unified = shared("layout") === "ProdAdvice2";
+    const unified = advanced();
     const shown = context.tabs;
     const active = shown.findIndex(tab => tab.active);
     const selected = shown[active]?.id;

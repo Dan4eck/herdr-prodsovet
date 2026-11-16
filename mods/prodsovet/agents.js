@@ -284,7 +284,7 @@ export class Agents {
       });
       listed.add(p.terminal);
     }
-    // ProdAdvice2 has no pinning: existing pins are left alone in core but ignored here.
+    // ProdAdvice-Advanced has no pinning: existing pins are left alone in core but ignored here.
     if (this.projects) list = list.filter(a => a.program?.agent || a.status != null).map(a => ({ ...a, pinned: false }));
     this.projectSpaces = this.projects ? new Map(list.map(a => [a.address, a.space])) : null;
     // Spaces read as in the Spaces list: a project root rather than "~".
@@ -384,7 +384,7 @@ export class Agents {
           .child(h_flex().w(14).flex_none().items_center().justify_center().child(this.status(t, a, true)));
       }
       const when = this.since(a);
-      // ProdAdvice2: only the session that really has the window's focus is current.
+      // ProdAdvice-Advanced: only the session that really has the window's focus is current.
       const on = this.projects ? Boolean(now_focus && (a.pane === now_focus.pane || a.address === now_focus.terminal || a.address === now_focus.agent)) : a.focused;
       const idle = a.status === "idle" && !on;
       const isPinned = a.pinned;
@@ -432,7 +432,7 @@ export class Agents {
           cx.notify();
         })
         .on_click(() => run("pane.focus", { pane: a.pane }))
-        // ProdAdvice2: the project tree makes cards draggable (reorder).
+        // ProdAdvice-Advanced: the project tree makes cards draggable (reorder).
         .when(Boolean(this.dragCard), el => this.dragCard(el, a))
         .child(div().id(`agent-fold-${a.address}`).flex_none().w(52).flex().items_center().justify_center()
           .when(subs.length > 0, el => el.on_click((_e, cx) => {

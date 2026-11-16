@@ -1,4 +1,4 @@
-import { appearance, fontSize, metric, radius, L } from "./appearance.js";
+import { appearance, fontSize, metric, radius, L, advanced } from "./appearance.js";
 import { agency, px } from "./agency.js";
 import { mono, tint, kbd, glyphTile, projectTile } from "./project-ui.js";
 import { leaf } from "./project-model.js";
@@ -52,7 +52,7 @@ export default class NewMenu extends View {
       .on_click(() => { if (enabled) { closeOverlay(props().overlay); action(); } })
       .child(icon).child(div().flex_1().child(name)).child(div().text_size(fontSize("newMenu.hint")).text_color(t.dim).child(hint));
   }
-  // ProdAdvice2: the checkout's session menu, drawn with the project dialog's pieces.
+  // ProdAdvice-Advanced: the checkout's session menu, drawn with the project dialog's pieces.
   projectRow(id, lead, name, action, hint = "", enabled = true, color = null) {
     const t = theme();
     return h_flex().id(id).h(32).px(8).gap(10).rounded(radius(5)).items_center().flex_none()
@@ -101,7 +101,7 @@ export default class NewMenu extends View {
   render() {
     const t = theme();
     const space = spaces().find(s => props()?.space ? s.id === props().space : s.active);
-    const projectMode = shared("layout") === "ProdAdvice2";
+    const projectMode = advanced();
     const installed = this.agents.filter(a => a.installed);
     const choices = this.failed ? installed : [...installed, ...this.agents.filter(a => !a.installed).slice(0, 2)];
     if (projectMode) return this.renderProject(space, choices, installed);

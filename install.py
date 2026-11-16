@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
-"""Reviewable installer. Dry-run by default; never replace existing mods or keys."""
+"""Reviewable installer. Dry-run by default; never replace existing mods or keys.
+
+An update replaces only files this installer wrote and nobody changed since."""
 import argparse
 import hashlib
 import json
@@ -12,6 +14,8 @@ import sys
 ROOT = Path(__file__).resolve().parent
 MANIFEST = json.loads((ROOT / 'manifest.json').read_text())
 RECEIPT = '.herdr-prodsovet-install.json'
+# Settings the person owns once written: kept as they are on update.
+PERSONAL = {'mods/prodsovet/limits.local.json'}
 
 
 def digest(data):
@@ -22,9 +26,13 @@ def safe(home, relative):
     relative = Path(relative)
     if relative.is_absolute() or '..' in relative.parts:
         raise ValueError('Unsafe package path')
-    dest = home / relative
-    if any(p.is_symlink() for p in [dest, *dest.parents]):
-        raise ValueError(f'Symlink destination refused: {relative}')
+    # Only links inside the Herdr home are refused; the home itself is resolved
+    # first, so a home under a linked folder (/var -> /private/var) works.
+    dest, part = home / relative, home
+    for name in relative.parts:
+        part = part / name
+        if part.is_symlink():
+            raise ValueError(f'Symlink destination refused: {relative}')
     return dest
 
 
@@ -64,9 +72,9 @@ def payload():
 
 
 def install(home, apply=False, skip_conflicts=False, with_limits=False):
-    home = Path(home).absolute()
+    home = Path(home).resolve()
     if safe(home, RECEIPT).exists():
-        raise ValueError('Already installed. See README for update instructions.')
+        raise ValueError('Already installed. Use --update to update it.')
     for name in MANIFEST['mods']:
         if safe(home, 'mods/' + name).exists():
             raise ValueError(f'Name collision: mods/{name}. Existing files are preserved.')
@@ -126,16 +134,109 @@ def install(home, apply=False, skip_conflicts=False, with_limits=False):
                 except OSError: break
                 parent = parent.parent
         raise
-    print('Installed. Check all five mods, then switch to layout ProdAdvice. Layout was not activated.')
+    print(f'Installed. Check all five mods, then switch to layout {MANIFEST["layout"]}. Layout was not activated.')
+
+
+def update(home, apply=False, skip_conflicts=False):
+    """Replace an earlier install with this package. Refuses before writing if
+    any file it owns was changed, or a new file would replace someone else's."""
+    home = Path(home).resolve()
+    receipt_path = safe(home, RECEIPT)
+    if not receipt_path.exists():
+        raise ValueError('Not installed by this installer; run a normal install.')
+    receipt = json.loads(receipt_path.read_text())
+    owned = receipt['files']
+    files = payload()
+    changed = [n for n, d in owned.items() if n not in PERSONAL and safe(home, n).exists() and digest(safe(home, n).read_bytes()) != d]
+    if changed:
+        raise ValueError('Modified files preserved: ' + ', '.join(sorted(changed)) + '. Save your edits elsewhere and restore or remove them before updating.')
+    for name, data in files.items():
+        p = safe(home, name)
+        if name not in owned and p.exists() and p.read_bytes() != data:
+            raise ValueError(f'Name collision: {name}')
+    write = {n: d for n, d in files.items() if not safe(home, n).exists() or safe(home, n).read_bytes() != d}
+    remove = [n for n in owned if n not in files and n not in PERSONAL]
+    # Bindings: drop the ones this installer added that the package no longer
+    # has (when still unchanged), add the package's new ones.
+    original, keys = read_keys(home)
+    package = json.loads((ROOT / 'keys.json').read_text())
+    added = {}
+    for section, bindings in receipt['added_keys'].items():
+        for key, action in bindings.items():
+            if package.get(section, {}).get(key) == action:
+                added.setdefault(section, {})[key] = action
+            elif keys.get(section, {}).get(key) == action:
+                del keys[section][key]
+                if not keys[section] and section not in receipt['original_sections']:
+                    del keys[section]
+    for section, bindings in package.items():
+        for key, action in bindings.items():
+            have = keys.get(section, {})
+            if key in have and have[key] != action:
+                if not skip_conflicts:
+                    raise ValueError(f'Key conflict: {section} / {key}. Use --skip-conflicting-keys to keep it.')
+                print(f'KEEP existing binding: {section} / {key}')
+            elif key not in have:
+                keys.setdefault(section, {})[key] = action
+                added.setdefault(section, {})[key] = action
+    print(f'{"UPDATE" if apply else "PLAN UPDATE"}: {receipt.get("version", "?")} -> {MANIFEST["version"]}: {len(write)} files written, {len(remove)} removed -> {home}')
+    for n in remove:
+        print(f'  remove {n}')
+    if not apply:
+        return
+    saved = {n: safe(home, n).read_bytes() for n in [*write, *remove] if safe(home, n).exists()}
+    try:
+        for name, data in write.items():
+            p = safe(home, name)
+            p.parent.mkdir(parents=True, exist_ok=True)
+            temp = p.with_name(p.name + '.prodsovet-tmp')
+            temp.write_bytes(data)
+            os.replace(temp, p)
+        for name in remove:
+            safe(home, name).unlink(missing_ok=True)
+        current, _ = read_keys(home)
+        if current != original:
+            raise ValueError('keys.json changed during the update; retry after closing Herdr.')
+        if keys != (json.loads(original) if original else {}):
+            atomic_json(home / 'keys.json', keys)
+        kept = {n: d for n, d in owned.items() if n in PERSONAL}
+        receipt.update(version=MANIFEST['version'], files={**kept, **{n: digest(d) for n, d in files.items()}}, added_keys=added)
+        atomic_json(receipt_path, receipt)
+    except Exception:
+        for name in write:
+            if name not in saved:
+                safe(home, name).unlink(missing_ok=True)
+        for name, data in saved.items():
+            safe(home, name).write_bytes(data)
+        if original is not None:
+            (home / 'keys.json').write_bytes(original)
+        raise
+    for name in remove:
+        parent = safe(home, name).parent
+        while parent != home and home in parent.parents:
+            try: parent.rmdir()
+            except OSError: break
+            parent = parent.parent
+    print(f'Updated. Check all five mods. Layouts are now {" and ".join(MANIFEST["layouts"])}.')
+    try:
+        current = json.loads((home / 'shared.json').read_text()).get('layout')
+    except (OSError, ValueError, AttributeError):
+        current = None
+    renamed = MANIFEST.get('former_layouts', {}).get(current)
+    if renamed:
+        print(f'Your window still uses the former layout name "{current}". Switch with:')
+        print(f'  herdr-app do layout.switch \'{{"name":"{renamed}"}}\'')
 
 
 def uninstall(home, apply=False):
-    home = Path(home).absolute()
+    home = Path(home).resolve()
     receipt_path = safe(home, RECEIPT)
     receipt = json.loads(receipt_path.read_text())
     for name, expected in receipt['files'].items():
         p = safe(home, name)
         if p.exists() and digest(p.read_bytes()) != expected:
+            if name in PERSONAL:
+                continue  # an edited personal setting is simply left in place
             raise ValueError(f'Modified file preserved: {name}. Save your edits and resolve before uninstalling.')
     _, keys = read_keys(home)
     for section, bindings in receipt['added_keys'].items():
@@ -153,8 +254,10 @@ def uninstall(home, apply=False):
         else:
             atomic_json(home / 'keys.json', keys)
     parents = set()
-    for name in receipt['files']:
+    for name, expected in receipt['files'].items():
         p = safe(home, name)
+        if name in PERSONAL and p.exists() and digest(p.read_bytes()) != expected:
+            continue
         p.unlink(missing_ok=True)
         parents.update(p.parents)
     receipt_path.unlink()
@@ -183,11 +286,15 @@ def main():
     parser.add_argument('--home', type=Path, default=Path(os.environ.get('HERDR_APP_HOME', str(Path.home() / '.config/herdr-app'))))
     parser.add_argument('--apply', action='store_true', help='Write changes; default is a dry run')
     parser.add_argument('--uninstall', action='store_true')
+    parser.add_argument('--update', action='store_true', help='Update an earlier install; refuses if you changed its files')
     parser.add_argument('--skip-conflicting-keys', action='store_true')
     parser.add_argument('--with-limits', action='store_true', help='Enable Keychain/Anthropic usage and local Codex session reading')
     args = parser.parse_args()
     if args.uninstall:
         uninstall(args.home, args.apply)
+    elif args.update:
+        dependencies(args.home.resolve())
+        update(args.home, args.apply, args.skip_conflicting_keys)
     else:
         dependencies(args.home)
         install(args.home, args.apply, args.skip_conflicting_keys, args.with_limits)

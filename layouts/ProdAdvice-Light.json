@@ -186,8 +186,8 @@
   ],
   "background": "canvas",
   "theme": {
-    "light": "ProdAdvice-light",
-    "dark": "ProdAdvice"
+    "light": "ProdAdvice-Light-Day",
+    "dark": "ProdAdvice-Light-Night"
   },
   "terminal_padding": [
     14,
@@ -204,7 +204,7 @@
     16
   ],
   "toast": "prodsovet",
-  "preview": "layouts/prodadvice.png",
+  "preview": "layouts/prodadvice-light.png",
   "ui_font": "Geist",
   "font": "JetBrains Mono",
   "font_size": 14

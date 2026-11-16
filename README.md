@@ -1,78 +1,56 @@
 # ProdAdvice
 
-A Russian-language workspace for Herdr: animated agent cards, editable file tabs,
-a practical file manager, full-project search and a compact status bar.
+A workspace layout for [Herdr](https://github.com/herdrdev/herdr-app) on macOS:
+projects and agent sessions in one sidebar, animated agents, editable file tabs,
+a file manager, Git changes, GitHub status and full-project search. English and
+Russian interface.
 
 ![Illustrated preview with fictional demo data](preview.png)
 
-The preview is an illustration of the layout, not a screenshot of a live session.
+The preview is an illustration with fictional data, not a screenshot.
 
-Settings > Look includes **ProdAdvice** and **ProdAdvice2**, each with its own
-illustrated thumbnail. ProdAdvice is the original rounded dark design.
-ProdAdvice2 follows the ProdAdvice agency page: ink and paper colors, square
-frames, Avenir Next interface text, a Bodoni 72 brand mark and monospace labels.
-Both share feature code; fonts, colors and main row sizes are independent. See [APPEARANCE.md](APPEARANCE.md). Internal mod identifiers remain `prodsovet` for compatibility.
+## Two layouts
+
+| | **ProdAdvice-Advanced** (recommended) | **ProdAdvice-Light** |
+|---|---|---|
+| Sidebar | PROJECTS / SESSIONS: projects, worktrees, sessions | Spaces + Workshop (agents) |
+| Open a project | Cmd+N: computer → first session → folder | Herdr's own flow |
+| Top tabs | all tabs of one checkout together | per Space |
+| Right panels | Files, Changes, GitHub | Files, Changes |
+| Go to (Cmd+P) | ProdAdvice picker | Herdr's picker |
+| Look | ink and paper, square frames, pixel icons | the original rounded dark design |
+
+Both have the same files, editor, search, Changes with commit suggestions,
+animated agents, status bar, limits and conversation forks. New work goes into
+Advanced; Light stays as the lighter, simpler variant. Each has a dark and a
+day theme (`…-Night`, `…-Day`). See [APPEARANCE.md](APPEARANCE.md).
 
 ## What is included
 
-- **prodsovet**: agent list and animated states, tabs/menus, pane headers, theme and a 20 px status bar with optional Claude/Codex limits.
-- **my-files**: navigation, tree filter, create file/folder, rename, duplicate, copy/cut/paste, Finder reveal and macOS Trash.
+- **prodsovet**: sidebars, agent cards and animations, tabs and menus, pane headers, GitHub panel, status bar with optional Claude/Codex limits.
+- **my-files**: navigation, tree filter, create, rename, duplicate, copy/cut/paste, Finder reveal and macOS Trash.
 - **file-tab**: text editor, Markdown preview, save, draft recovery and external editor actions.
 - **find**: project filename/content search using ripgrep.
 - **session_fork**: fork the focused Claude Code or Codex conversation into a new tab.
 
-Workspace roots stay stable when switching between agents and documents.
-New terminals and splits start in the current workspace root, even from a file tab.
-The mods work together; install the complete bundle for the documented behavior.
+The mods work together; install the complete bundle.
 
-## Projects in ProdAdvice2
+## Projects in ProdAdvice-Advanced
 
-ProdAdvice2 has one Projects sidebar instead of separate Spaces and Workshop
-panels. Each repository contains its main sessions and nested worktree sessions.
-Click a session to focus it, a project/worktree name to select its Space, and a
-chevron to fold the group. The + beside a checkout starts a session or opens the
-worktree dialog for that checkout, even when another Space is selected.
+- **PROJECTS** groups sessions by project. A thin rail ties a project's sessions
+  and its git worktrees together; the current session lights its stretch of the
+  rail. Projects on other machines appear under that machine's name.
+- **SESSIONS** lists every agent session in one list, each card naming its
+  project. Sort by status (needs you, done, working, resting) or in your own
+  order: drag cards (and projects) to rearrange.
+- **+** beside a project or worktree starts a session, a terminal or a worktree
+  there. **Open** (Cmd+N) opens a new project on this Mac or a remote machine.
 
-Agent sprites, statuses and subagents remain available. ProdAdvice2 has no
-pinning; existing pins are ignored there (classic ProdAdvice keeps them).
-The SESSIONS tab beside PROJECTS lists every agent session in one list, most
-urgent and most recent first, each card naming its project (and worktree
-branch); the chosen tab is remembered. Drag to reorder: project headers
-within their machine, sessions within their checkout on PROJECTS, and any
-session on SESSIONS. The order is shared by both tabs. SESSIONS has two sort
-buttons, as the old Workshop had: by status (clock; NEED YOU / DONE / WORKING /
-RESTING sections that fold) and your own order (a flat list; new sessions on
-top). A drag switches to your own order. Plain terminals are shown only in the top tab bar, without grey
-placeholder cards in the sidebar. Open files also appear only in the top tab
-bar. The sidebar lists agent sessions beneath projects and worktrees.
-Each worktree keeps its own native Space, files and Changes panel. Git identities
-and folds persist locally; closing the main Space does not remove its worktree
-group. Unavailable checkouts retain their cached association and show a warning.
-Legacy missing folders under Herdr's managed worktree path can be associated with
-an unambiguous open repository of the same managed name; arbitrary folders are
-never grouped by name alone. ProdAdvice retains its original two-panel sidebar.
-
-The single **Open…** action (Cmd+N) asks for the computer, then the first
-session (Terminal by default), then the project folder. Confirming a local
-folder in Finder opens it immediately with the selected terminal or agent.
-Canceling Finder leaves the chooser open. Remote folders take an absolute path
-on the selected machine and use an explicit Open button. An already open checkout is selected instead of duplicated.
-The + beside a project and the + in the tab bar only start sessions/worktrees
-for that checkout. Once a remote machine is known, projects are split under
-THIS MAC and one mono header per machine (with its offline state); headers
-have no creation button. A project row shows its letter tile, name, agent
-count and +; a branch appears only when it is not main/master, and a folded
-project shows its loudest non-idle status.
-
-The top tab bar combines all existing Spaces for the same checkout, including
-legacy duplicates. Worktrees and different machines retain separate tab sets.
-Ctrl+Tab / Ctrl+Shift+Tab and Cmd+Shift+] / Cmd+Shift+[ follow that same tab set.
-Existing terminals are not moved or stopped. Drag reordering stays within the
-native owning Space; clicking or keyboard navigation can cross duplicate Spaces.
+Details and stored state: [RECIPE.md](RECIPE.md).
 
 ## Requirements
 
-- **macOS**, Herdr App **0.1.15** is the tested version. Other versions are unverified.
+- **macOS**, Herdr App **0.1.16** is the tested version. Other versions are unverified.
 - `herdr-app`, `hc`, `python3` and `rg` on Herdr's PATH; `/usr/bin/trash` available.
 - Open Herdr once so its built-in mods are installed. Stock dependencies are in `manifest.json`.
 - Optional: Claude Code, Codex, Visual Studio Code or Obsidian for their respective actions.
@@ -98,10 +76,10 @@ for mod in prodsovet my-files file-tab find session_fork; do
 done
 ```
 
-If all five checks pass, switch with Cmd+Shift+L, choosing `ProdAdvice` or `ProdAdvice2`, or:
+If all five checks pass, switch to **ProdAdvice-Advanced** with Cmd+Shift+L or:
 
 ```sh
-herdr-app do layout.switch '{"name":"ProdAdvice"}'
+herdr-app do layout.switch '{"name":"ProdAdvice-Advanced"}'
 ```
 
 The installer does not activate the layout or change agent settings. It uses
@@ -135,8 +113,8 @@ Remove or disable the local config to stop collection on the next refresh.
 
 | Context | Key/action | Result |
 |---|---|---|
-| Either ProdAdvice layout | Cmd+T / Ctrl+T | Terminal in the workspace root |
-| Either ProdAdvice layout | Cmd+D / Cmd+Shift+D | Right/down split in that root |
+| Both layouts | Cmd+T / Ctrl+T | Terminal in the workspace root |
+| Both layouts | Cmd+D / Cmd+Shift+D | Right/down split in that root |
 | Global | Cmd+Shift+O | Project filename/content search |
 | Terminal | Cmd+Shift+F | Fork current conversation |
 | File tree | F2 | Rename selected item |
@@ -185,7 +163,7 @@ committing; generating or prefilling a message does not stage or commit files.
 
 ## Limits of this release
 
-One selected item at a time; no drag-and-drop. Directory listing is capped at
+File tree: one selected item at a time, no drag-and-drop. Directory listing is capped at
 500 entries per folder and 5,000 total. File loading uses Herdr's text-file API
 (1 MiB limit in the tested version). Saves detect changes on disk; open dirty
 files block rename/move/Trash. Cross-volume cut/move fails without deleting the
@@ -195,25 +173,34 @@ The public build includes the same mascot sprite strips as the original personal
 mod: Codex companion, Claude's Clawd, Gemini astronaut, Hermes girl and the
 generic robot for unknown agents. See [NOTICE](NOTICE) for attribution.
 
-## Uninstall and updates
+## Updates and uninstall
 
-Save your documents and switch to another layout before uninstalling; close
-file tabs opened by this bundle. Keep the installer available.
+Update from a newer copy of this repository, run from its root:
+
+```sh
+python3 install.py --update            # review the plan; does not write
+python3 install.py --update --apply    # replace the old version
+```
+
+An update replaces only files the installer wrote and nobody changed since,
+removes files the new version no longer has, and adds new key bindings. If you
+edited a package file, it stops before writing and names the file: save your
+edits elsewhere, put the original back (or delete the file) and run it again.
+`limits.local.json` is yours and is kept. Updating from 0.3 renames the layouts
+(ProdAdvice → ProdAdvice-Light, ProdAdvice2 → ProdAdvice-Advanced); the
+installer prints the switch command if your window still uses an old name.
 
 ```sh
 python3 install.py --uninstall           # inspect removal
 python3 install.py --uninstall --apply   # remove unchanged owned files/bindings
 ```
 
-Uninstall refuses to delete modified package files. Back up your edits separately
-and reconcile them before continuing. In particular, keep a copy of
-`limits.local.json` if you enabled/edited it after installation. User-created
-files and runtime state remain. Updated user key bindings remain. The receipt
-`.herdr-prodsovet-install.json` tracks ownership; do not publish it.
-
-For package updates: preserve local changes, uninstall the old package using its
-installer/receipt, install the new version, and reapply your changes. There is
-no automatic updater and no silent replacement of customized code.
+Save your documents and switch to another layout before uninstalling. Uninstall
+refuses to delete modified package files; your own files, runtime state, an
+edited `limits.local.json` and bindings you changed stay. Files Herdr's own
+checks create in a mod folder (`jsconfig.json`, `gpui-kit.d.ts`) keep that
+folder. The receipt `.herdr-prodsovet-install.json` tracks ownership; do not
+publish it.
 
 ## Development and publication
 
