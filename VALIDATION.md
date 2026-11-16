@@ -122,7 +122,7 @@ reported no errors. No existing sessions were closed, merged or restarted.
 Project opening now orders computer, first session, then folder. Terminal is
 the default, including after machine changes and late agent discovery. Local
 Finder confirmation launches immediately; cancellation leaves the dialog open.
-Remote paths retain explicit submission. The project suite has 29 passing
+Remote paths retain explicit submission. The project suite had 29 passing
 cases, including immediate terminal/agent launch from the picker, cancellation,
 duplicate-picker prevention, closing during selection, and terminal launch
 while agent discovery is pending. Folder-picker results use a mocked host; no
@@ -134,3 +134,49 @@ Open files are omitted from the Projects tree alongside plain terminals.
 Existing project tests verify that the sidebar contains neither a shell card
 nor a document row, while the unified top tab bar retains both kinds of tabs.
 No document or terminal is closed by this display change.
+
+## ProdAdvice2 project UI polish (2026-11-16)
+
+The open-project dialog, the checkout session popup and the Projects sidebar
+were redrawn with the profile's own tokens, pixel icons and mono labels. The
+dialog shows numbered steps (computer, first session, folder), computer tiles
+with monitor/server icons, session tiles with each agent's Herdr icon and
+accent, a dashed Finder target and a footer with the chosen agent's mascot.
+Follow-up the same day: machine sections are back as mono headers (THIS MAC,
+each remote machine, offline state), and project rows were decluttered: the
+letter tile, name, agent count and +; branch only when not a trunk name, status
+only on a folded project. A live frame of this sidebar was inspected. Behavior is unchanged: the 29 project cases and
+`verify.py` pass, the native check passes, and live frames of the sidebar,
+the local dialog and the session popup were inspected in the personal install
+(dark, English). The remote-path state, light mode and Russian strings were
+checked only through tests and code review, not in a live frame.
+
+## Sessions tab and no pinning (2026-11-16)
+
+ProdAdvice2 cards have no pin control and stored pins no longer reorder a
+checkout (classic ProdAdvice keeps pinning). The Projects sidebar has PROJECTS
+and SESSIONS tabs; SESSIONS lists all agents flat by urgency and recency with
+a project/worktree caption and the same navigation order. The project suite now
+has 31 cases (no pin control; the Sessions tab's content, order, click and tab
+persistence). A live frame of the Sessions tab was taken by temporarily making
+it the default in the installed copy only, then restoring the repository file;
+the person's stored tab choice was not written.
+
+## Drag reordering in ProdAdvice2 (2026-11-16)
+
+Project headers (within a machine) and session cards (within a checkout on
+PROJECTS, anywhere on SESSIONS) reorder by dragging; native spaces are not
+moved. The project suite has 34 cases, including a hand order in SESSIONS,
+a click that does not reorder, returning to urgency order, refusing a drag
+into another checkout, and a persisted project order. Drag gestures were not
+performed in the live window (no pointer automation was used); only a static
+live frame after installation was checked.
+
+## One neutral selection (2026-11-16)
+
+Agency selection no longer uses agent colors: a neutral fill for the active
+tab, the current session (plus a 2 px bar) and picker rows; hover applies
+only to unselected rows. ProdAdvice2 marks as current only the session with
+the window's focus (`focused()`), not every tab's focused pane, and project
+rows have no fill. A new project case checks this (35 cases). A live frame
+after installation showed one highlighted session and a bright active project.

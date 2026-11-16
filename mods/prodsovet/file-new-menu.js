@@ -1,11 +1,13 @@
 import { appearance, fontSize, metric, radius, L } from "./appearance.js";
 import { agency, px } from "./agency.js";
+import { mono, tint, kbd, glyphTile, projectTile } from "./project-ui.js";
+import { leaf } from "./project-model.js";
 // SPDX-License-Identifier: Apache-2.0
 // ProdAdvice for Herdr: customized interface and behavior, 2026. See NOTICE.
 import { newTerminal, workspace } from "./filesystem.js";
 import { View, div, svg, image } from "gpui-kit";
 import { h_flex, v_flex } from "gpui-base";
-import { theme, spaces, panes, knownAgents, run, openOverlay, closeOverlay, props, window, keys, shared, setShared } from "herdr";
+import { theme, spaces, panes, knownAgents, run, openOverlay, closeOverlay, props, window, keys, shared, setShared, home } from "herdr";
 
 // The last agents each machine reported, shown at once while knownAgents() checks again.
 const KNOWN = "new-menu.agents";
@@ -50,13 +52,60 @@ export default class NewMenu extends View {
       .on_click(() => { if (enabled) { closeOverlay(props().overlay); action(); } })
       .child(icon).child(div().flex_1().child(name)).child(div().text_size(fontSize("newMenu.hint")).text_color(t.dim).child(hint));
   }
+  // ProdAdvice2: the checkout's session menu, drawn with the project dialog's pieces.
+  projectRow(id, lead, name, action, hint = "", enabled = true, color = null) {
+    const t = theme();
+    return h_flex().id(id).h(32).px(8).gap(10).rounded(radius(5)).items_center().flex_none()
+      .text_color(enabled ? t.foreground : t.dim).when(!enabled, el => el.opacity(0.55))
+      .when(enabled, el => el.cursor_pointer().hover(s => s.bg((color ?? t.foreground) + "1c")))
+      .on_click(() => { if (enabled) { closeOverlay(props().overlay); action(); } })
+      .child(lead).child(div().flex_1().min_w(0).truncate().child(name))
+      .when(Boolean(hint), el => el.child(/^[0-9⌘⌃⌥⇧A-Za-z+]+$/.test(hint) ? kbd(t, hint) : div().font_family(mono()).text_size(10).text_color(t.dim).child(hint)));
+  }
+  renderProject(space, choices, installed) {
+    const t = theme();
+    const cwd = workspace(space?.id).cwd || "";
+    const name = cwd ? leaf(cwd) : L("Project", "Проект");
+    const where = cwd.startsWith(home() + "/") ? "~" + cwd.slice(home().length) : cwd;
+    const pxIcon = n => div().size(22).flex_none().flex().items_center().justify_center().child(svg(px(n)).size(15).text_color(t.muted));
+    const worktree = action => () => openOverlay({ mod: "worktree", kind: "dialog", width: action === "new" ? 460 : 560, height: action === "new" ? 280 : 480, props: { space: space?.id, folder: cwd, action } });
+    const rows = choices.length + (this.failed || this.agents.length === 0 ? 1 : 0);
+    return v_flex().id("new-menu").track_focus(this.handle).w_full().min_h(0).h(Math.min(540, 214 + Math.max(1, rows) * 32)).bg(t.popover).text_size(fontSize("newMenu.body"))
+      .on_key_down((e) => {
+        if (e.modifiers.control || e.modifiers.platform || e.modifiers.alt) return;
+        const agent = /^[1-9]$/.test(e.key) ? installed[Number(e.key) - 1] : null;
+        if (!agent) return;
+        closeOverlay(props().overlay);
+        newTerminal("tab", space?.id, agent.run, agent.name);
+      })
+      .child(v_flex().flex_none().px(12).pt(11).pb(10).gap(7).border_b(1).border_color(t.border)
+        .child(div().font_family(mono()).text_size(fontSize("agents.meta")).font_weight(appearance().weights.semibold).text_color(t.foreground).child(L("NEW SESSION", "НОВАЯ СЕССИЯ")))
+        .child(h_flex().gap(8).items_center().min_w(0)
+          .child(projectTile(t, space, name, 20))
+          .child(v_flex().flex_1().min_w(0)
+            .child(div().truncate().text_size(fontSize("agents.body")).font_weight(appearance().weights.semibold).text_color(t.foreground).child(name))
+            .child(div().truncate().tooltip(cwd).font_family(mono()).text_size(10).text_color(t.dim).child(where)))
+          .when(Boolean(space?.machine), el => el.child(svg(px("server")).size(13).flex_none().text_color(t.muted).tooltip(space.machine)))))
+      .child(v_flex().flex_1().min_h(0).p(5)
+        .child(div().px(8).pt(4).pb(4).font_family(mono()).text_size(10).text_color(t.dim).child(L("AGENTS", "АГЕНТЫ")))
+        .child(v_flex().flex_1().min_h(0).overflow_y_scrollbar()
+          .children(choices.map((a, i) => this.projectRow(a.key, glyphTile(t, a, 22, a.installed ? tint(t, a.key) : t.dim), a.name,
+            () => newTerminal("tab", space?.id, a.run, a.name), a.installed ? (i < 9 ? String(i + 1) : "") : L("not installed", "не установлен"), a.installed, tint(t, a.key))))
+          .when(this.failed || this.agents.length === 0, el => el.child(div().px(8).py(8).text_size(12).text_color(t.dim)
+            .child(this.failed ? L("Could not check installed agents", "Не удалось проверить агентов") : L("Checking installed agents…", "Проверяю установленных агентов…")))))
+        .child(div().h(1).mx(4).my(5).flex_none().bg(t.border))
+        .child(this.projectRow("terminal", pxIcon("terminal"), L("Open terminal", "Открыть терминал"), () => newTerminal("tab", space?.id), shortcut("tab.new")))
+        .child(this.projectRow("worktree", pxIcon("branch"), L("Create worktree…", "Создать worktree…"), worktree("new"), "", Boolean(space)))
+        .child(this.projectRow("worktree-open", pxIcon("folder"), L("Open worktree…", "Открыть worktree…"), worktree("open"), "", Boolean(space))));
+  }
   render() {
     const t = theme();
     const space = spaces().find(s => props()?.space ? s.id === props().space : s.active);
     const projectMode = shared("layout") === "ProdAdvice2";
     const installed = this.agents.filter(a => a.installed);
     const choices = this.failed ? installed : [...installed, ...this.agents.filter(a => !a.installed).slice(0, 2)];
-    return v_flex().min_h(0).w_full().h(Math.min(projectMode ? 520 : 491, (projectMode ? 215 : 167) + Math.max(1, choices.length + (this.failed ? 1 : 0)) * metric("newMenu.row"))).bg(t.popover).p(5).text_size(fontSize("newMenu.body"))
+    if (projectMode) return this.renderProject(space, choices, installed);
+    return v_flex().min_h(0).w_full().h(Math.min(491, 167 + Math.max(1, choices.length + (this.failed ? 1 : 0)) * metric("newMenu.row"))).bg(t.popover).p(5).text_size(fontSize("newMenu.body"))
       .id("new-menu").track_focus(this.handle)
       .on_key_down((e) => {
         if (e.modifiers.control || e.modifiers.platform || e.modifiers.alt) return;
@@ -65,18 +114,15 @@ export default class NewMenu extends View {
         closeOverlay(props().overlay);
         newTerminal("tab", space?.id, agent.run, agent.name);
       })
-      .when(!projectMode, el => el.child(this.row("terminal", svg(agency() ? px("terminal") : "icons/shell.svg").size(agency() ? 15 : 14), L("Terminal", "Терминал"), () => newTerminal("tab", space?.id), shortcut("tab.new"))))
-      .when(projectMode, el => el.child(div().px(9).pt(6).pb(2).truncate().text_color(t.foreground).child(L("New session", "Новая сессия")))
-        .child(div().px(9).pb(6).truncate().tooltip(workspace(space?.id).cwd || "").text_size(11).text_color(t.dim).child(workspace(space?.id).cwd || "")))
+      .child(this.row("terminal", svg(agency() ? px("terminal") : "icons/shell.svg").size(agency() ? 15 : 14), L("Terminal", "Терминал"), () => newTerminal("tab", space?.id), shortcut("tab.new")))
       .child(div().px(9).pt(8).pb(4).text_size(fontSize("newMenu.hint")).text_color(t.dim).child(L("Start an agent", "Запустить агента")))
       .child(v_flex().flex_1().min_h(0).overflow_y_scrollbar()
         .children(choices.map((a, i) => this.row(a.key, a.tint ? svg(a.icon).size(14).text_color(t.foreground) : image(a.icon).size(14), a.name,
           () => newTerminal("tab", space?.id, a.run, a.name), a.installed ? (i < 9 ? String(i + 1) : "") : L("not installed", "не установлен"), a.installed)))
         .when(this.failed || this.agents.length === 0, el => el.child(div().px(9).py(6).text_color(t.dim).child(this.failed ? L("Could not check installed agents", "Не удалось проверить агентов") : L("Checking installed agents…", "Проверяю установленных агентов…")))))
       .child(div().h(1).mx(4).my(5).bg(t.border))
-      .when(projectMode, el => el.child(this.row("terminal", svg(px("terminal")).size(15), L("Open terminal", "Открыть терминал"), () => newTerminal("tab", space?.id), shortcut("tab.new"))))
-      .when(!projectMode, el => el.child(this.row("space", (agency() ? svg(px("plus")).size(15) : div().w(14).child("+")), L("New space", "Новое пространство"), () => run("space.new"), shortcut("space.new"))))
-      .child(this.row("worktree", svg(agency() ? px("branch") : "mods/workspace-chrome/branch.svg").size(agency() ? 15 : 14), L("Create worktree…", "Создать worktree…"), () => openOverlay({ mod: "worktree", kind: "dialog", width: 460, height: 280, props: { space: space?.id, folder: (props()?.space || shared("layout") === "ProdAdvice2") ? workspace(space?.id).cwd : panes().find(p => p.focused)?.cwd, action: "new" } }), "", Boolean(space)))
-      .child(this.row("worktree-open", svg(agency() ? px("branch") : "mods/workspace-chrome/branch.svg").size(agency() ? 15 : 14), L("Open worktree\u2026", "Открыть worktree…"), () => openOverlay({ mod: "worktree", kind: "dialog", width: 560, height: 480, props: { space: space?.id, folder: (props()?.space || shared("layout") === "ProdAdvice2") ? workspace(space?.id).cwd : panes().find(p => p.focused)?.cwd, action: "open" } }), "", Boolean(space)));
+      .child(this.row("space", (agency() ? svg(px("plus")).size(15) : div().w(14).child("+")), L("New space", "Новое пространство"), () => run("space.new"), shortcut("space.new")))
+      .child(this.row("worktree", svg(agency() ? px("branch") : "mods/workspace-chrome/branch.svg").size(agency() ? 15 : 14), L("Create worktree…", "Создать worktree…"), () => openOverlay({ mod: "worktree", kind: "dialog", width: 460, height: 280, props: { space: space?.id, folder: props()?.space ? workspace(space?.id).cwd : panes().find(p => p.focused)?.cwd, action: "new" } }), "", Boolean(space)))
+      .child(this.row("worktree-open", svg(agency() ? px("branch") : "mods/workspace-chrome/branch.svg").size(agency() ? 15 : 14), L("Open worktree\u2026", "Открыть worktree…"), () => openOverlay({ mod: "worktree", kind: "dialog", width: 560, height: 480, props: { space: space?.id, folder: props()?.space ? workspace(space?.id).cwd : panes().find(p => p.focused)?.cwd, action: "open" } }), "", Boolean(space)));
   }
 }

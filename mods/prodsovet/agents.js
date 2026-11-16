@@ -7,7 +7,7 @@ import { div, image, svg } from "gpui-kit";
 import { word, artPath, artKind, ART_FRAMES } from "./creatures.js";
 import { spaceLabel } from "./filesystem.js";
 import { ProjectTree } from "./projects.js";
-import { agency, accentOf, selected, glitchy, halftone, typed, icon as assetIcon } from "./agency.js";
+import { agency, accentOf, current, hovered, glitchy, halftone, typed, icon as assetIcon } from "./agency.js";
 import { v_flex, h_flex } from "gpui-base";
 import { agents, terminals, panes, focused, spaces, run, theme, shared, setShared, setAgentOrder, openOverlay, closeOverlay, props, window, layout, appHome, exec } from "herdr";
 
@@ -229,8 +229,10 @@ export class Agents {
       .gap(0)
       .items_center()
       .text_size(fontSize("agents.compact"))
-      .when(on, (el) => el.bg(t.raised))
-      .hover((s) => s.bg(t.hover))
+      .when(on && !agency(), (el) => el.bg(t.raised))
+      .when(on && agency(), (el) => current(el, t))
+      .when(!on && !agency(), (el) => el.hover((s) => s.bg(t.hover)))
+      .when(!on && agency(), (el) => hovered(el, t))
       .on_click(() => (this.listed.has(k.address) ? run("pane.focus", { terminal: k.address }) : this.peek(k.address)))
       .when(!agency(), el => el.children(s.lines.map(l => div().self_start().mt(-4).w(9).h(17).mr(4).flex_none()
         .when(Boolean(l), el => el.border_l(1.5).border_color(t.input))
@@ -282,7 +284,8 @@ export class Agents {
       });
       listed.add(p.terminal);
     }
-    if (this.projects) list = list.filter(a => a.program?.agent || a.status != null);
+    // ProdAdvice2 has no pinning: existing pins are left alone in core but ignored here.
+    if (this.projects) list = list.filter(a => a.program?.agent || a.status != null).map(a => ({ ...a, pinned: false }));
     this.projectSpaces = this.projects ? new Map(list.map(a => [a.address, a.space])) : null;
     // Spaces read as in the Spaces list: a project root rather than "~".
     const spaceById = new Map(spaces().map((s) => [s.id, s]));
@@ -290,6 +293,7 @@ export class Agents {
     this.listed = new Map(list.map((a) => [a.address, a.status]));
     this.migratePins(all);
     const shown = focused()?.agent;
+    const now_focus = focused();
     const now = Date.now();
     this.track(list, now);
     // A kept sub-agent (one with a pane) is in agents() too: where a tree shows
@@ -380,7 +384,9 @@ export class Agents {
           .child(h_flex().w(14).flex_none().items_center().justify_center().child(this.status(t, a, true)));
       }
       const when = this.since(a);
-      const idle = a.status === "idle" && !a.focused;
+      // ProdAdvice2: only the session that really has the window's focus is current.
+      const on = this.projects ? Boolean(now_focus && (a.pane === now_focus.pane || a.address === now_focus.terminal || a.address === now_focus.agent)) : a.focused;
+      const idle = a.status === "idle" && !on;
       const isPinned = a.pinned;
       const pin = div()
         .id(`pin-${a.address}`)
@@ -390,7 +396,7 @@ export class Agents {
         .text_color(t.dim)
         .cursor_pointer()
         .hover((s) => s.bg(t.hover).text_color(t.foreground))
-        .tooltip(isPinned ? L("Unpin", "Открепить") : this.projects ? L("Pin in this checkout", "Закрепить в этом checkout") : L("Pin to the top", "Закрепить сверху"))
+        .tooltip(isPinned ? L("Unpin", "Открепить") : L("Pin to the top", "Закрепить сверху"))
         .on_click((_e, cx) => {
           cx.stop_propagation();
           run("terminal.pin", { terminal: a.address, pinned: !isPinned });
@@ -415,16 +421,19 @@ export class Agents {
         .gap(8)
         .rounded(radius(8))
         .when(a.focused && !agency(), (el) => el.bg(t.selected).when(style("selectionBar"), (e) => e.border_l(2).border_color(own).pl(4)))
-        .when(a.focused && agency(), (el) => selected(el, t, own))
+        .when(on && agency(), (el) => current(el, t))
         .when(agency(), (el) => el.relative())
         .cursor_pointer()
-        .hover((s) => s.bg(t.hover))
+        .when(!agency(), (el) => el.hover((s) => s.bg(t.hover)))
+        .when(agency() && !on, (el) => hovered(el, t))
         .on_hover((on, cx) => {
           if (on) this.hovered = a.address;
           else if (this.hovered === a.address) this.hovered = null;
           cx.notify();
         })
         .on_click(() => run("pane.focus", { pane: a.pane }))
+        // ProdAdvice2: the project tree makes cards draggable (reorder).
+        .when(Boolean(this.dragCard), el => this.dragCard(el, a))
         .child(div().id(`agent-fold-${a.address}`).flex_none().w(52).flex().items_center().justify_center()
           .when(subs.length > 0, el => el.on_click((_e, cx) => {
             cx.stop_propagation();
@@ -439,14 +448,14 @@ export class Agents {
           .child(h_flex().min_w(0).gap(5).items_center()
             .child(div().min_w(0).max_w(this.projects ? 1000 : full && more ? 100 : 180).truncate().text_size(fontSize("agents.body")).text_color(idle ? t.muted : t.foreground).when(Boolean(this.projects), el => el.tooltip(name)).child(name))
             .when(full && Boolean(more), el => el.child(div().flex_1().min_w(0).truncate().text_size(fontSize("agents.secondary")).text_color(t.dim).child(`\u00b7 ${more}`))))
-          .child(h_flex().gap(6).items_center().text_size(fontSize("agents.meta")).text_color(t.dim)
-            .when(a.status === "blocked", el => el.child(div().text_color(tint).child(word("blocked"))))
+          .child(h_flex().min_w(0).gap(6).items_center().text_size(fontSize("agents.meta")).text_color(t.dim)
+            .when(a.status === "blocked", el => el.child(div().flex_none().text_color(tint).child(word("blocked"))))
+            .when(Boolean(this.caption?.get(a.address)), el => el.child(this.caption.get(a.address)))
             .when(a.status == null, el => el.child(div().text_color(t.dim).child(a.program?.shell ? L("TERMINAL", "ТЕРМИНАЛ") : L("STATUS UNKNOWN", "СТАТУС НЕИЗВЕСТЕН"))))
-            .when(Boolean(machine), el => el.child(div().child(machine)))
-            .when(Boolean(when), el => el.child(div().child(duration(now - when))))))
-        .when(this.projects && isPinned, el => el.child(svg(chrome("pin")).size(12).text_color(t.dim)))
+            .when(Boolean(machine), el => el.child(div().flex_none().child(machine)))
+            .when(Boolean(when), el => el.child(div().flex_none().child(duration(now - when))))))
         .when(subs.length > 0, el => el.child(fold(a, subs)))
-        .when(this.hovered === a.address, el => el.child(pin));
+        .when(!this.projects && this.hovered === a.address, el => el.child(pin));
     };
 
     if (this.projects) return this.projects.render(cx, this, list, withKids, collapsed, t, all);

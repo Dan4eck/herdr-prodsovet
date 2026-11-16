@@ -1,5 +1,5 @@
 import { appearance, fontSize, metric, radius, L } from "./appearance.js";
-import { agency, accentOf, selected as selectedLook, icon } from "./agency.js";
+import { agency, accentOf, selected as selectedLook, hovered, icon } from "./agency.js";
 // SPDX-License-Identifier: Apache-2.0
 // ProdAdvice for Herdr: customized interface and behavior, 2026. See NOTICE.
 import { checkoutContext, selectProjectTab, nextProjectTab, openSessionMenu } from "./project-context.js";
@@ -71,15 +71,14 @@ export default class Tabs extends View {
       const program = panes().find(p => p.tab === c.id && p.program?.agent)?.program ?? panes().find(p => p.tab === c.id)?.program;
       const automatic = !c.named && (/^\d+$/.test(c.name) || /^tb\d+$/.test(c.name));
       const name = unified && automatic ? (program?.agent ? program.name : L("Terminal", "Терминал")) + ` ${i + 1}` : /^tb\d+$/.test(c.name) ? program?.name ?? "Terminal" : c.name;
-      // Agency: the active tab is filled with its agent's color.
-      const own = program?.agent ? accentOf(program, t) : t.muted;
+      // Agency: the active tab has the one neutral selected fill.
       const deco = agency() && c.active;
       return h_flex().id(`tab-${c.id}`).h(metric("tabs.row")).px(10).gap(7).rounded(radius(7)).items_center().flex_none().text_size(fontSize("tabs.body"))
         // A rename or status dot on this or an earlier tab can push the active one out.
         .when(i <= active, el => el.on_size_change((_size, cx) => { this.scroll.scroll_to_item(active); cx.notify(); }))
         .border(1).border_color(c.active && !deco ? t.border : t.chrome).bg(c.active ? t.raised : t.chrome).text_color(c.active ? t.foreground : t.muted)
-        .when(deco, el => selectedLook(el, t, own))
-        .hover(s => s.bg(t.hover))
+        .when(deco, el => selectedLook(el, t))
+        .when(!c.active, el => agency() ? hovered(el, t) : el.hover(s => s.bg(t.hover)))
         .on_mouse_down("left", (e, cx) => { cx.stop_propagation(); this.pressed = i; if (e.click_count === 2) run("tab.rename", { id: c.id }); })
         .on_mouse_up("left", () => {
           const from = this.pressed; this.pressed = null;

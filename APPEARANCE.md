@@ -155,8 +155,12 @@ solid pixel icons in `mods/prodsovet/art/px`, the halftone in
   the same way, much more rarely;
 - section titles SPACES, WORKSHOP and FILES share one style: mono, semibold,
   foreground color, the Files text size;
-- one "selected" look everywhere (active tab, focused agent, active space,
-  selected file): only a quiet fill in the owner's color;
+- one neutral "selected" look everywhere (active tab, current session, picker
+  row): a 10% paper fill, never an agent's color; the one session with the
+  window's focus also gets a 2 px paper bar. Hover is a 4% fill and only on
+  rows that are not selected, so pointing at a selected row never changes it.
+  In ProdAdvice2 project rows have no fill: the active project reads bright,
+  others are muted. Agent colors stay on mascots, icons and working spinners;
 - Spaces (`prodsovet` role `spaces`, derived from Herdr's stock mod): square
   letter tiles in the dashboard colors, mono machine headers, pixel icons;
 - Workshop: both sort orders as pixel buttons (clock = urgency, layers =

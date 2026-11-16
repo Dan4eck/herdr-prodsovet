@@ -12,36 +12,11 @@ import { appearance, fontSize, labelFont, L } from "./appearance.js";
 // computer or on each connected machine).
 
 import { div, svg } from "gpui-kit";
-import { px, accentOf } from "./agency.js";
+import { px } from "./agency.js";
 import { spaceLabel } from "./filesystem.js";
+import { spaceColor } from "./space-colors.js";
 import { v_flex, h_flex, InputState, Input } from "gpui-base";
 import { agents, spaces, terminals, run, hc, theme, settings, props, closeOverlay, openOverlay, shared, setShared } from "herdr";
-
-const MARK = { ansi6: "#85dee7", ansi3: "#ffad55", ansi4: "#a6bbff", ansi5: "#cc9bfa", ansi2: "#7ee7ad", ansi1: "#ff8176" };
-
-// Space colors, kept by space id in shared "space.colors": a theme
-// color name ("ansi6") or a picked #rrggbb. A space seen without one gets
-// the theme color fewest spaces use, once; every mod does the same in the
-// same order, so they agree, and adding or renaming spaces moves nothing.
-const PROJECT_COLORS = ["ansi6", "ansi3", "ansi4", "ansi5", "ansi2", "ansi1"];
-function spaceColors() {
-  const ids = new Set(spaces().map((p) => p.id));
-  const kept = Object.fromEntries(Object.entries(shared("space.colors") ?? {}).filter(([id]) => ids.has(id)));
-  let changed = Object.keys(kept).length !== Object.keys(shared("space.colors") ?? {}).length;
-  for (const p of spaces()) {
-    if (kept[p.id] || p.name === "~") continue;
-    const uses = (c) => Object.values(kept).filter((v) => v === c).length;
-    kept[p.id] = PROJECT_COLORS.reduce((best, c) => (uses(c) < uses(best) ? c : best));
-    changed = true;
-  }
-  if (changed) setShared("space.colors", kept);
-  return kept;
-}
-function spaceColor(t, p) {
-  if (p.name === "~") return t.dim;
-  const c = spaceColors()[p.id] ?? PROJECT_COLORS[0];
-  return c.startsWith("#") ? c : (MARK[c] ?? t[c]);
-}
 
 export class Picker {
   init(_props, cx) {
@@ -215,7 +190,6 @@ export class Picker {
       }
       const who = r.mine.map((a) => a.program?.name ?? "agent").join(" · ");
       const here = r.w.active && r.ctx.active;
-      const tint = r.mine[0]?.program ? accentOf(r.mine[0].program, t) : t.foreground;
       return h_flex()
         .id(`pk-${r.ctx.id}`)
         .mx(4)
@@ -224,8 +198,8 @@ export class Picker {
         .gap(10)
         .items_center()
         .cursor_pointer()
-        .when(on, (el) => el.bg(tint + "24"))
-        .hover((s) => s.bg(t.hover))
+        .when(on, (el) => el.bg(t.foreground + "1a"))
+        .when(!on, (el) => el.hover((s) => s.bg(t.foreground + "0b")))
         .on_click(() => this.go(r))
         .child(this.glyph(t, r.ctx.status))
         .child(div().flex_1().truncate().text_color(t.foreground).when(here, (d) => d.font_semibold()).child(r.ctx.name))

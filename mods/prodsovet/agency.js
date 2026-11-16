@@ -19,10 +19,19 @@ export function accentOf(program, t, status = "working") {
   return own ?? t[status] ?? t.accent;
 }
 
-// The one "selected" look everywhere (tab, agent, space, file): a quiet fill
-// in the owner's color, nothing else.
-export function selected(el, t, color) {
-  return el.bg((color ?? t.foreground) + "24");
+// One neutral look everywhere, never an owner's color (agent colors stay on
+// mascots, icons and working spinners). Selected: an 10% paper fill. Current
+// (the one focused session): that fill plus a 2 px paper bar on the left.
+// Hover: a 4% fill, only on rows that are not selected, so pointing at the
+// selected row never changes it.
+export function selected(el, t, _color) {
+  return el.bg(t.foreground + "1a");
+}
+export function current(el, t) {
+  return selected(el, t).relative().child(div().absolute().left(0).top(0).bottom(0).w(2).bg(t.foreground));
+}
+export function hovered(el, t) {
+  return el.hover(s => s.bg(t.foreground + "0b"));
 }
 
 // The 7 px halftone screen fading upwards (420 x 84), for the bottom of a column.

@@ -33,8 +33,15 @@ Click a session to focus it, a project/worktree name to select its Space, and a
 chevron to fold the group. The + beside a checkout starts a session or opens the
 worktree dialog for that checkout, even when another Space is selected.
 
-Agent sprites, statuses, subagents and pins remain available. Pins sort within
-their checkout. Plain terminals are shown only in the top tab bar, without grey
+Agent sprites, statuses and subagents remain available. ProdAdvice2 has no
+pinning; existing pins are ignored there (classic ProdAdvice keeps them).
+The SESSIONS tab beside PROJECTS lists every agent session in one list, most
+urgent and most recent first, each card naming its project (and worktree
+branch); the chosen tab is remembered. Drag to reorder: project headers
+within their machine, sessions within their checkout on PROJECTS, and any
+session on SESSIONS. The order is shared by both tabs; after a drag SESSIONS
+keeps the hand order (new sessions on top) until the clock button restores
+urgency order. Plain terminals are shown only in the top tab bar, without grey
 placeholder cards in the sidebar. Open files also appear only in the top tab
 bar. The sidebar lists agent sessions beneath projects and worktrees.
 Each worktree keeps its own native Space, files and Changes panel. Git identities
@@ -50,7 +57,11 @@ folder in Finder opens it immediately with the selected terminal or agent.
 Canceling Finder leaves the chooser open. Remote folders take an absolute path
 on the selected machine and use an explicit Open button. An already open checkout is selected instead of duplicated.
 The + beside a project and the + in the tab bar only start sessions/worktrees
-for that checkout; computer headers have no duplicate creation button.
+for that checkout. Once a remote machine is known, projects are split under
+THIS MAC and one mono header per machine (with its offline state); headers
+have no creation button. A project row shows its letter tile, name, agent
+count and +; a branch appears only when it is not main/master, and a folded
+project shows its loudest non-idle status.
 
 The top tab bar combines all existing Spaces for the same checkout, including
 legacy duplicates. Worktrees and different machines retain separate tab sets.

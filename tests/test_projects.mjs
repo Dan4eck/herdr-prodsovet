@@ -242,6 +242,55 @@ try {
    dialog.choice='codex';dialog.machine('server',cx);await flush();assert.equal(dialog.choice,'terminal');assert.equal(dialog.path,'');assert.equal(agentHosts.at(-1),'server');
    assert.ok(!byId(dialog.render(),'project-browse'));machineList.pop();pr={role:'projects'};
  });
+ await test('ProdAdvice2 cards offer no pinning and old pins do not reorder a checkout',()=>{
+   ag.find(a=>a.address==='a2').pinned=true;tree=owner.render(cx);
+   byId(tree,'ag-a1').events.on_hover(true,cx);tree=owner.render(cx);
+   assert.equal(nodes(tree).filter(n=>String(n.attrs.id).startsWith('pin-')).length,0);
+   assert.ok(!nodes(tree).some(n=>n.type==='svg'&&/pin(-off)?\.svg$/.test(String(n.attrs.path))));
+   assert.deepEqual(plain(order),['a1','a2','a3']);ag.find(a=>a.address==='a2').pinned=false;owner.hovered=null;
+ });
+ await test('Sessions tab lists every agent flat, says its project and keeps navigation in that order',()=>{
+   pr={role:'projects'};tree=owner.render(cx);calls.length=0;
+   byId(tree,'projects-view-sessions').events.on_click({},cx);assert.equal(state.get('projects.view.v1'),'sessions');
+   tree=owner.render(cx);
+   assert.ok(!byId(tree,pid));assert.ok(!byId(tree,cid));assert.ok(byId(tree,'ag-a1'));assert.ok(byId(tree,'ag-a2'));
+   assert.equal(nodes(tree).filter(n=>n.attrs.id==='sub-a3').length,1);assert.ok(!byId(tree,'ag-shell'));
+   assert.ok(text(byId(tree,'ag-a1')).includes('project'));assert.ok(text(byId(tree,'ag-a2')).includes('feature/dashboard'));
+   assert.deepEqual(plain(order),['a2','a3','a1']);
+   calls.length=0;byId(tree,'ag-a2').events.on_click();assert.deepEqual(plain(calls),[{name:'pane.focus',args:{pane:'p2'}}]);
+   assert.ok(byId(tree,'project-new'));
+   byId(tree,'projects-view-projects').events.on_click({},cx);assert.equal(state.get('projects.view.v1'),'projects');tree=owner.render(cx);assert.ok(byId(tree,pid));
+ });
+ await test('dragging a session in Sessions sets a hand order, a click does not, and urgency order can return',()=>{
+   state.set('projects.view.v1','sessions');tree=owner.render(cx);assert.deepEqual(plain(order),['a2','a3','a1']);
+   const press=(id)=>byId(owner.render(cx),id).events.on_mouse_down();
+   press('ag-a1');byId(owner.render(cx),'ag-a1').events.on_mouse_up({},cx);assert.equal(state.get('projects.sessionsManual.v1'),undefined);
+   press('ag-a1');byId(owner.render(cx),'ag-a2').events.on_mouse_move({},cx);byId(owner.render(cx),'ag-a2').events.on_mouse_up({},cx);
+   assert.equal(state.get('projects.sessionsManual.v1'),true);assert.deepEqual(plain(state.get('projects.sessionOrder.v1').slice(0,2)),['a1','a2']);
+   tree=owner.render(cx);assert.deepEqual(plain(order),['a1','a2','a3']);
+   byId(tree,'sessions-urgency').events.on_click({},cx);tree=owner.render(cx);assert.deepEqual(plain(order),['a2','a3','a1']);assert.ok(!byId(tree,'sessions-urgency'));
+   state.set('projects.view.v1','projects');state.delete('projects.sessionOrder.v1');state.delete('projects.sessionsManual.v1');tree=owner.render(cx);
+ });
+ await test('in Projects a session cannot be dragged into another checkout',()=>{
+   tree=owner.render(cx);byId(tree,'ag-a1').events.on_mouse_down();byId(owner.render(cx),'ag-a2').events.on_mouse_move({},cx);byId(owner.render(cx),'ag-a2').events.on_mouse_up({},cx);
+   assert.equal(state.get('projects.sessionOrder.v1'),undefined);owner.render(cx);assert.deepEqual(plain(order),['a1','a2','a3']);
+ });
+ await test('dragging a project header reorders projects on its machine and persists',async()=>{
+   const plainDir=path.join(temp,'plain');fs.mkdirSync(plainDir);sp.push({id:'plain',name:'plain',machine:null,folder:plainDir,tabs:[]});
+   owner.render(cx);await flush();tree=owner.render(cx);
+   const heads=()=>nodes(owner.render(cx)).map(n=>String(n.attrs.id)).filter(id=>/^project-\[/.test(id)&&!/-(fold|add)$/.test(id));
+   const [first,second]=heads();assert.ok(first&&second);
+   byId(owner.render(cx),second).events.on_mouse_down();byId(owner.render(cx),first).events.on_mouse_move({},cx);byId(owner.render(cx),first).events.on_mouse_up({},cx);
+   assert.deepEqual(heads().slice(0,2),[second,first]);assert.ok(state.get('projects.order.v1').length>=2);
+   sp.pop();state.delete('projects.order.v1');tree=owner.render(cx);
+ });
+ await test('only the window-focused session is current; hovering it never changes its look; project rows have no fill',()=>{
+   ag.find(a=>a.address==='a2').focused=true;tree=owner.render(cx);
+   const a1=byId(tree,'ag-a1'),a2=byId(tree,'ag-a2');
+   assert.equal(a1.attrs.bg,'#7777771a');assert.equal(a1.attrs.hover,undefined);
+   assert.notEqual(a2.attrs.bg,'#7777771a');assert.equal(typeof a2.attrs.hover,'function');
+   assert.notEqual(byId(tree,pid).attrs.bg,'#7777771a');ag.find(a=>a.address==='a2').focused=false;
+ });
  await test('classic workshop retains its grouping and does not list shell-only sessions',async()=>{
    pr={role:'agents'};state.set('layout','ProdAdvice');const old=new mod.namespace.Agents();old.init({},cx);await flush();tree=old.render(cx);
    assert.equal(old.projects,undefined);assert.ok(text(tree).includes('МАСТЕРСКАЯ'));assert.ok(!byId(tree,'project-list'));assert.ok(!byId(tree,'ag-shell'));

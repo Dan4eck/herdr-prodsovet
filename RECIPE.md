@@ -157,7 +157,13 @@ the window is active. No native spaces are reordered, merged or deleted.
 
 The + menu accepts an explicit Space and uses its saved workspace root for
 launches and worktree dialogs. Agent navigation follows project/checkout order.
-Pinned sessions sort within their checkout; adopted subagents in another Space
+ProdAdvice2 ignores pins and draws no pin control. The tree's SESSIONS tab
+(`projects.view.v1`) shows the same agents flat, sorted by urgency then recency,
+with a project caption; navigation follows that order. Drag reordering
+(mouse down/move/up, like the old Spaces list) stores `projects.order.v1`
+(project keys) and `projects.sessionOrder.v1` (agent addresses, applied inside
+each checkout); `projects.sessionsManual.v1` makes SESSIONS use it. Native
+spaces are never moved. Adopted subagents in another Space
 remain under that Space, while same-Space subagents appear beneath their parent.
 
 `project-context.js` supplies a common checkout scope for the sidebar and tab
@@ -168,3 +174,7 @@ tab. Panel visibility is remembered per checkout in ProdAdvice2.
 existing checkout or starts the selected first agent/terminal. No inherited
 focused cwd is used. The global open action and per-checkout session menu have
 distinct responsibilities; only agents appear as sidebar session cards.
+`project-ui.js` holds the shared drawing pieces (mono step labels, key chips,
+agent glyph tiles, mascots, project letter tiles); `space-colors.js` holds the
+Space colors used by both the picker and the project tree. Machines are mono
+section headers (monitor/server icon, offline state) in the tree.
