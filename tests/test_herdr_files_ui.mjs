@@ -54,12 +54,12 @@ try {
     const helper=(await load(app+'/mods/file-tab/appearance.js')).namespace;
     const original=editor.original;editor.code.set_value('profile-safe draft');
     const disk=fs.readFileSync(editor.file,'utf8');
-    helper.allProfiles['ProdAdvice-Advanced'].text.fileTab.editor=17;
-    shared.set('layout','ProdAdvice-Advanced');const cx=newCx();editor.refreshEditorStyle(cx);await Promise.all(cx.tasks);
+    helper.allProfiles['PA-Advanced'].text.fileTab.editor=17;
+    shared.set('layout','PA-Advanced');const cx=newCx();editor.refreshEditorStyle(cx);await Promise.all(cx.tasks);
     assert.equal(editor.code.value(),'profile-safe draft');assert.equal(editor.original,original);
     assert.equal(editor.dirty(),true);assert.equal(fs.readFileSync(editor.file,'utf8'),disk);
     assert.equal(JSON.parse(editor.editorStyle).font_size,17);
-    shared.set('layout','ProdAdvice-Light');const restore=newCx();editor.refreshEditorStyle(restore);await Promise.all(restore.tasks);
+    shared.set('layout','PA-Light');const restore=newCx();editor.refreshEditorStyle(restore);await Promise.all(restore.tasks);
     assert.equal(editor.code.value(),'profile-safe draft');assert.equal(JSON.parse(editor.editorStyle).font_size,13);
   });
   await test('hot reload retains unsaved recovery state',async()=>{editor.syncDocument();editor.code.set_value('close recovery');await editor.close();assert.equal(JSON.parse(storage.get('draft')).text,'close recovery');});

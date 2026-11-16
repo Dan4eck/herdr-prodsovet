@@ -3,7 +3,7 @@ import { appearance, fontSize, labelFont, L } from "./appearance.js";
 // ProdAdvice for Herdr: customized interface and behavior, 2026. See NOTICE.
 // Derived from Herdr App's stock "picker" mod (Apache-2.0): agency styling
 // (square space tiles in the dashboard colors, pixel icons, tinted selection,
-// mono labels) and EN/RU strings. Opened by prodsovet.picker (Cmd+P in ProdAdvice-Advanced).
+// mono labels) and EN/RU strings. Opened by prodsovet.picker (Cmd+P in PA-Advanced).
 //
 // Go to a tab. Drops from the Terminals layout's space chip (popup, at: "top"). Spaces with
 // something that needs you come first, quiet spaces (no agent running)

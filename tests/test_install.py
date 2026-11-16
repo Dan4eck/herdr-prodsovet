@@ -38,14 +38,14 @@ class InstallTests(unittest.TestCase):
         (self.home / 'shared.json').write_text('{"private":"keep"}')
         installer.install(self.home, apply=True)
         self.assertTrue((self.home / 'mods/prodsovet/main.js').exists())
-        layout = json.loads((self.home / 'layouts/ProdAdvice-Light.json').read_text())
+        layout = json.loads((self.home / 'layouts/PA-Light.json').read_text())
         self.assertTrue((self.home / layout['preview']).is_file())
-        self.assertIn('layout:ProdAdvice-Light', json.loads((self.home / 'keys.json').read_text()))
+        self.assertIn('layout:PA-Light', json.loads((self.home / 'keys.json').read_text()))
         self.assertFalse((self.home / 'layouts/prodsovet.json').exists())
-        self.assertTrue((self.home / 'layouts/ProdAdvice-Advanced.json').is_file())
-        self.assertTrue((self.home / 'themes/ProdAdvice-Advanced-Night.json').is_file())
-        self.assertTrue((self.home / 'themes/ProdAdvice-Advanced-Day.json').is_file())
-        self.assertIn('layout:ProdAdvice-Advanced', json.loads((self.home / 'keys.json').read_text()))
+        self.assertTrue((self.home / 'layouts/PA-Advanced.json').is_file())
+        self.assertTrue((self.home / 'themes/PA-Advanced-Night.json').is_file())
+        self.assertTrue((self.home / 'themes/PA-Advanced-Day.json').is_file())
+        self.assertIn('layout:PA-Advanced', json.loads((self.home / 'keys.json').read_text()))
         self.assertTrue((self.home / 'appearance_profiles.json').is_file())
         self.assertTrue((self.home / 'sync_appearance.py').is_file())
         self.assertFalse((self.home / 'mods/prodsovet/limits.local.json').exists())
@@ -128,7 +128,7 @@ class InstallTests(unittest.TestCase):
         self.assertEqual((self.home / 'mods/prodsovet/main.js').read_bytes(), (ROOT / 'mods/prodsovet/main.js').read_bytes())
         keys = json.loads((self.home / 'keys.json').read_text())
         self.assertNotIn('layout:ProdAdvice2', keys)
-        self.assertIn('layout:ProdAdvice-Advanced', keys)
+        self.assertIn('layout:PA-Advanced', keys)
         self.assertEqual(keys['global']['cmd-z'], 'custom')
         receipt = json.loads((self.home / installer.RECEIPT).read_text())
         self.assertEqual(receipt['version'], installer.MANIFEST['version'])
@@ -191,11 +191,11 @@ class LimitsTests(unittest.TestCase):
         spec = importlib.util.spec_from_file_location('sync_appearance', ROOT / 'sync_appearance.py')
         sync = importlib.util.module_from_spec(spec); spec.loader.exec_module(sync)
         config = json.loads((ROOT / 'appearance_profiles.json').read_text())
-        self.assertNotIn('style', config['profiles']['ProdAdvice-Light'])
+        self.assertNotIn('style', config['profiles']['PA-Light'])
         sync.validate(json.loads(json.dumps(config)))
         for bad in ({'unknown': 1}, {'radiusScale': -1}, {'labelFont': 'serif'}, {'brandChip': 'yes'}):
             broken = json.loads(json.dumps(config))
-            broken['profiles']['ProdAdvice-Advanced']['style'] = bad
+            broken['profiles']['PA-Advanced']['style'] = bad
             with self.assertRaises(ValueError):
                 sync.validate(broken)
 

@@ -11,7 +11,7 @@ The preview is an illustration with fictional data, not a screenshot.
 
 ## Two layouts
 
-| | **ProdAdvice-Advanced** (recommended) | **ProdAdvice-Light** |
+| | **PA-Advanced** (recommended) | **PA-Light** |
 |---|---|---|
 | Sidebar | PROJECTS / SESSIONS: projects, worktrees, sessions | Spaces + Workshop (agents) |
 | Open a project | Cmd+N: computer → first session → folder | Herdr's own flow |
@@ -35,7 +35,7 @@ day theme (`…-Night`, `…-Day`). See [APPEARANCE.md](APPEARANCE.md).
 
 The mods work together; install the complete bundle.
 
-## Projects in ProdAdvice-Advanced
+## Projects in PA-Advanced
 
 - **PROJECTS** groups sessions by project. A thin rail ties a project's sessions
   and its git worktrees together; the current session lights its stretch of the
@@ -76,10 +76,10 @@ for mod in prodsovet my-files file-tab find session_fork; do
 done
 ```
 
-If all five checks pass, switch to **ProdAdvice-Advanced** with Cmd+Shift+L or:
+If all five checks pass, switch to **PA-Advanced** with Cmd+Shift+L or:
 
 ```sh
-herdr-app do layout.switch '{"name":"ProdAdvice-Advanced"}'
+herdr-app do layout.switch '{"name":"PA-Advanced"}'
 ```
 
 The installer does not activate the layout or change agent settings. It uses
@@ -187,7 +187,7 @@ removes files the new version no longer has, and adds new key bindings. If you
 edited a package file, it stops before writing and names the file: save your
 edits elsewhere, put the original back (or delete the file) and run it again.
 `limits.local.json` is yours and is kept. Updating from 0.3 renames the layouts
-(ProdAdvice → ProdAdvice-Light, ProdAdvice2 → ProdAdvice-Advanced); the
+(ProdAdvice → PA-Light, ProdAdvice2 → PA-Advanced); the
 installer prints the switch command if your window still uses an old name.
 
 ```sh

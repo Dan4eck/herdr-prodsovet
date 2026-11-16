@@ -52,7 +52,7 @@ export default class NewMenu extends View {
       .on_click(() => { if (enabled) { closeOverlay(props().overlay); action(); } })
       .child(icon).child(div().flex_1().child(name)).child(div().text_size(fontSize("newMenu.hint")).text_color(t.dim).child(hint));
   }
-  // ProdAdvice-Advanced: the checkout's session menu, drawn with the project dialog's pieces.
+  // PA-Advanced: the checkout's session menu, drawn with the project dialog's pieces.
   projectRow(id, lead, name, action, hint = "", enabled = true, color = null) {
     const t = theme();
     return h_flex().id(id).h(32).px(8).gap(10).rounded(radius(5)).items_center().flex_none()

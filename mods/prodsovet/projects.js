@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// One project tree for ProdAdvice-Advanced. Spaces remain independent native workspaces.
+// One project tree for PA-Advanced. Spaces remain independent native workspaces.
 import { div, svg } from "gpui-kit";
 import { h_flex, v_flex } from "gpui-base";
 import { spaces, machines, shared, setShared, exec, run, openOverlay, home, window, setAgentOrder } from "herdr";
@@ -12,7 +12,7 @@ import { pathKey, leaf, inspectCheckout, projectGroups } from "./project-model.j
 
 const CACHE = "projects.checkouts.v1";
 const FOLDS = "projects.folded.v1";
-// Which sidebar tab ProdAdvice-Advanced shows: "projects" (the tree) or "sessions" (one flat list).
+// Which sidebar tab PA-Advanced shows: "projects" (the tree) or "sessions" (one flat list).
 export const VIEW = "projects.view.v1";
 // Hand order, shared by both tabs: project keys, and agent addresses (the
 // Projects tab applies it inside each checkout). The Sessions tab follows the

@@ -206,8 +206,8 @@ no rail, keeps the card bar. The focused-session test checks both placements.
 ## 0.4.0: layout names, updater, preview (2026-11-16)
 
 Layouts renamed (hyphens, not spaces: Herdr 0.1.16 rejects the whole keys.json when a
-`layout:<name>` section contains a space, seen live and reverted at once): ProdAdvice → **ProdAdvice-Light**, ProdAdvice2 → **ProdAdvice
-Advanced** (recommended). Themes: `ProdAdvice-Light-Night/Day`, `ProdAdvice
+`layout:<name>` section contains a space, seen live and reverted at once): ProdAdvice → **PA-Light**, ProdAdvice2 → **ProdAdvice
+Advanced** (recommended). Themes: `PA-Light-Night/Day`, `ProdAdvice
 Advanced Night/Day`; each profile names its dark theme (`darkThemeName`). Code
 asks `advanced()` instead of comparing layout names; former names still map to
 their profiles. `install.py --update` replaces an earlier install (refuses on
@@ -218,3 +218,7 @@ on an edited file, kept limits, missing install, linked home). Appearance suite:
 13 (former names). Herdr 0.1.16 is the tested version. preview.png and the
 Advanced thumbnail were redrawn from preview.html/the SVG with fictional data
 and rendered with agent-browser; they are illustrations, not native frames.
+Renamed again the same day to the short **PA-Advanced** / **PA-Light** (themes
+`PA-*-Night`, `PA-*-Day`, previews `layouts/pa-*.png`); the brief
+`ProdAdvice-Advanced` / `ProdAdvice-Light` names also map to their profiles and
+are listed in `former_layouts` so `--update` removes them and prints the switch.

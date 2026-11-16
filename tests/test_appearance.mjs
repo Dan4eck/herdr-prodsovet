@@ -4,7 +4,7 @@ import path from 'node:path';
 import vm from 'node:vm';
 import {fileURLToPath} from 'node:url';
 const root=fileURLToPath(new URL('..',import.meta.url));
-let active='ProdAdvice-Light';
+let active='PA-Light';
 const context=vm.createContext({JSON,Object,Number,Error});
 const modules=new Map();
 let dark=true;
@@ -20,66 +20,66 @@ const palette=await load(path.join(root,'mods/prodsovet/palette.js'));await pale
 const p=palette.namespace;
 let count=0;
 function test(name,fn){fn();console.log(`ok ${++count} - ${name}`);}
-test('unknown layouts keep compatible defaults',()=>{active='main';assert.equal(a.profileName(),'ProdAdvice-Light');assert.equal(a.fontSize('files.body'),13);});
+test('unknown layouts keep compatible defaults',()=>{active='main';assert.equal(a.profileName(),'PA-Light');assert.equal(a.fontSize('files.body'),13);});
 test('former layout names (0.3) still pick their renamed profile',()=>{
- active='ProdAdvice2';assert.equal(a.profileName(),'ProdAdvice-Advanced');assert.equal(a.advanced(),true);
- active='ProdAdvice';assert.equal(a.profileName(),'ProdAdvice-Light');assert.equal(a.advanced(),false);
- active='ProdAdvice-Advanced';assert.equal(a.advanced(),true);assert.equal(a.appearance().darkThemeName,'ProdAdvice-Advanced-Night');
- active='ProdAdvice-Light';
+ active='ProdAdvice2';assert.equal(a.profileName(),'PA-Advanced');assert.equal(a.advanced(),true);
+ active='ProdAdvice';assert.equal(a.profileName(),'PA-Light');assert.equal(a.advanced(),false);
+ active='PA-Advanced';assert.equal(a.advanced(),true);assert.equal(a.appearance().darkThemeName,'PA-Advanced-Night');
+ active='PA-Light';
 });
 test('profiles own independent typography and palette objects',()=>{
- const x=JSON.parse(JSON.stringify(a.appearance('ProdAdvice-Light'))),y=JSON.parse(JSON.stringify(a.appearance('ProdAdvice-Advanced')));
- assert.equal(x.lightTheme,'ProdAdvice-Light-Day');assert.equal(y.lightTheme,'ProdAdvice-Advanced-Day');
+ const x=JSON.parse(JSON.stringify(a.appearance('PA-Light'))),y=JSON.parse(JSON.stringify(a.appearance('PA-Advanced')));
+ assert.equal(x.lightTheme,'PA-Light-Day');assert.equal(y.lightTheme,'PA-Advanced-Day');
  assert.equal(x.lightPalette.background,'#f7f9f4');assert.notEqual(y.lightPalette.background,x.lightPalette.background);
- assert.notEqual(a.appearance('ProdAdvice-Light').text,a.appearance('ProdAdvice-Advanced').text);
+ assert.notEqual(a.appearance('PA-Light').text,a.appearance('PA-Advanced').text);
 });
 test('classic profile without a style block keeps the original drawing style',()=>{
- active='ProdAdvice-Light';assert.equal(a.appearance().style,undefined);
+ active='PA-Light';assert.equal(a.appearance().style,undefined);
  assert.equal(a.radius(7),7);assert.equal(a.labelFont(),null);assert.equal(a.brandFont(),a.appearance().fonts.ui);
  assert.equal(a.style('brandChip'),false);assert.equal(a.style('selectionBar'),false);
 });
 test('agent accents follow the profile and the light/dark mode',()=>{
- active='ProdAdvice-Light';assert.equal(a.agentAccent('claude'),null);assert.equal(a.style('agency'),false);
- active='ProdAdvice-Advanced';const own=a.appearance().style.agentAccents;
+ active='PA-Light';assert.equal(a.agentAccent('claude'),null);assert.equal(a.style('agency'),false);
+ active='PA-Advanced';const own=a.appearance().style.agentAccents;
  dark=true;assert.equal(a.agentAccent('claude'),own.claude.dark);assert.equal(a.agentAccent('unknown-kind'),own.other.dark);
  dark=false;assert.equal(a.agentAccent('codex'),own.codex.light);dark=true;
 });
 test('second profile owns its drawing style without touching classic',()=>{
- active='ProdAdvice-Advanced';const own=a.appearance().style;
+ active='PA-Advanced';const own=a.appearance().style;
  assert.equal(a.radius(7),7*own.radiusScale);assert.equal(a.labelFont(),own.labelFont==='mono'?a.appearance().fonts.mono:null);
  own.radiusScale=0.5;assert.equal(a.radius(8),4);
- active='ProdAdvice-Light';assert.equal(a.radius(8),8);
+ active='PA-Light';assert.equal(a.radius(8),8);
  assert.throws(()=>a.style('missing'),/Unknown appearance style/);
 });
 test('changing the second profile does not change classic typography or colors',()=>{
- const second=a.appearance('ProdAdvice-Advanced');second.text.files.body=17;second.brandColors.dark='#123456';
- active='ProdAdvice-Advanced';assert.equal(a.fontSize('files.body'),17);assert.equal(a.appearance().brandColors.dark,'#123456');
- active='ProdAdvice-Light';assert.equal(a.fontSize('files.body'),13);assert.equal(a.appearance().brandColors.dark,'#7d9a72');
+ const second=a.appearance('PA-Advanced');second.text.files.body=17;second.brandColors.dark='#123456';
+ active='PA-Advanced';assert.equal(a.fontSize('files.body'),17);assert.equal(a.appearance().brandColors.dark,'#123456');
+ active='PA-Light';assert.equal(a.fontSize('files.body'),13);assert.equal(a.appearance().brandColors.dark,'#7d9a72');
 });
 test('changing classic does not change second typography',()=>{
- active='ProdAdvice-Advanced';const own=a.fontSize('files.meta');
- a.appearance('ProdAdvice-Light').text.files.meta=22;assert.equal(a.fontSize('files.meta'),own);assert.notEqual(own,22);
+ active='PA-Advanced';const own=a.fontSize('files.meta');
+ a.appearance('PA-Light').text.files.meta=22;assert.equal(a.fontSize('files.meta'),own);assert.notEqual(own,22);
 });
 test('agent tint uses the active profile and respects an overriding theme',()=>{
- active='ProdAdvice-Advanced';a.appearance().agentPalettes.codex.background='#123456';
+ active='PA-Advanced';a.appearance().agentPalettes.codex.background='#123456';
  assert.equal(p.paletteFor({app:'codex'}).background,'#123456');
- assert.equal(p.enabled({theme:{dark:'ProdAdvice-Advanced-Night'}},true),true);
+ assert.equal(p.enabled({theme:{dark:'PA-Advanced-Night'}},true),true);
  assert.equal(p.enabled({theme:{dark:'graphite'}},true),false);
- active='ProdAdvice-Light';assert.equal(p.paletteFor({app:'codex'}).background,'#090b0e');
+ active='PA-Light';assert.equal(p.paletteFor({app:'codex'}).background,'#090b0e');
 });
 test('disabling second-profile tints leaves classic enabled',()=>{
- active='ProdAdvice-Advanced';a.appearance().agentTints=false;assert.equal(p.enabled({theme:'ProdAdvice-Advanced-Night'},true),false);
- active='ProdAdvice-Light';assert.equal(p.enabled({theme:'ProdAdvice-Light-Night'},true),true);
+ active='PA-Advanced';a.appearance().agentTints=false;assert.equal(p.enabled({theme:'PA-Advanced-Night'},true),false);
+ active='PA-Light';assert.equal(p.enabled({theme:'PA-Light-Night'},true),true);
 });
 test('switching back removes the other profile tint without changing geometry',()=>{
- const tree={id:'root',theme:'ProdAdvice-Light-Night',children:[{id:'main',content:{pane:{background:'#123456',radius:10,header:{height:30}}}}]};
- active='ProdAdvice-Light';const result=p.styledLayout(tree,{app:'codex',status:'working'},true);
+ const tree={id:'root',theme:'PA-Light-Night',children:[{id:'main',content:{pane:{background:'#123456',radius:10,header:{height:30}}}}]};
+ active='PA-Light';const result=p.styledLayout(tree,{app:'codex',status:'working'},true);
  assert.equal(result.children[0].content.pane.background,'#090b0e');assert.equal(result.children[0].content.pane.radius,10);
  assert.equal(result.children[0].content.pane.header.height,30);assert.equal(tree.children[0].content.pane.background,'#123456');
 });
 test('missing typography values fail visibly instead of borrowing another profile',()=>{assert.throws(()=>a.fontSize('missing.value'),/Unknown appearance/);});
 test('light mode releases a dark agent background and transparent terminal',()=>{
- active='ProdAdvice-Light';const tree={id:'root',theme:{dark:'ProdAdvice-Light-Night',light:'ProdAdvice-Light-Day'},terminal_opacity:0,children:[{id:'main',content:{pane:{background:'#090b0e',radius:10}}}]};
+ active='PA-Light';const tree={id:'root',theme:{dark:'PA-Light-Night',light:'PA-Light-Day'},terminal_opacity:0,children:[{id:'main',content:{pane:{background:'#090b0e',radius:10}}}]};
  const next=p.styledLayout(tree,{app:'codex',status:'working'},false);
  assert.equal(next.children[0].content.pane.background,'background');assert.equal(next.terminal_opacity,undefined);
  assert.equal(p.enabled(tree,false),false);assert.equal(next.children[0].content.pane.radius,10);

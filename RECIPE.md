@@ -8,7 +8,7 @@ strip. Russian labels, workspace-aware navigation and optional account limits.
 
 ## What you see
 
-In Settings > Look the layouts are named ProdAdvice and ProdAdvice-Advanced. Each has a custom dark thumbnail
+In Settings > Look the layouts are named ProdAdvice and PA-Advanced. Each has a custom dark thumbnail
 with its name, Codex/Claude mascots, terminal and file tree. The root preview
 points to layouts/prodadvice.png; layouts/prodadvice.svg is the editable source.
 
@@ -23,13 +23,13 @@ right panel 294 px, min 280 / max 900, a files/changes stack. Pane headers are
 Status type is 10 px with 10 px horizontal spacing. Mod type sizes and main row heights come from appearance_profiles.json. Each
 profile owns a full independent set of values; see APPEARANCE.md.
 
-ProdAdvice-Light dark palette: canvas/chrome #030303, background #090909, foreground #f3f4ef,
+PA-Light dark palette: canvas/chrome #030303, background #090909, foreground #f3f4ef,
 border #262626, accent #39ff14. Focused Codex panes use #090b0e / #7797ba;
-Claude panes use #0b0a09 / #b3927b. ProdAdvice light mode uses the custom ProdAdvice-Light-Day sage/green palette.
-ProdAdvice-Advanced uses the agency-page look: canvas #000000, chrome #030403, terminal
+Claude panes use #0b0a09 / #b3927b. ProdAdvice light mode uses the custom PA-Light-Day sage/green palette.
+PA-Advanced uses the agency-page look: canvas #000000, chrome #030403, terminal
 #050705, rules #292a29, square frames (pane radius 0, style.radiusScale 0),
 Avenir Next UI, Bodoni 72 brand title, JetBrains Mono labels and its own
-ProdAdvice-Advanced-Day paper palette. Geometry matches ProdAdvice. See APPEARANCE.md.
+PA-Advanced-Day paper palette. Geometry matches ProdAdvice. See APPEARANCE.md.
 
 The illustration in preview.png is made from preview.html and fictional data;
 it is not native rendering evidence. The artwork files are the shipped sprites.
@@ -72,7 +72,7 @@ unavailable while the rest of the interface remains usable.
 
 Classic node tree: root -> sidebar(brand, sidebar-lists(spaces, agents), sidebar-footer)
 and work(tabs, work-body(main, panel(panel-body(files, changes))), status).
-See layouts/ProdAdvice-Light.json for exact weights and content props.
+See layouts/PA-Light.json for exact weights and content props.
 
 prodsovet implements brand, agents, pane, status, toast, zoo, tabs, new-menu and
 tab-menu roles, plus the Changes panel in both layouts. Its commit suggestion
@@ -144,7 +144,7 @@ The optional profile `style` block switches drawing details (radius scale,
 brand font/chip, label font, selection bar); without it the classic look is drawn. Original pre-refactor code is
 preserved by the tag prodadvice-classic-2026-11-15.
 
-## Unified project tree (ProdAdvice-Advanced)
+## Unified project tree (PA-Advanced)
 
 The second layout uses one `projects` role in sidebar-lists. Agents owns the
 existing session cards; projects.js builds repository/checkout headers and
@@ -157,7 +157,7 @@ the window is active. No native spaces are reordered, merged or deleted.
 
 The + menu accepts an explicit Space and uses its saved workspace root for
 launches and worktree dialogs. Agent navigation follows project/checkout order.
-ProdAdvice-Advanced ignores pins and draws no pin control. The tree's SESSIONS tab
+PA-Advanced ignores pins and draws no pin control. The tree's SESSIONS tab
 (`projects.view.v1`) shows the same agents flat, sorted by urgency then recency,
 with a project caption; navigation follows that order. Drag reordering
 (mouse down/move/up, like the old Spaces list) stores `projects.order.v1`
@@ -171,7 +171,7 @@ remain under that Space, while same-Space subagents appear beneath their parent.
 `project-context.js` supplies a common checkout scope for the sidebar and tab
 bar. Tabs carry their native owner ID; only the active owner's active tab is
 highlighted. Selection and keyboard navigation select that owner before its
-tab. Panel visibility is remembered per checkout in ProdAdvice-Advanced.
+tab. Panel visibility is remembered per checkout in PA-Advanced.
 `open-project.js` resolves an explicitly chosen folder and machine, reuses an
 existing checkout or starts the selected first agent/terminal. No inherited
 focused cwd is used. The global open action and per-checkout session menu have
@@ -181,16 +181,16 @@ agent glyph tiles, mascots, project letter tiles); `space-colors.js` holds the
 Space colors used by both the picker and the project tree. Machines are mono
 section headers (monitor/server icon, offline state) in the tree.
 
-## Projects sidebar in detail (ProdAdvice-Advanced)
+## Projects sidebar in detail (PA-Advanced)
 
-ProdAdvice-Advanced has one Projects sidebar instead of separate Spaces and Workshop
+PA-Advanced has one Projects sidebar instead of separate Spaces and Workshop
 panels. Each repository contains its main sessions and nested worktree sessions.
 Click a session to focus it, a project/worktree name to select its Space, and a
 chevron to fold the group. The + beside a checkout starts a session or opens the
 worktree dialog for that checkout, even when another Space is selected.
 
-Agent sprites, statuses and subagents remain available. ProdAdvice-Advanced has no
-pinning; existing pins are ignored there (ProdAdvice-Light keeps them).
+Agent sprites, statuses and subagents remain available. PA-Advanced has no
+pinning; existing pins are ignored there (PA-Light keeps them).
 The SESSIONS tab beside PROJECTS lists every agent session in one list, most
 urgent and most recent first, each card naming its project (and worktree
 branch); the chosen tab is remembered. Drag to reorder: project headers
@@ -206,7 +206,7 @@ and folds persist locally; closing the main Space does not remove its worktree
 group. Unavailable checkouts retain their cached association and show a warning.
 Legacy missing folders under Herdr's managed worktree path can be associated with
 an unambiguous open repository of the same managed name; arbitrary folders are
-never grouped by name alone. ProdAdvice-Light retains its original two-panel sidebar.
+never grouped by name alone. PA-Light retains its original two-panel sidebar.
 
 The single **Open…** action (Cmd+N) asks for the computer, then the first
 session (Terminal by default), then the project folder. Confirming a local

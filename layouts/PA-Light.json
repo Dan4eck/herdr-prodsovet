@@ -20,7 +20,7 @@
             }
           },
           "size": {
-            "px": 42
+            "px": 46
           },
           "window_drag": true
         },
@@ -29,13 +29,27 @@
           "type": "column",
           "children": [
             {
-              "id": "projects",
+              "id": "spaces",
+              "type": "block",
+              "content": {
+                "mod": "spaces"
+              },
+              "size": {
+                "weight": 0.8730701208114624
+              },
+              "min": 90
+            },
+            {
+              "id": "agents",
               "type": "block",
               "content": {
                 "mod": "prodsovet",
                 "props": {
-                  "role": "projects"
+                  "role": "agents"
                 }
+              },
+              "size": {
+                "weight": 1.5269299745559692
               },
               "min": 90
             }
@@ -99,16 +113,16 @@
                     "height": 30,
                     "position": "top"
                   },
-                  "background": "background",
+                  "background": "#090b0e",
                   "border": {
                     "width": 1,
                     "color": "border"
                   },
                   "focus": {
                     "width": 1,
-                    "color": "accent"
+                    "color": "#7797ba"
                   },
-                  "radius": 0,
+                  "radius": 10,
                   "gap": 8,
                   "lone": true
                 }
@@ -136,16 +150,6 @@
                         "mod": "prodsovet",
                         "props": {
                           "role": "changes"
-                        }
-                      }
-                    },
-                    {
-                      "id": "github",
-                      "type": "block",
-                      "content": {
-                        "mod": "prodsovet",
-                        "props": {
-                          "role": "github"
                         }
                       }
                     }
@@ -182,8 +186,8 @@
   ],
   "background": "canvas",
   "theme": {
-    "light": "ProdAdvice-Advanced-Day",
-    "dark": "ProdAdvice-Advanced-Night"
+    "light": "PA-Light-Day",
+    "dark": "PA-Light-Night"
   },
   "terminal_padding": [
     14,
@@ -200,8 +204,8 @@
     16
   ],
   "toast": "prodsovet",
-  "preview": "layouts/prodadvice-advanced.png",
-  "ui_font": "Avenir Next",
+  "preview": "layouts/pa-light.png",
+  "ui_font": "Geist",
   "font": "JetBrains Mono",
   "font_size": 14
 }

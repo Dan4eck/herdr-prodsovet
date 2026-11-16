@@ -8,7 +8,7 @@ import {fileURLToPath} from 'node:url';
 const root=fileURLToPath(new URL('..',import.meta.url));
 const temp=fs.mkdtempSync(path.join(os.tmpdir(),'herdr-projects-'));
 const plain=x=>JSON.parse(JSON.stringify(x));
-const state=new Map([['layout','ProdAdvice-Advanced'],['ui.lang','ru']]);
+const state=new Map([['layout','PA-Advanced'],['ui.lang','ru']]);
 const storage=new Map(), calls=[], pending=[];
 let sp=[], ps=[], ts=[], ag=[], pr={role:'projects'}, width=341, order=[], machineList=[{name:null,layout:'ready'}], agentHosts=[], picker=async()=>null;
 function element(type='div') {
@@ -242,7 +242,7 @@ try {
    dialog.choice='codex';dialog.machine('server',cx);await flush();assert.equal(dialog.choice,'terminal');assert.equal(dialog.path,'');assert.equal(agentHosts.at(-1),'server');
    assert.ok(!byId(dialog.render(),'project-browse'));machineList.pop();pr={role:'projects'};
  });
- await test('ProdAdvice-Advanced cards offer no pinning and old pins do not reorder a checkout',()=>{
+ await test('PA-Advanced cards offer no pinning and old pins do not reorder a checkout',()=>{
    ag.find(a=>a.address==='a2').pinned=true;tree=owner.render(cx);
    byId(tree,'ag-a1').events.on_hover(true,cx);tree=owner.render(cx);
    assert.equal(nodes(tree).filter(n=>String(n.attrs.id).startsWith('pin-')).length,0);
@@ -310,7 +310,7 @@ try {
    state.set('projects.view.v1','projects');tree=owner.render(cx);ag.find(a=>a.address==='a2').focused=false;
  });
  await test('classic workshop retains its grouping and does not list shell-only sessions',async()=>{
-   pr={role:'agents'};state.set('layout','ProdAdvice-Light');const old=new mod.namespace.Agents();old.init({},cx);await flush();tree=old.render(cx);
+   pr={role:'agents'};state.set('layout','PA-Light');const old=new mod.namespace.Agents();old.init({},cx);await flush();tree=old.render(cx);
    assert.equal(old.projects,undefined);assert.ok(text(tree).includes('МАСТЕРСКАЯ'));assert.ok(!byId(tree,'project-list'));assert.ok(!byId(tree,'ag-shell'));
  });
  console.log(`${n} project tree tests passed`);

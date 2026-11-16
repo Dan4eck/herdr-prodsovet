@@ -1,7 +1,7 @@
 {
   "version": 1,
   "profiles": {
-    "ProdAdvice-Light": {
+    "PA-Light": {
       "fonts": {
         "ui": "Geist",
         "terminal": "JetBrains Mono",
@@ -144,8 +144,8 @@
           "working": "#b3927b"
         }
       },
-      "darkThemeName": "ProdAdvice-Light-Night",
-      "lightTheme": "ProdAdvice-Light-Day",
+      "darkThemeName": "PA-Light-Night",
+      "lightTheme": "PA-Light-Day",
       "darkTheme": {
         "background": "#090909",
         "foreground": "#e6e7e2",
@@ -194,7 +194,7 @@
           "unknown": "#6a6a6a"
         }
       },
-      "preview": "layouts/prodadvice-light.png",
+      "preview": "layouts/pa-light.png",
       "weights": {
         "medium": 500,
         "semibold": 600,
@@ -249,7 +249,7 @@
         }
       }
     },
-    "ProdAdvice-Advanced": {
+    "PA-Advanced": {
       "fonts": {
         "ui": "Avenir Next",
         "terminal": "JetBrains Mono",
@@ -392,8 +392,8 @@
           "working": "#ffad55"
         }
       },
-      "darkThemeName": "ProdAdvice-Advanced-Night",
-      "lightTheme": "ProdAdvice-Advanced-Day",
+      "darkThemeName": "PA-Advanced-Night",
+      "lightTheme": "PA-Advanced-Day",
       "darkTheme": {
         "background": "#050705",
         "foreground": "#c9ccc5",
@@ -442,7 +442,7 @@
           "unknown": "#767f7a"
         }
       },
-      "preview": "layouts/prodadvice-advanced.png",
+      "preview": "layouts/pa-advanced.png",
       "weights": {
         "medium": 500,
         "semibold": 600,
