@@ -23,3 +23,18 @@ Never publish a copy of the complete Herdr home. `data/`, `shared.json`, `view.j
 receipts, agent settings, session databases, credentials and local limit settings
 belong to the installing user. `.gitignore` is a convenience, not a substitute
 for reviewing files before publication.
+
+
+## Limits (opt-in)
+
+Limits are **off by default**. To enable both at install time, add `--with-limits`
+to the planned and applied install commands. After installation, alternatively
+copy `mods/prodsovet/limits.example.json` to `limits.local.json` in the **installed**
+mod folder and set `claude` and/or `codex` to `true`.
+
+Claude reads your own `Claude Code-credentials` Keychain item and uses its OAuth
+token only against `https://api.anthropic.com/api/oauth/usage`. Codex reads recent
+local session logs under `CODEX_HOME` (default `~/.codex`). This is best-effort,
+not a billing source: log values may be stale and provider endpoints/formats may
+change. Refresh runs about every three minutes. No account data is shipped.
+Remove or disable the local config to stop collection on the next refresh.

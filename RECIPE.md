@@ -225,3 +225,90 @@ legacy duplicates. Worktrees and different machines retain separate tab sets.
 Ctrl+Tab / Ctrl+Shift+Tab and Cmd+Shift+] / Cmd+Shift+[ follow that same tab set.
 Existing terminals are not moved or stopped. Drag reordering stays within the
 native owning Space; clicking or keyboard navigation can cross duplicate Spaces.
+
+
+## Details (moved from README in 0.4.0)
+
+### Conversation forks and agent status
+
+Forking never guesses the newest conversation. Codex needs a title beginning
+with its thread ID: inside Codex run `/title thread-id thread-name project-name`.
+The resolver accepts a complete UUID or a uniquely matching long prefix in its
+local session database. Claude needs the per-process session metadata supplied
+by compatible Claude Code versions. The resolver checks identity twice before
+launching a fork. Unsupported versions report an error instead of guessing.
+
+Status cards show what Herdr reports. A running process with no reported
+`working` status will not count as working. This package does not install
+Codex/Claude lifecycle hooks or change their global configurations.
+
+### Commit message suggestions
+
+Both layouts' Changes panels suggest a commit subject from the current local
+diff using GPT-6-Luna with low reasoning effort through an installed, logged-in
+Codex CLI. A Conventional Commits subject (`fix:`, `feat:`, `refactor:`, etc.)
+appears directly in the message field after changes settle, with no shortcut
+hint. Enter or Commit then commits all changes, as before.
+Typing your own message takes precedence. Changed diffs invalidate old
+suggestions; identical diffs reuse the result. Failed requests have a Retry link.
+Remote repositories keep manual commit messages.
+
+The CLI runs ephemerally in a temporary directory with a read-only sandbox,
+without user configuration, hooks or shell tools. A bounded diff excerpt and
+file names are sent through your Codex account; known credential-file contents
+and binary contents are omitted. Large changes may be summarized incompletely.
+Generation uses your normal Codex allowance. Review the proposed message before
+committing; generating or prefilling a message does not stage or commit files.
+
+### Limits of this release
+
+File tree: one selected item at a time, no drag-and-drop. Directory listing is capped at
+500 entries per folder and 5,000 total. File loading uses Herdr's text-file API
+(1 MiB limit in the tested version). Saves detect changes on disk; open dirty
+files block rename/move/Trash. Cross-volume cut/move fails without deleting the
+source; use copy and then Trash. Changes view and Git decorations need Git.
+
+The public build includes the same mascot sprite strips as the original personal
+mod: Codex companion, Claude's Clawd, Gemini astronaut, Hermes girl and the
+generic robot for unknown agents. See [NOTICE](NOTICE) for attribution.
+
+### Installer
+
+The installer does not activate the layout or change agent settings. It uses
+`HERDR_APP_HOME` when set; otherwise `~/.config/herdr-app`. `--home PATH` overrides
+that location; use the same location for checks and subsequent uninstall.
+
+Existing mod/layout/theme names cause a stop before writing anything. Existing
+bindings with different actions also cause a stop; review the conflict and use
+`--skip-conflicting-keys` to keep your bindings. Missing shortcuts can be assigned
+manually afterwards. No `--force` overwrite mode is provided.
+
+### Updates
+
+An update replaces only files the installer wrote and nobody changed since,
+removes files the new version no longer has, and adds new key bindings. If you
+edited a package file, it stops before writing and names the file: save your
+edits elsewhere, put the original back (or delete the file) and run it again.
+`limits.local.json` is yours and is kept. Layout files are not treated as your
+edits: Herdr writes window state into them (panel sizes, the open side panel).
+Yours is kept while the new version leaves that layout unchanged; otherwise the
+new one is installed and yours stays beside it as `….json.before-update`. Updating from 0.3 renames the layouts
+(ProdAdvice → PA-Light, ProdAdvice2 → PA-Advanced); the
+installer prints the switch command if your window still uses an old name.
+
+### Uninstall
+
+Save your documents and switch to another layout before uninstalling. Uninstall
+refuses to delete modified package files; your own files, runtime state, an
+edited `limits.local.json` and bindings you changed stay. Files Herdr's own
+checks create in a mod folder (`jsconfig.json`, `gpui-kit.d.ts`) keep that
+folder. The receipt `.herdr-prodsovet-install.json` tracks ownership; do not
+publish it.
+
+### Development checks
+
+Run `python3 -B verify.py` on macOS. Tests use temporary files; one Trash test
+moves its own fixture to the system Trash and brings it back for cleanup.
+After source changes, run the five native Herdr checks and try the affected UI.
+`filesystem.js` in `my-files` is canonical; the copies in the three other mods
+must match except for their generated header. `verify.py` checks this.
