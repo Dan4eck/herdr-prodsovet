@@ -4,9 +4,10 @@ import { appearance, fontSize, metric, radius, style, labelFont, L } from "./app
 // Agents in grouped or priority views; parents take their most urgent sub-agent's place.
 
 import { div, image, svg } from "gpui-kit";
-import { word, artPath, ART_FRAMES } from "./creatures.js";
+import { word, artPath, artKind, ART_FRAMES } from "./creatures.js";
 import { spaceLabel } from "./filesystem.js";
-import { agency, accentOf, selected, glitchy, halftone, typed, icon } from "./agency.js";
+import { ProjectTree } from "./projects.js";
+import { agency, accentOf, selected, glitchy, halftone, typed, icon as assetIcon } from "./agency.js";
 import { v_flex, h_flex } from "gpui-base";
 import { agents, terminals, panes, focused, spaces, run, theme, shared, setShared, setAgentOrder, openOverlay, closeOverlay, props, window, layout, appHome, exec } from "herdr";
 
@@ -76,7 +77,7 @@ const SORTS = [
 ];
 const sortOf = () => SORTS.find((s) => s.id === shared("agents.sort")) ?? SORTS[0];
 const SECTION = () => ({ 4: L("NEED YOU", "ЖДУТ ТЕБЯ"), 3: L("DONE", "ГОТОВО"), 2: L("WORKING", "РАБОТАЮТ"), 1: L("RESTING", "ОТДЫХАЮТ") });
-const chrome = (name) => icon(name, `mods/workspace-chrome/${name}.svg`);
+const chrome = (name) => assetIcon(name, `mods/workspace-chrome/${name}.svg`);
 const SECTION_STATUS = { 4: "blocked", 3: "done", 2: "working" };
 
 function duration(ms) {
@@ -97,6 +98,7 @@ export class Agents {
   init(_props, cx) {
     if (props()?.sortMenu) return;
     this.folded = new Set();
+    if (props()?.role === "projects") { this.projects = new ProjectTree(); this.projects.init(cx); }
     // Each agent's last state and when it changed (ms), kept across restarts.
     this.changed = JSON.parse(localStorage.getItem("changed") ?? "{}");
     this.pendingPins = JSON.parse(localStorage.getItem("pins") ?? "[]");
@@ -200,13 +202,14 @@ export class Agents {
   }
 
   // Live sub-agents of `addr`, depth first, each with the tree lines in front of it.
-  tree(all, addr, lead = []) {
-    const kids = all.filter((k) => k.parent === addr && k.state === "live");
+  tree(all, addr, lead = [], origin = this.projectSpaces?.get(addr)) {
+    const kids = all.filter((k) => k.parent === addr && k.state === "live"
+      && (!this.projects || !this.projectSpaces?.has(k.address) || this.projectSpaces.get(k.address) === origin));
     return kids.flatMap((k, i) => {
       const last = i === kids.length - 1;
       return [
         { t: k, lines: [...lead, last ? "└" : "├"] },
-        ...this.tree(all, k.address, [...lead, last ? "" : "│"]),
+        ...this.tree(all, k.address, [...lead, last ? "" : "│"], origin),
       ];
     });
   }
@@ -279,6 +282,8 @@ export class Agents {
       });
       listed.add(p.terminal);
     }
+    if (this.projects) list = list.filter(a => a.program?.agent || a.status != null);
+    this.projectSpaces = this.projects ? new Map(list.map(a => [a.address, a.space])) : null;
     // Spaces read as in the Spaces list: a project root rather than "~".
     const spaceById = new Map(spaces().map((s) => [s.id, s]));
     list = list.map((a) => (spaceById.has(a.space) ? { ...a, space_name: spaceLabel(spaceById.get(a.space)) } : a));
@@ -290,10 +295,10 @@ export class Agents {
     // A kept sub-agent (one with a pane) is in agents() too: where a tree shows
     // it, it gets no row of its own, unless it's pinned.
     const nested = new Set(collapsed ? [] : list.flatMap((a) => this.tree(all, a.address).map((s) => s.t.address)));
-    list = list.filter((a) => a.pinned || !nested.has(a.address));
+    list = list.filter((a) => (!this.projects && a.pinned) || !nested.has(a.address));
     const tabCounts = new Map();
     for (const a of list) tabCounts.set(a.tab, (tabCounts.get(a.tab) ?? 0) + 1);
-    const byPriority = sort.id === "priority";
+    const byPriority = !this.projects && sort.id === "priority";
     const urgency = new Map(list.map((a) => [a.address, Math.max(this.rank(a), ...this.tree(all, a.address).map((s) => RANK[kidStatus(s.t, this.listed)] ?? 0))]));
     const rankOf = (a) => urgency.get(a.address);
     if (byPriority) list = [...list].sort((x, y) => rankOf(y) - rankOf(x) || this.since(y) - this.since(x) || y.seq - x.seq);
@@ -385,7 +390,7 @@ export class Agents {
         .text_color(t.dim)
         .cursor_pointer()
         .hover((s) => s.bg(t.hover).text_color(t.foreground))
-        .tooltip(isPinned ? L("Unpin", "Открепить") : L("Pin to the top", "Закрепить сверху"))
+        .tooltip(isPinned ? L("Unpin", "Открепить") : this.projects ? L("Pin in this checkout", "Закрепить в этом checkout") : L("Pin to the top", "Закрепить сверху"))
         .on_click((_e, cx) => {
           cx.stop_propagation();
           run("terminal.pin", { terminal: a.address, pinned: !isPinned });
@@ -396,9 +401,9 @@ export class Agents {
         .child(svg(chrome(isPinned ? "pin-off" : "pin")).size(agency() ? 15 : 13));
       // Under a space header the space goes without saying; an automatic tab number says nothing.
       // Without a space header above (priority, pinned) the row names its space.
-      const full = byPriority || isPinned;
+      const full = byPriority || (isPinned && !this.projects);
       const name = full ? a.space_name || label(a) : more ?? (/^\d+$/.test(label(a)) ? a.program?.name || label(a) : label(a));
-      const art = this.hasArt;
+      const art = this.hasArt && (!this.projects || artKind(a.program?.key) !== "other");
       const tint = t[a.status] ?? t.dim;
       const own = agency() ? accentOf(a.program, t) : t.accent;
       return h_flex()
@@ -426,21 +431,25 @@ export class Agents {
             this.folded.has(a.address) ? this.folded.delete(a.address) : this.folded.add(a.address);
             cx.notify();
           }))
+          .when(!art && Boolean(pic), el => el.child(pic))
           .when(art, el => el.child(div().size(44).flex_none().relative().overflow_hidden()
             .child(image(artPath(a.program?.key, a.status)).absolute().top(0)
               .left(-44 * ((this.tick + i * 5) % ART_FRAMES)).w(44 * ART_FRAMES).h(44)))))
         .child(v_flex().flex_1().min_w(0).gap(2)
           .child(h_flex().min_w(0).gap(5).items_center()
-            .child(div().min_w(0).max_w(full && more ? 100 : 180).truncate().text_size(fontSize("agents.body")).text_color(idle ? t.muted : t.foreground).child(name))
+            .child(div().min_w(0).max_w(this.projects ? 1000 : full && more ? 100 : 180).truncate().text_size(fontSize("agents.body")).text_color(idle ? t.muted : t.foreground).when(Boolean(this.projects), el => el.tooltip(name)).child(name))
             .when(full && Boolean(more), el => el.child(div().flex_1().min_w(0).truncate().text_size(fontSize("agents.secondary")).text_color(t.dim).child(`\u00b7 ${more}`))))
           .child(h_flex().gap(6).items_center().text_size(fontSize("agents.meta")).text_color(t.dim)
             .when(a.status === "blocked", el => el.child(div().text_color(tint).child(word("blocked"))))
-            .when(a.status == null, el => el.child(div().text_color(t.dim).child(L("STATUS UNKNOWN", "СТАТУС НЕИЗВЕСТЕН"))))
+            .when(a.status == null, el => el.child(div().text_color(t.dim).child(a.program?.shell ? L("TERMINAL", "ТЕРМИНАЛ") : L("STATUS UNKNOWN", "СТАТУС НЕИЗВЕСТЕН"))))
             .when(Boolean(machine), el => el.child(div().child(machine)))
             .when(Boolean(when), el => el.child(div().child(duration(now - when))))))
+        .when(this.projects && isPinned, el => el.child(svg(chrome("pin")).size(12).text_color(t.dim)))
         .when(subs.length > 0, el => el.child(fold(a, subs)))
         .when(this.hovered === a.address, el => el.child(pin));
     };
+
+    if (this.projects) return this.projects.render(cx, this, list, withKids, collapsed, t, all);
 
     // Groups in list order: spaces (grouped) or priority sections. Agents of a
     // space are next to each other in agents(), so neighbours make a group.

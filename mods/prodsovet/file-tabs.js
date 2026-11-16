@@ -2,6 +2,7 @@ import { appearance, fontSize, metric, radius, L } from "./appearance.js";
 import { agency, accentOf, selected as selectedLook, icon } from "./agency.js";
 // SPDX-License-Identifier: Apache-2.0
 // ProdAdvice for Herdr: customized interface and behavior, 2026. See NOTICE.
+import { checkoutContext, selectProjectTab, nextProjectTab, openSessionMenu } from "./project-context.js";
 import { View, div, svg, image } from "gpui-kit";
 import { h_flex, ScrollHandle } from "gpui-base";
 import { spaces, panes, run, openOverlay, theme, window, shared, setShared, layout, settings } from "herdr";
@@ -52,8 +53,10 @@ export default class Tabs extends View {
 
   render() {
     const t = theme();
-    const space = spaces().find(p => p.active);
-    const shown = space?.tabs ?? [];
+    const context = checkoutContext();
+    const space = context.space;
+    const unified = shared("layout") === "ProdAdvice2";
+    const shown = context.tabs;
     const active = shown.findIndex(tab => tab.active);
     const selected = shown[active]?.id;
     if (selected !== this.selected || active !== this.selectedIndex) {
@@ -66,7 +69,8 @@ export default class Tabs extends View {
       .on_mouse_down("left", stop).on_click(action).child(label);
     const item = (c, i) => {
       const program = panes().find(p => p.tab === c.id && p.program?.agent)?.program ?? panes().find(p => p.tab === c.id)?.program;
-      const name = /^tb\d+$/.test(c.name) ? program?.name ?? "Terminal" : c.name;
+      const automatic = !c.named && (/^\d+$/.test(c.name) || /^tb\d+$/.test(c.name));
+      const name = unified && automatic ? (program?.agent ? program.name : L("Terminal", "Терминал")) + ` ${i + 1}` : /^tb\d+$/.test(c.name) ? program?.name ?? "Terminal" : c.name;
       // Agency: the active tab is filled with its agent's color.
       const own = program?.agent ? accentOf(program, t) : t.muted;
       const deco = agency() && c.active;
@@ -79,10 +83,12 @@ export default class Tabs extends View {
         .on_mouse_down("left", (e, cx) => { cx.stop_propagation(); this.pressed = i; if (e.click_count === 2) run("tab.rename", { id: c.id }); })
         .on_mouse_up("left", () => {
           const from = this.pressed; this.pressed = null;
-          if (from !== null && from !== i) run("tab.move", { id: shown[from].id, index: space.tabs.findIndex(x => x.id === c.id) + 1 });
-          else run("tab.select", { id: c.id });
+          if (from !== null && from !== i && shown[from].owner === c.owner) {
+            const owner = context.spaces.find(s => s.id === c.owner);
+            run("tab.move", { id: shown[from].id, index: owner.tabs.findIndex(x => x.id === c.id) + 1 });
+          } else selectProjectTab(c);
         })
-        .on_mouse_down("right", (_e, cx) => { cx.stop_propagation(); openOverlay({ mod: "prodsovet", kind: "popup", width: 200, props: { role: "tab-menu", tab: "tab", target: { id: c.id, space: space.id } } }); })
+        .on_mouse_down("right", (_e, cx) => { cx.stop_propagation(); openOverlay({ mod: "prodsovet", kind: "popup", width: 200, props: { role: "tab-menu", tab: "tab", target: { id: c.id, space: c.owner } } }); })
         .when(Boolean(program?.icon), el => el.child(program.tint ? svg(program.icon).size(14).text_color(t.muted) : image(program.icon).size(14)))
         .child(div().max_w(170).truncate().child(c.zoomed ? `${name} Z` : name))
         .when(c.status === "working", el => el.child(svg("mods/workspace-chrome/spinner.svg").size(12).flex_none().text_color(agency() ? accentOf(program, t) : t.working).spin(900)))
@@ -102,7 +108,7 @@ export default class Tabs extends View {
       setShared("prodsovet.panels", 1);
     }
     const enabled = (shared("workspace.panels") ?? ["files", "changes"]).filter((id) => find(root, id));
-    this.syncPanel(space, panel, body, enabled);
+    this.syncPanel(unified && space ? { ...space, id: context.key } : space, panel, body, enabled);
     const panelButton = (id, label, glyph) => {
       const on = panel && !panel.hidden && body?.active === id;
       return h_flex().id(`panel-${id}`).h(metric("tabs.button")).px(8).gap(5).flex_none().items_center().rounded(radius(6))
@@ -115,11 +121,11 @@ export default class Tabs extends View {
     };
     return h_flex().size_full().min_w(0).px(10).pl(lightsPadding).gap(3).items_center().bg(t.chrome).border_b(1).border_color(t.border)
       .on_mouse_up("left", () => { this.pressed = null; })
-      .on_scroll_wheel(e => { if (Math.abs(e.delta.y) >= 1) run(e.delta.y > 0 ? "tab.prev" : "tab.next"); })
+      .on_scroll_wheel(e => { if (Math.abs(e.delta.y) >= 1) unified ? nextProjectTab(e.delta.y > 0 ? -1 : 1) : run(e.delta.y > 0 ? "tab.prev" : "tab.next"); })
       .child(h_flex().id("tab-scroll").flex_1().min_w(0).h_full().items_center().gap(3).overflow_x_scrollbar().track_scroll(this.scroll)
         .on_size_change((_size, cx) => { if (active >= 0) { this.scroll.scroll_to_item(active); cx.notify(); } })
         .children(shown.map(item)))
-      .child(button("tab-new", agency() ? svg(icon("plus")).size(15) : "+", () => openOverlay({ mod: "prodsovet", kind: "popup", width: 250, height: 512, props: { role: "new-menu" } })))
+      .child(button("tab-new", agency() ? svg(icon("plus")).size(15) : "+", () => unified ? openSessionMenu(space) : openOverlay({ mod: "prodsovet", kind: "popup", width: 250, height: 512, props: { role: "new-menu" } })))
       .when(enabled.includes("files"), el => el.child(panelButton("files", L("Files", "Файлы"), icon("file", "mods/files/file.svg"))))
       .when(enabled.includes("changes"), el => el.child(panelButton("changes", L("Changes", "Изменения"), icon("changes", "mods/changes/changes.svg"))))
       .when(enabled.includes("github"), el => el.child(panelButton("github", "GitHub", icon("pr", "mods/workspace-chrome/branch.svg"))))

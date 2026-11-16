@@ -25,6 +25,11 @@
     "ctrl-t": "prodsovet.new-terminal",
     "cmd-d": "prodsovet.split-right",
     "cmd-shift-d": "prodsovet.split-down",
-    "cmd-p": "prodsovet.picker"
+    "cmd-p": "prodsovet.picker",
+    "cmd-n": "prodsovet.open-project",
+    "ctrl-tab": "prodsovet.next-tab",
+    "ctrl-shift-tab": "prodsovet.prev-tab",
+    "cmd-shift-]": "prodsovet.next-tab",
+    "cmd-shift-[": "prodsovet.prev-tab"
   }
 }

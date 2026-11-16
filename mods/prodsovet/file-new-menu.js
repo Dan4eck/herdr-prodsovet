@@ -2,7 +2,7 @@ import { appearance, fontSize, metric, radius, L } from "./appearance.js";
 import { agency, px } from "./agency.js";
 // SPDX-License-Identifier: Apache-2.0
 // ProdAdvice for Herdr: customized interface and behavior, 2026. See NOTICE.
-import { newTerminal } from "./filesystem.js";
+import { newTerminal, workspace } from "./filesystem.js";
 import { View, div, svg, image } from "gpui-kit";
 import { h_flex, v_flex } from "gpui-base";
 import { theme, spaces, panes, knownAgents, run, openOverlay, closeOverlay, props, window, keys, shared, setShared } from "herdr";
@@ -29,7 +29,7 @@ function shortcut(name) {
 
 export default class NewMenu extends View {
   init(_props, cx) {
-    const machine = spaces().find(s => s.active)?.machine;
+    const machine = spaces().find(s => props()?.space ? s.id === props().space : s.active)?.machine;
     const where = machine ?? "";
     this.agents = shared(KNOWN)?.[where] ?? [];
     this.handle = cx.focus_handle();
@@ -52,10 +52,11 @@ export default class NewMenu extends View {
   }
   render() {
     const t = theme();
-    const space = spaces().find(s => s.active);
+    const space = spaces().find(s => props()?.space ? s.id === props().space : s.active);
+    const projectMode = shared("layout") === "ProdAdvice2";
     const installed = this.agents.filter(a => a.installed);
     const choices = this.failed ? installed : [...installed, ...this.agents.filter(a => !a.installed).slice(0, 2)];
-    return v_flex().min_h(0).w_full().h(Math.min(491, 167 + Math.max(1, choices.length + (this.failed ? 1 : 0)) * metric("newMenu.row"))).bg(t.popover).p(5).text_size(fontSize("newMenu.body"))
+    return v_flex().min_h(0).w_full().h(Math.min(projectMode ? 520 : 491, (projectMode ? 215 : 167) + Math.max(1, choices.length + (this.failed ? 1 : 0)) * metric("newMenu.row"))).bg(t.popover).p(5).text_size(fontSize("newMenu.body"))
       .id("new-menu").track_focus(this.handle)
       .on_key_down((e) => {
         if (e.modifiers.control || e.modifiers.platform || e.modifiers.alt) return;
@@ -64,15 +65,18 @@ export default class NewMenu extends View {
         closeOverlay(props().overlay);
         newTerminal("tab", space?.id, agent.run, agent.name);
       })
-      .child(this.row("terminal", svg(agency() ? px("terminal") : "icons/shell.svg").size(agency() ? 15 : 14), L("Terminal", "Терминал"), () => newTerminal("tab", space?.id), shortcut("tab.new")))
+      .when(!projectMode, el => el.child(this.row("terminal", svg(agency() ? px("terminal") : "icons/shell.svg").size(agency() ? 15 : 14), L("Terminal", "Терминал"), () => newTerminal("tab", space?.id), shortcut("tab.new"))))
+      .when(projectMode, el => el.child(div().px(9).pt(6).pb(2).truncate().text_color(t.foreground).child(L("New session", "Новая сессия")))
+        .child(div().px(9).pb(6).truncate().tooltip(workspace(space?.id).cwd || "").text_size(11).text_color(t.dim).child(workspace(space?.id).cwd || "")))
       .child(div().px(9).pt(8).pb(4).text_size(fontSize("newMenu.hint")).text_color(t.dim).child(L("Start an agent", "Запустить агента")))
       .child(v_flex().flex_1().min_h(0).overflow_y_scrollbar()
         .children(choices.map((a, i) => this.row(a.key, a.tint ? svg(a.icon).size(14).text_color(t.foreground) : image(a.icon).size(14), a.name,
           () => newTerminal("tab", space?.id, a.run, a.name), a.installed ? (i < 9 ? String(i + 1) : "") : L("not installed", "не установлен"), a.installed)))
         .when(this.failed || this.agents.length === 0, el => el.child(div().px(9).py(6).text_color(t.dim).child(this.failed ? L("Could not check installed agents", "Не удалось проверить агентов") : L("Checking installed agents…", "Проверяю установленных агентов…")))))
       .child(div().h(1).mx(4).my(5).bg(t.border))
-      .child(this.row("space", (agency() ? svg(px("plus")).size(15) : div().w(14).child("+")), L("New space", "Новое пространство"), () => run("space.new"), shortcut("space.new")))
-      .child(this.row("worktree", svg(agency() ? px("branch") : "mods/workspace-chrome/branch.svg").size(agency() ? 15 : 14), L("New worktree…", "Новый worktree…"), () => openOverlay({ mod: "worktree", kind: "dialog", width: 460, height: 280, props: { space: space?.id, folder: panes().find(p => p.focused)?.cwd, action: "new" } }), "", Boolean(space)))
-      .child(this.row("worktree-open", svg(agency() ? px("branch") : "mods/workspace-chrome/branch.svg").size(agency() ? 15 : 14), L("Open worktree\u2026", "Открыть worktree…"), () => openOverlay({ mod: "worktree", kind: "dialog", width: 560, height: 480, props: { space: space?.id, folder: panes().find(p => p.focused)?.cwd, action: "open" } }), "", Boolean(space)));
+      .when(projectMode, el => el.child(this.row("terminal", svg(px("terminal")).size(15), L("Open terminal", "Открыть терминал"), () => newTerminal("tab", space?.id), shortcut("tab.new"))))
+      .when(!projectMode, el => el.child(this.row("space", (agency() ? svg(px("plus")).size(15) : div().w(14).child("+")), L("New space", "Новое пространство"), () => run("space.new"), shortcut("space.new"))))
+      .child(this.row("worktree", svg(agency() ? px("branch") : "mods/workspace-chrome/branch.svg").size(agency() ? 15 : 14), L("Create worktree…", "Создать worktree…"), () => openOverlay({ mod: "worktree", kind: "dialog", width: 460, height: 280, props: { space: space?.id, folder: (props()?.space || shared("layout") === "ProdAdvice2") ? workspace(space?.id).cwd : panes().find(p => p.focused)?.cwd, action: "new" } }), "", Boolean(space)))
+      .child(this.row("worktree-open", svg(agency() ? px("branch") : "mods/workspace-chrome/branch.svg").size(agency() ? 15 : 14), L("Open worktree\u2026", "Открыть worktree…"), () => openOverlay({ mod: "worktree", kind: "dialog", width: 560, height: 480, props: { space: space?.id, folder: (props()?.space || shared("layout") === "ProdAdvice2") ? workspace(space?.id).cwd : panes().find(p => p.focused)?.cwd, action: "open" } }), "", Boolean(space)));
   }
 }

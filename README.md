@@ -25,6 +25,39 @@ Workspace roots stay stable when switching between agents and documents.
 New terminals and splits start in the current workspace root, even from a file tab.
 The mods work together; install the complete bundle for the documented behavior.
 
+## Projects in ProdAdvice2
+
+ProdAdvice2 has one Projects sidebar instead of separate Spaces and Workshop
+panels. Each repository contains its main sessions and nested worktree sessions.
+Click a session to focus it, a project/worktree name to select its Space, and a
+chevron to fold the group. The + beside a checkout starts a session or opens the
+worktree dialog for that checkout, even when another Space is selected.
+
+Agent sprites, statuses, subagents and pins remain available. Pins sort within
+their checkout. Plain terminals are shown only in the top tab bar, without grey
+placeholder cards in the sidebar. Open files also appear only in the top tab
+bar. The sidebar lists agent sessions beneath projects and worktrees.
+Each worktree keeps its own native Space, files and Changes panel. Git identities
+and folds persist locally; closing the main Space does not remove its worktree
+group. Unavailable checkouts retain their cached association and show a warning.
+Legacy missing folders under Herdr's managed worktree path can be associated with
+an unambiguous open repository of the same managed name; arbitrary folders are
+never grouped by name alone. ProdAdvice retains its original two-panel sidebar.
+
+The single **Open…** action (Cmd+N) asks for the computer, then the first
+session (Terminal by default), then the project folder. Confirming a local
+folder in Finder opens it immediately with the selected terminal or agent.
+Canceling Finder leaves the chooser open. Remote folders take an absolute path
+on the selected machine and use an explicit Open button. An already open checkout is selected instead of duplicated.
+The + beside a project and the + in the tab bar only start sessions/worktrees
+for that checkout; computer headers have no duplicate creation button.
+
+The top tab bar combines all existing Spaces for the same checkout, including
+legacy duplicates. Worktrees and different machines retain separate tab sets.
+Ctrl+Tab / Ctrl+Shift+Tab and Cmd+Shift+] / Cmd+Shift+[ follow that same tab set.
+Existing terminals are not moved or stopped. Drag reordering stays within the
+native owning Space; clicking or keyboard navigation can cross duplicate Spaces.
+
 ## Requirements
 
 - **macOS**, Herdr App **0.1.15** is the tested version. Other versions are unverified.

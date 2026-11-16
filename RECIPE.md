@@ -70,7 +70,7 @@ unavailable while the rest of the interface remains usable.
 
 ## Built from
 
-Node tree: root -> sidebar(brand, sidebar-lists(spaces, agents), sidebar-footer)
+Classic node tree: root -> sidebar(brand, sidebar-lists(spaces, agents), sidebar-footer)
 and work(tabs, work-body(main, panel(panel-body(files, changes))), status).
 See layouts/ProdAdvice.json for exact weights and content props.
 
@@ -143,3 +143,28 @@ Layout geometry remains in each native layout JSON and survives regeneration.
 The optional profile `style` block switches drawing details (radius scale,
 brand font/chip, label font, selection bar); without it the classic look is drawn. Original pre-refactor code is
 preserved by the tag prodadvice-classic-2026-11-15.
+
+## Unified project tree (ProdAdvice2)
+
+The second layout uses one `projects` role in sidebar-lists. Agents owns the
+existing session cards; projects.js builds repository/checkout headers and
+project-model.js resolves Git identity and groups stable workspace roots.
+The canonical Git common directory plus machine identifies a project; the
+checkout root identifies its worktree. Cache keys and fold state use the
+`projects.*.v1` shared namespace. Discovery reads Git asynchronously, checks new
+roots on render, and refreshes existing roots at most once per minute while
+the window is active. No native spaces are reordered, merged or deleted.
+
+The + menu accepts an explicit Space and uses its saved workspace root for
+launches and worktree dialogs. Agent navigation follows project/checkout order.
+Pinned sessions sort within their checkout; adopted subagents in another Space
+remain under that Space, while same-Space subagents appear beneath their parent.
+
+`project-context.js` supplies a common checkout scope for the sidebar and tab
+bar. Tabs carry their native owner ID; only the active owner's active tab is
+highlighted. Selection and keyboard navigation select that owner before its
+tab. Panel visibility is remembered per checkout in ProdAdvice2.
+`open-project.js` resolves an explicitly chosen folder and machine, reuses an
+existing checkout or starts the selected first agent/terminal. No inherited
+focused cwd is used. The global open action and per-checkout session menu have
+distinct responsibilities; only agents appear as sidebar session cards.

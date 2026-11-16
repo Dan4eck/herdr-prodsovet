@@ -8,6 +8,8 @@ import { View, div, svg, image } from "gpui-kit";
 import { h_flex, v_flex } from "gpui-base";
 import { agents, panes, props, run, theme, home, layout, window, shared, setShared, spaces, keys, focused, exec, appHome, closeOverlay, settings, terminals, nextCommand, openOverlay } from "herdr";
 import { agentTheme, enabled, styledLayout, withTerminal } from "./palette.js";
+import OpenProject from "./open-project.js";
+import { openProjectDialog, nextProjectTab, openSessionMenu } from "./project-context.js";
 import { Agents } from "./agents.js";
 import { Spaces } from "./spaces.js";
 import { Picker } from "./picker.js";
@@ -314,7 +316,7 @@ class Zoo {
   }
 }
 
-const ROLES = { tabs: Tabs, "new-menu": NewMenu, "tab-menu": TabMenu, toast: Toast, zoo: Zoo, brand: Brand, agents: Agents, spaces: Spaces, picker: Picker, changes: Changes, github: GitHub, pane: PaneHead, status: Status };
+const ROLES = { tabs: Tabs, "new-menu": NewMenu, "tab-menu": TabMenu, toast: Toast, zoo: Zoo, brand: Brand, agents: Agents, projects: Agents, "open-project": OpenProject, spaces: Spaces, picker: Picker, changes: Changes, github: GitHub, pane: PaneHead, status: Status };
 
 export default class ProdSovet extends View {
   init(p, cx) {
@@ -332,6 +334,10 @@ export default class ProdSovet extends View {
         else if (name === "split-right") newTerminal("right");
         else if (name === "split-down") newTerminal("down");
         else if (name === "picker") openPicker();
+        else if (name === "open-project") openProjectDialog();
+        else if (name === "next-tab") nextProjectTab(1);
+        else if (name === "prev-tab") nextProjectTab(-1);
+        else if (name === "new-menu" && shared("layout") === "ProdAdvice2") openSessionMenu();
         else if (name === "new-menu") openOverlay({ mod: "prodsovet", kind: "popup", width: 250, height: 512, props: { role: "new-menu" } });
         cx.notify();
       } });

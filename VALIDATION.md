@@ -79,3 +79,58 @@ ProdAdvice2. The primary agent then installed the changes and checked the live
 render. The classic profile JSON, classic layout and both classic themes remain
 identical to the preceding light-theme commit. Stock Herdr components retain
 their own shapes; custom mods and the main pane use the new square styling.
+
+## Unified Projects sidebar (2026-11-16)
+
+ProdAdvice2 now renders one projects role instead of Spaces + Workshop. The
+classic layout remains unchanged. Project tests use a real temporary Git
+repository/worktrees and a mocked Herdr host to exercise new-checkout discovery,
+stable roots with a HOME first terminal, cached identity after unavailability,
+main-space closure, machine separation, duplicate-space grouping, checkout-local
+pins, adopted and cross-checkout subagents, persistent folds, document/shell
+navigation, targeted plus-menu launches and the narrow sidebar. Sixteen cases
+pass; the full package suite also passes (the macOS Trash fixture needs normal
+OS access rather than the restricted sandbox).
+
+Native check passes for the installed prodsovet mod and a separate fixture that
+forces the projects role with project/worktree/subagent data. The live personal
+ProdAdvice2 sidebar was visually inspected from a native frame through a local
+agent-browser session; runtime status reports no errors. Live click callbacks
+were covered by the mocked-host tests, not by desktop input automation. Existing
+user sessions/worktrees were not created, closed or moved during validation.
+The installed layout received only the sidebar-lists replacement; current panel
+geometry and the personal main.js differences were preserved with a backup.
+
+## Project usability follow-up (2026-11-16)
+
+The project suite now has 24 passing cases, including hidden plain-terminal
+cards, a single explicit project opener, no duplicate machine-header plus,
+shared checkout tabs across legacy native Spaces, correct active-tab state,
+cross-Space clicks/keyboard navigation, existing-folder reuse, direct agent
+launch, explicit terminal-only launch, invalid-path rejection and remote
+agent discovery. The full package suite passes.
+
+The installed layout was checked live: the affected checkout displayed its
+Codex tab and two existing terminal tabs together. Native next/previous-tab
+commands crossed duplicate Spaces and restored the starting tab. The new
+project chooser was opened and visually inspected, then closed without
+launching anything. The installed mod passed native check and runtime status
+reported no errors. No existing sessions were closed, merged or restarted.
+
+## Finder-first opening follow-up (2026-11-16)
+
+Project opening now orders computer, first session, then folder. Terminal is
+the default, including after machine changes and late agent discovery. Local
+Finder confirmation launches immediately; cancellation leaves the dialog open.
+Remote paths retain explicit submission. The project suite has 29 passing
+cases, including immediate terminal/agent launch from the picker, cancellation,
+duplicate-picker prevention, closing during selection, and terminal launch
+while agent discovery is pending. Folder-picker results use a mocked host; no
+real user project is created by these tests.
+
+## Agent-only project children (2026-11-16)
+
+Open files are omitted from the Projects tree alongside plain terminals.
+Existing project tests verify that the sidebar contains neither a shell card
+nor a document row, while the unified top tab bar retains both kinds of tabs.
+No document or terminal is closed by this display change.

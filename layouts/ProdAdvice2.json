@@ -29,30 +29,13 @@
           "type": "column",
           "children": [
             {
-              "id": "spaces",
+              "id": "projects",
               "type": "block",
               "content": {
                 "mod": "prodsovet",
                 "props": {
-                  "role": "spaces"
+                  "role": "projects"
                 }
-              },
-              "size": {
-                "weight": 0.8730701208114624
-              },
-              "min": 90
-            },
-            {
-              "id": "agents",
-              "type": "block",
-              "content": {
-                "mod": "prodsovet",
-                "props": {
-                  "role": "agents"
-                }
-              },
-              "size": {
-                "weight": 1.5269299745559692
               },
               "min": 90
             }
