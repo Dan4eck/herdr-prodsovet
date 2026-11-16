@@ -11,6 +11,21 @@ ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location('installer', ROOT / 'install.py')
 installer = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(installer)
+# The global shortcut of this platform's key file (find: Cmd+Shift+O / Ctrl+Shift+S).
+FIND_KEY = next(iter(json.loads(installer.PACKAGE_KEYS.read_text(encoding='utf-8'))['global']))
+
+
+def can_symlink():
+    """Windows allows symlinks only with Developer Mode or as administrator."""
+    with tempfile.TemporaryDirectory() as folder:
+        try:
+            (Path(folder) / 'link').symlink_to(Path(folder) / 'target')
+            return True
+        except OSError:
+            return False
+
+
+SYMLINKS = can_symlink()
 
 
 class InstallTests(unittest.TestCase):
@@ -58,13 +73,13 @@ class InstallTests(unittest.TestCase):
         self.assertEqual((self.home / 'shared.json').read_text(), '{"private":"keep"}')
 
     def test_key_collision_fails_before_writes(self):
-        self.seed({'global': {'cmd-shift-o': 'custom'}})
+        self.seed({'global': {FIND_KEY: 'custom'}})
         with self.assertRaisesRegex(ValueError, 'Key conflict'):
             installer.install(self.home, apply=True)
         self.assertFalse((self.home / 'mods').exists())
 
     def test_skip_conflicts_preserves_binding(self):
-        original = {'global': {'cmd-shift-o': 'custom'}}
+        original = {'global': {FIND_KEY: 'custom'}}
         self.seed(original)
         installer.install(self.home, apply=True, skip_conflicts=True)
         installer.uninstall(self.home, apply=True)
@@ -87,13 +102,15 @@ class InstallTests(unittest.TestCase):
 
     def test_opt_in_metrics(self):
         installer.install(self.home, apply=True, with_limits=True)
-        self.assertEqual(json.loads((self.home / 'mods/prodsovet/limits.local.json').read_text()), {'claude': True, 'codex': True})
+        # Windows offers only the local Codex source (no Keychain token reading).
+        self.assertEqual(json.loads((self.home / 'mods/prodsovet/limits.local.json').read_text()), {'claude': not installer.WINDOWS, 'codex': True})
 
     def test_no_prior_keys_removed_on_uninstall(self):
         installer.install(self.home, apply=True)
         installer.uninstall(self.home, apply=True)
         self.assertFalse((self.home / 'keys.json').exists())
 
+    @unittest.skipUnless(SYMLINKS, 'symlinks are not allowed for this user')
     def test_symlink_refused(self):
         self.home.mkdir()
         (self.home / 'mods').symlink_to(Path(self.tmp.name).resolve(), target_is_directory=True)
@@ -189,6 +206,7 @@ class InstallTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'Not installed'):
             installer.update(self.home)
 
+    @unittest.skipUnless(SYMLINKS, 'symlinks are not allowed for this user')
     def test_home_below_a_linked_folder_installs(self):
         real = Path(self.tmp.name).resolve() / 'real'; real.mkdir()
         link = Path(self.tmp.name).resolve() / 'link'; link.symlink_to(real, target_is_directory=True)

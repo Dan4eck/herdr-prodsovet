@@ -2,6 +2,8 @@
 // Stable checkout identities, independent of terminal cwd, names and agent status.
 export const pathKey = (on, path) => JSON.stringify([on ?? null, path]);
 export const leaf = path => path?.replace(/[/\\]+$/, "").split(/[/\\]/).pop() || "/";
+// Git prints Windows folders as C:/x/y; Herdr reports them as C:\x\y. Use one form.
+const gitPath = path => /^[A-Za-z]:\//.test(path) ? path[0].toUpperCase() + path.slice(1).replace(/\//g, "\\") : path;
 
 export async function inspectCheckout(exec, cwd, on, previous) {
   const git = args => exec("git", args, { cwd, on, timeout: 8000 });
@@ -15,9 +17,11 @@ export async function inspectCheckout(exec, cwd, on, previous) {
       if (/not a git repository/i.test(top.stderr || common.stderr)) return { cwd, on, kind: "folder" };
       return { ...previous, cwd, on, unavailable: true };
     }
-    const root = top.stdout.trimEnd(), repo = common.stdout.trimEnd();
-    const main = repo.endsWith("/.git") ? repo.slice(0, -5) : repo;
-    return { cwd, on, root, repo, main, kind: "git", linked: repo !== `${root}/.git`, branch: branch.code ? "(detached)" : branch.stdout.trim() };
+    const root = gitPath(top.stdout.trimEnd()), repo = gitPath(common.stdout.trimEnd());
+    const sep = /^[A-Z]:\\/.test(root) ? "\\" : "/";
+    const main = repo.endsWith(`${sep}.git`) ? repo.slice(0, -5) : repo;
+    const own = root.endsWith(sep) ? `${root}.git` : `${root}${sep}.git`;
+    return { cwd, on, root, repo, main, kind: "git", linked: repo !== own, branch: branch.code ? "(detached)" : branch.stdout.trim() };
   } catch {
     return { ...previous, cwd, on, unavailable: true };
   }

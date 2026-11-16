@@ -3,7 +3,7 @@
 import { View, div, svg } from "gpui-kit";
 import { h_flex, v_flex, Input, InputState } from "gpui-base";
 import { spaces, machines, knownAgents, pickFolder, exec, run, theme, props, closeOverlay, shared, setShared } from "herdr";
-import { workspace } from "./filesystem.js";
+import { workspace, isAbsolute, localOperation, onWindows, thisComputer } from "./filesystem.js";
 import { inspectCheckout, pathKey, leaf } from "./project-model.js";
 import { preferredSpace } from "./project-context.js";
 import { L, radius, appearance, fontSize } from "./appearance.js";
@@ -61,16 +61,22 @@ export default class OpenProject extends View {
   submit(cx) {
     if (this.busy || this.picking || this.closed || (this.loading && this.choice !== "terminal")) return;
     const path = this.path.trim(), on = this.on;
-    if (!path.startsWith("/")) { this.error = L("Choose a folder or enter its absolute path.", "Выбери папку или введи полный путь к ней."); cx.notify(); return; }
+    if (on ? !path.startsWith("/") : !isAbsolute(path)) { this.error = L("Choose a folder or enter its absolute path.", "Выбери папку или введи полный путь к ней."); cx.notify(); return; }
     const agent = this.agents.find(a => a.key === this.choice);
     if (this.choice !== "terminal" && !agent) return;
     this.busy = true; this.error = ""; cx.notify();
     cx.spawn(async cx => {
       try {
         // cwd is passed separately, never interpolated into shell source.
-        const resolved = await exec("pwd", ["-P"], { cwd: path, on, timeout: 8000 });
-        if (resolved.code) throw Error(L("This folder cannot be opened on the selected computer.", "Не удалось открыть папку на выбранном компьютере."));
-        const cwd = resolved.stdout.trimEnd();
+        // Windows has no pwd: file-ops.py resolves the folder (links included) instead.
+        const cantOpen = () => Error(L("This folder cannot be opened on the selected computer.", "Не удалось открыть папку на выбранном компьютере."));
+        let cwd;
+        if (onWindows(on)) cwd = (await localOperation({ action: "resolve", path }).catch(() => { throw cantOpen(); })).path;
+        else {
+          const resolved = await exec("pwd", ["-P"], { cwd: path, on, timeout: 8000 });
+          if (resolved.code) throw cantOpen();
+          cwd = resolved.stdout.trimEnd();
+        }
         const meta = await inspectCheckout(exec, cwd, on);
         const folder = meta.root || cwd;
         const cache = { ...(shared("projects.checkouts.v1") ?? {}), [pathKey(on, folder)]: { ...meta, cwd: folder } };
@@ -98,7 +104,7 @@ export default class OpenProject extends View {
 
   machineTile(t, m) {
     const on = this.on === m.name, ready = m.layout === "ready", enabled = ready && !this.busy && !this.picking;
-    const state = !m.name ? L("THIS MAC", "ЭТОТ MAC") : ready ? L("REMOTE", "УДАЛЁННЫЙ") : m.layout === "loading" ? L("CONNECTING", "ПОДКЛЮЧАЮ") : L("OFFLINE", "НЕТ СВЯЗИ");
+    const state = !m.name ? thisComputer() : ready ? L("REMOTE", "УДАЛЁННЫЙ") : m.layout === "loading" ? L("CONNECTING", "ПОДКЛЮЧАЮ") : L("OFFLINE", "НЕТ СВЯЗИ");
     return h_flex().id(`project-machine-${m.name ?? "local"}`).h(48).flex_1().min_w(170).px(12).gap(10).items_center().rounded(radius(6))
       .border_1().border_color(on ? t.foreground + "70" : t.border).bg(on ? t.foreground + "14" : t.surface)
       .when(enabled && !on, el => el.cursor_pointer().hover(s => s.bg(t.hover).border_color(t.input)))
@@ -164,7 +170,7 @@ export default class OpenProject extends View {
           .child(svg(px("folder")).size(15).text_color(t.foreground)))
         .child(v_flex().flex_1().min_w(0).gap(2)
           .child(div().truncate().text_size(fontSize("agents.body")).font_weight(appearance().weights.semibold).text_color(t.foreground)
-            .child(this.busy ? L("Opening…", "Открываю…") : this.picking ? L("Waiting for Finder…", "Жду Finder…") : L("Choose folder in Finder…", "Выбрать папку в Finder…")))
+            .child(this.busy ? L("Opening…", "Открываю…") : this.picking ? (onWindows() ? L("Waiting for the folder dialog…", "Жду выбора папки…") : L("Waiting for Finder…", "Жду Finder…")) : onWindows() ? L("Choose folder…", "Выбрать папку…") : L("Choose folder in Finder…", "Выбрать папку в Finder…")))
           .child(div().truncate().text_size(11).text_color(t.dim)
             .child(L(`Opens at once with ${sessionName}. An open project is selected again.`, `Откроется сразу с: ${sessionName}. Открытый проект выберется повторно.`))))
         .child(svg(px("go")).size(15).flex_none().text_color(t.muted));

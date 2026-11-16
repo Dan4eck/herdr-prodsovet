@@ -6,7 +6,7 @@ import { appearance, fontSize, metric, radius, labelFont, style, L } from "./app
 // conflicted coral), tinted selection, pixel icons and EN/RU strings.
 // Commit messages are prefilled from a read-only snapshot; manual edits win.
 import { div, svg } from "gpui-kit";
-import { fileGlyph } from "./filesystem.js";
+import { fileGlyph, python } from "./filesystem.js";
 import { CommitSuggestion } from "./commit-suggestion.js";
 import { v_flex, h_flex, InputState, Input, Scrollbar, v_virtual_list } from "gpui-base";
 import { spaces, panes, focused, exec, readTextFile, watchFolder, theme, settings, appHome } from "herdr";
@@ -44,7 +44,7 @@ export class Changes {
   init(_props, cx) {
     this.files = []; this.rows = []; this.diffWidth = 0; this.message = ""; this.messageOrigin = "empty"; this.handle = cx.focus_handle();
     this.suggestion = new CommitSuggestion(async (mode, value) => {
-      const r = await exec("python3", [`${appHome()}/mods/prodsovet/commit-message.py`, mode, value], { timeout: 90000 });
+      const r = await python([`${appHome()}/mods/prodsovet/commit-message.py`, mode, value], { timeout: 90000 });
       const data = JSON.parse(r.stdout);
       if (r.code || data.error) throw new Error(data.error || "Cannot suggest a commit message");
       return data;

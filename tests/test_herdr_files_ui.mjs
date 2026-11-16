@@ -18,7 +18,7 @@ const host={
   spaces:()=>[space,...extraSpaces],panes:()=>allPanes,focused:()=>focus,home:()=>os.homedir(),
   shared:k=>shared.get(k),setShared:(k,v)=>shared.set(k,v),props:()=>props,theme,settings:()=>({font_family:'mono'}),
   run:(name,args)=>calls.push({name,args}),openOverlay:p=>calls.push({overlay:p}),closeOverlay:id=>calls.push({close:id}),notify:n=>calls.push({notify:n}),
-  appHome:()=>app,window:()=>({platform:'macos'}),nextCommand:()=>new Promise(()=>{}),
+  appHome:()=>app,window:()=>({platform:process.platform==='win32'?'windows':'macos'}),nextCommand:()=>new Promise(()=>{}),
   readTextFile:async p=>fs.existsSync(p)?fs.readFileSync(p,'utf8'):null,
   writeTextFile:async(p,text,expected)=>{assert.equal(fs.existsSync(p)?fs.readFileSync(p,'utf8'):null,expected);fs.writeFileSync(p,text)},
   exec:async(command,args)=>{if(args?.[2]==='app-icon'){calls.push({appIcon:args[3],out:args[5]});return {code:appIconCode,stdout:'',stderr:''};}const r=spawnSync(command,args,{encoding:'utf8'});return {code:r.status,stdout:r.stdout??'',stderr:r.stderr??''}},
@@ -29,7 +29,7 @@ function synthetic(name,exports){const m=new vm.SyntheticModule(Object.keys(expo
 synthetic('herdr',host);
 synthetic('gpui-kit',{View:class {},div:element,svg:element,image:element});
 synthetic('gpui-base',{v_flex:element,h_flex:element,InputState:{new:input},Input:{new:element},EditorState:{new:input},Editor:{new:element},TextView:{markdown:element},set_theme(){}});
-async function load(name){if(cache.has(name))return cache.get(name);const m=new vm.SourceTextModule(fs.readFileSync(name,'utf8'),{context:ctx,identifier:name});cache.set(name,m);await m.link((specifier,ref)=>load(specifier.startsWith('.')?path.resolve(path.dirname(ref.identifier),specifier):specifier));return m;}
+async function load(name){if(path.isAbsolute(name))name=path.resolve(name); /* one identity per file on Windows too */ if(cache.has(name))return cache.get(name);const m=new vm.SourceTextModule(fs.readFileSync(name,'utf8'),{context:ctx,identifier:name});cache.set(name,m);await m.link((specifier,ref)=>load(specifier.startsWith('.')?path.resolve(path.dirname(ref.identifier),specifier):specifier));return m;}
 const ui=await load(app+'/mods/my-files/dialogs.js');await ui.evaluate();
 const ft=await load(app+'/mods/file-tab/main.js');await ft.evaluate();
 const api=(await load(app+'/mods/my-files/filesystem.js')).namespace;
@@ -44,16 +44,27 @@ try {
   let editor;
   await test('legacy file tab reload ignores remembered terminal id',async()=>{props={file:root+'/sample.md',on:null};storage.set('tab','terminal');shared.set('file-tab.open',{[props.file]:'terminal'});const cx=newCx();editor=new ft.namespace.default();editor.init({},cx);await cx.tasks[0];assert.equal(editor.tab,'file');assert.equal(editor.space,'test');assert.equal(editor.code.value(),'keep');});
   await test('dirty editor blocks rename and keeps unsaved text',async()=>{editor.code.set_value('unsaved');editor.snapshot();const d=await dialog('rename',root+'/sample.md',false,'renamed.md');assert.match(d.error,/Сначала сохраните/);assert.ok(fs.existsSync(root+'/sample.md'));assert.equal(editor.code.value(),'unsaved');});
-  await test('saving then renaming updates the existing editor path',async()=>{await editor.save(newCx());const d=await dialog('rename',root+'/sample.md',false,'renamed.md');assert.ok(!d.error);editor.syncDocument();assert.equal(editor.file,root+'/renamed.md');editor.code.set_value('after rename');await editor.save(newCx());assert.equal(fs.readFileSync(root+'/renamed.md','utf8'),'after rename');assert.ok(!fs.existsSync(root+'/sample.md'));});
-  await test('cut/paste moves file and updates open document',async()=>{api.clipboard({path:root+'/renamed.md',on:null},true);const d=await dialog('paste',root+'/folder',true,'moved.md');assert.ok(!d.error);editor.syncDocument();assert.equal(editor.file,root+'/folder/moved.md');assert.equal(shared.get('files.clipboard'),null);});
+  await test('saving then renaming updates the existing editor path',async()=>{await editor.save(newCx());const d=await dialog('rename',root+'/sample.md',false,'renamed.md');assert.ok(!d.error);editor.syncDocument();assert.equal(editor.file,path.join(root,'renamed.md'));editor.code.set_value('after rename');await editor.save(newCx());assert.equal(fs.readFileSync(root+'/renamed.md','utf8'),'after rename');assert.ok(!fs.existsSync(root+'/sample.md'));});
+  await test('cut/paste moves file and updates open document',async()=>{api.clipboard({path:root+'/renamed.md',on:null},true);const d=await dialog('paste',root+'/folder',true,'moved.md');assert.ok(!d.error);editor.syncDocument();assert.equal(editor.file,path.join(root,'folder','moved.md'));assert.equal(shared.get('files.clipboard'),null);});
   await test('duplicate dialog preserves original',async()=>{const d=await dialog('duplicate',root+'/folder/moved.md',false);assert.ok(!d.error);assert.equal(fs.readFileSync(root+'/folder/moved copy.md','utf8'),'after rename');});
-  await test('goto changes browsing without changing workspace launch directory',async()=>{const d=await dialog('goto',root,true,root+'/folder');assert.ok(!d.error);assert.equal(api.location().cwd,root+'/folder');assert.equal(api.workspace().cwd,root);});
+  await test('goto changes browsing without changing workspace launch directory',async()=>{const d=await dialog('goto',root,true,root+'/folder');assert.ok(!d.error);assert.equal(api.location().cwd,path.join(root,'folder'));assert.equal(api.workspace().cwd,root);});
   await test('context menu for a file contains all requested operations',()=>{props={target:{path:root+'/folder/moved.md',dir:false,on:null,space:'test'}};const menu=new ui.namespace.FileMenu();menu.init({},newCx());const actions=menu.items().map(x=>x[1]);for(const action of ['create-file','create-folder','rename','duplicate','copy','cut','copy-path','reveal','trash'])assert.ok(actions.includes(action));for(const action of ['goto','workspace'])assert.ok(!actions.includes(action));menu.render(newCx());});
   await test('unsaved buffer survives a mod reload and detects disk conflicts',async()=>{editor.code.set_value('draft recovery');editor.snapshot();fs.writeFileSync(editor.file,'external edit');props={file:root+'/sample.md',on:null};const cx=newCx(), reloaded=new ft.namespace.default();reloaded.init({},cx);await cx.tasks[0];assert.equal(reloaded.code.value(),'draft recovery');await reloaded.save(cx);assert.equal(fs.readFileSync(editor.file,'utf8'),'external edit');assert.ok(reloaded.saveError);});
   await test('open-in menu shows an installed app icon converted into the mod folder, else the neutral badge',async()=>{
+   if(process.platform==='win32'){assert.ok(!calls.some(c=>c.appIcon));assert.ok(!editor.appIcons?.code);return;} // app icons are converted on macOS only
    const icons=calls.filter(c=>c.appIcon).map(c=>c.appIcon);assert.ok(icons.includes('com.microsoft.VSCode'));assert.ok(icons.includes('md.obsidian'));
    assert.ok(calls.filter(c=>c.appIcon).every(c=>c.out.startsWith(app+'/mods/file-tab/app-icons/')));
    assert.equal(editor.appIcons.code,null);assert.ok(!fs.existsSync(app+'/mods/file-tab/app-icons'));
+  });
+  await test('an editor started before its pane is listed finds its tab later and registers',async()=>{
+    // Herdr on Windows can start the copy before panes() lists the new pane.
+    storage.clear();const fresh=root+'/late.md';fs.writeFileSync(fresh,'late');
+    space.tabs.push({id:'late-tab',name:'late.md'});focus={space:'test',tab:'late-tab'};props={file:fresh,space:'test',on:null};
+    const timers=[];const cx={...newCx(),timer:{after:(ms,fn)=>timers.push(fn),every(){}}};
+    const late=new ft.namespace.default();late.init({},cx);await cx.tasks[0];
+    assert.equal(late.tab,null);assert.ok(timers.length);
+    allPanes.push({tab:'late-tab',mod:'file-tab'});timers.shift()(cx);
+    assert.equal(late.tab,'late-tab');assert.equal(shared.get('files.documents')['late-tab'].file,fresh);
   });
   await test('same file opened in another space receives its own tab identity',async()=>{storage.clear();extraSpaces.push({id:'other',tabs:[{id:'other-file',name:'moved.md'}]});space.tabs.push({id:'new-file',name:'moved.md'});allPanes.push({tab:'other-file',mod:'file-tab'},{tab:'new-file',mod:'file-tab'});shared.set('file-tab.open',{[root+'/folder/moved.md']:'other-file'});focus={space:'test',tab:'new-file'};props={file:root+'/folder/moved.md',space:'test',on:null};const cx=newCx(), separate=new ft.namespace.default();separate.init({},cx);await cx.tasks[0];assert.equal(separate.tab,'new-file');assert.equal(separate.space,'test');});
   await test('changing an open editor style retains unsaved text and disk conflict protection',async()=>{

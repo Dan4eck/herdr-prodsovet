@@ -27,7 +27,10 @@ export class CommitSuggestion {
       if (this.cache.has(cacheKey)) { this.value = this.cache.get(cacheKey); return; }
       if (this.tried === cacheKey) return;
       this.tried = cacheKey; this.error = null; notify();
-      const result = await this.call('generate', JSON.stringify({ text: snapshot.text, language }));
+      // The helper reads the diff again from `root`: a diff excerpt in argv
+      // would pass the 32,767-character command line limit on Windows. The
+      // fingerprint check below drops a subject written for a newer diff.
+      const result = await this.call('generate', JSON.stringify({ root, language }));
       if (!live()) return;
       const latest = await this.call('snapshot', root);
       if (!live()) return;

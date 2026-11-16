@@ -31,12 +31,13 @@ const host={
  spaces:()=>sp,panes:()=>ps,terminals:()=>ts,agents:()=>ag.map(a=>({...a})),props:()=>pr,
  machines:()=>machineList,focused:()=>({space:'main',agent:'a1'}),
  shared:k=>state.get(k),setShared:(k,v)=>state.set(k,v),home:()=>'/home/test',appHome:()=>root,
- settings:()=>({dark:true}),window:()=>({active:true,platform:'macos'}),theme,
+ settings:()=>({dark:true}),window:()=>({active:true,platform:process.platform==='win32'?'windows':'macos'}),theme,
  layout:()=>({id:'sidebar',size:{px:width}}),setAgentOrder:x=>order=x,
  run:(name,args)=>calls.push({name,args}),openOverlay:p=>calls.push({overlay:p}),closeOverlay:id=>calls.push({close:id}),
  knownAgents:async({on})=>{agentHosts.push(on);return [{key:'codex',name:'Codex',run:['codex'],installed:true}];},pickFolder:()=>picker(),keys:()=>[],
  exec:async(cmd,args,opts)=>{
    if(cmd==='test')return {code:0,stdout:'',stderr:''};
+   if(['py','python','python3'].includes(cmd)){const r=spawnSync(cmd,args,{encoding:'utf8'});return {code:r.status??1,stdout:r.stdout??'',stderr:r.stderr??String(r.error??'')};}
    if(opts?.cwd?.startsWith(temp)) {const r=spawnSync(cmd,args,{cwd:opts.cwd,encoding:'utf8'});return {code:r.status??1,stdout:r.stdout??'',stderr:r.stderr??String(r.error??'')};}
    return {code:1,stdout:'',stderr:'unavailable'};
  }

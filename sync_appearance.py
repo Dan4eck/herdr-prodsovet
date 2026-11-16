@@ -148,7 +148,7 @@ def validate(config):
 
 def plan(home, config_path=None):
     home = Path(home).resolve()
-    profiles = validate(json.loads(Path(config_path or ROOT / 'appearance_profiles.json').read_text()))
+    profiles = validate(json.loads(Path(config_path or ROOT / 'appearance_profiles.json').read_text(encoding='utf-8')))
     result = {}
     helper = generated(profiles)
     for mod in MODS:
@@ -156,10 +156,10 @@ def plan(home, config_path=None):
         if not folder.is_dir():
             raise ValueError(f'Missing mod directory: {mod}')
         result[folder / 'appearance.js'] = helper
-    base = json.loads((home / 'layouts/PA-Light.json').read_text())
+    base = json.loads((home / 'layouts/PA-Light.json').read_text(encoding='utf-8'))
     for name, p in profiles.items():
         path = home / 'layouts' / (name + '.json')
-        layout = json.loads(path.read_text()) if path.exists() else copy.deepcopy(base)
+        layout = json.loads(path.read_text(encoding='utf-8')) if path.exists() else copy.deepcopy(base)
         layout.update(ui_font=p['fonts']['ui'], font=p['fonts']['terminal'], font_size=p['fonts']['terminalSize'],
                       theme={'light': p['lightTheme'], 'dark': p['darkThemeName']}, preview=p['preview'])
         result[path] = json.dumps(layout, ensure_ascii=False, indent=2) + '\n'
@@ -167,7 +167,7 @@ def plan(home, config_path=None):
         if p.get('lightPalette') is not None:
             result[home / 'themes' / (p['lightTheme'] + '.json')] = json.dumps(p['lightPalette'], indent=2) + '\n'
     keys_path = home / 'keys.json'
-    keys = json.loads(keys_path.read_text())
+    keys = json.loads(keys_path.read_text(encoding='utf-8'))
     keys.setdefault('layout:PA-Advanced', copy.deepcopy(keys['layout:PA-Light']))
     result[keys_path] = json.dumps(keys, ensure_ascii=False, indent=2) + '\n'
     return result
@@ -178,7 +178,7 @@ def main():
     parser.add_argument('--home', type=Path, default=ROOT, help='Target app/repository home; defaults to the script directory')
     parser.add_argument('--check', action='store_true', help='Report generated-file drift without writing')
     args = parser.parse_args()
-    changes = [(p, text) for p, text in plan(args.home).items() if not p.exists() or p.read_text() != text]
+    changes = [(p, text) for p, text in plan(args.home).items() if not p.exists() or p.read_text(encoding='utf-8') != text]
     if args.check:
         for p, _ in changes: print(f'Out of sync: {p.relative_to(args.home.resolve())}')
         if changes: raise SystemExit(1)
@@ -189,7 +189,7 @@ def main():
     for p, text in changes:
         p.parent.mkdir(parents=True, exist_ok=True)
         temp = p.with_name(p.name + '.appearance-tmp')
-        with temp.open('x') as f: f.write(text)
+        with temp.open('x', encoding='utf-8', newline='\n') as f: f.write(text)
         temp.replace(p)
     print(f'Synchronized {len(changes)} files. Active layout unchanged.')
 

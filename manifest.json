@@ -2,7 +2,7 @@
   "name": "herdr-prodsovet",
   "version": "0.4.0",
   "herdr_tested": "0.1.16",
-  "platform": "macOS",
+  "platform": "macOS, Windows",
   "mods": [
     "prodsovet",
     "my-files",
