@@ -162,7 +162,9 @@ ProdAdvice2 ignores pins and draws no pin control. The tree's SESSIONS tab
 with a project caption; navigation follows that order. Drag reordering
 (mouse down/move/up, like the old Spaces list) stores `projects.order.v1`
 (project keys) and `projects.sessionOrder.v1` (agent addresses, applied inside
-each checkout); `projects.sessionsManual.v1` makes SESSIONS use it. Native
+each checkout); `projects.sessionsManual.v1` makes SESSIONS use it. SESSIONS
+has two sort buttons (`sessions-sort-status`, `sessions-sort-manual`); by
+status it draws foldable Workshop sections (`sessions-sec-<rank>`). Native
 spaces are never moved. Adopted subagents in another Space
 remain under that Space, while same-Space subagents appear beneath their parent.
 

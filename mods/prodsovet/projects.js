@@ -35,6 +35,8 @@ export function moved(list, from, to) {
   return out;
 }
 const ranks = { blocked: 4, done: 3, working: 2, idle: 1 };
+const SECTION = () => ({ 4: L("NEED YOU", "ЖДУТ ТЕБЯ"), 3: L("DONE", "ГОТОВО"), 2: L("WORKING", "РАБОТАЮТ"), 1: L("RESTING", "ОТДЫХАЮТ") });
+const SECTION_STATUS = { 4: "blocked", 3: "done", 2: "working" };
 
 export class ProjectTree {
   init(cx) {
@@ -139,8 +141,10 @@ export class ProjectTree {
       setShared(SESSION_ORDER, [...next, ...sessionOrder.filter(x => !next.includes(x) && all.some(k => k.address === x))]);
     };
     owner.dragCard = null;
+    owner.rail = false;
     const view = shared(VIEW) === "sessions" ? "sessions" : "projects";
     owner.caption = null;
+    owner.rail = view === "projects" && !collapsed;
     if (view === "sessions") return this.sessions(cx, owner, projects, entries, withKids, collapsed, t, all);
     const ordered = projects.flatMap(p => p.checkouts.flatMap(c => c.members));
     if (!collapsed) {
@@ -158,9 +162,9 @@ export class ProjectTree {
     const index = new Map(ordered.map((a, i) => [a.address, i]));
     const top = members => members.flatMap(a => [a.status, ...owner.tree(all, a.address).map(s => s.t.status)])
       .reduce((best, s) => (ranks[s] ?? 0) > (ranks[best] ?? 0) ? s : best, null);
-    const button = (id, icon, hint, act) => div().id(id).size(22).flex_none().flex().items_center().justify_center()
+    const button = (id, icon, hint, act, size = 14) => div().id(id).size(22).flex_none().flex().items_center().justify_center()
       .text_color(t.dim).hover(s => s.bg(t.hover).text_color(t.foreground)).tooltip(hint)
-      .on_click((_e, cx) => { cx.stop_propagation(); act(cx); }).child(svg(px(icon)).size(14));
+      .on_click((_e, cx) => { cx.stop_propagation(); act(cx); }).child(svg(px(icon)).size(size));
     // Only an informative branch: the usual trunk names say nothing new.
     const TRUNK = new Set(["main", "master", "trunk", "develop", "dev"]);
     const branchMark = branch => h_flex().flex_none().max_w(96).gap(3).items_center().text_color(t.dim)
@@ -170,22 +174,28 @@ export class ProjectTree {
       // Expanded, the agent cards below already show each status; folded, the
       // header carries the loudest one. Idle never adds a mark.
       const folded = this.folded.has(id), loud = top(members), status = folded && loud && loud !== "idle" ? loud : null;
-      return h_flex().id(id).h(nested ? 30 : 34).flex_none().gap(6).pl(nested ? 14 : 2).pr(3).items_center()
+      return h_flex().id(id).h(nested ? 28 : 34).flex_none().gap(6).pl(2).pr(3).items_center()
         // No fill for the active project: the current session card is the one
         // selection. The active project only reads brighter; others are muted.
         .when(true, el => hovered(el, t))
         .on_click(() => { if (space) run("space.select", { id: space.id }); })
         .when(Boolean(space), el => el.on_mouse_down("right", () => this.menu(space)))
-        .child(button(`${id}-fold`, `chevron-${folded ? "right" : "down"}`, folded ? L("Expand", "Развернуть") : L("Collapse", "Свернуть"), cx => this.toggle(id, cx)))
+        .child(button(`${id}-fold`, `fold-${folded ? "right" : "down"}`, folded ? L("Expand", "Развернуть") : L("Collapse", "Свернуть"), cx => this.toggle(id, cx), 16))
         .child(nested ? svg(px("branch")).size(14).flex_none().text_color(active ? t.foreground : t.dim) : projectTile(t, space, name, 18).opacity(active ? 1 : 0.55))
-        .child(div().flex_1().min_w(0).truncate().text_size(fontSize(nested ? "agents.secondary" : "agents.body"))
+        .child(div().flex_1().min_w(0).truncate().text_size(nested ? 12 : fontSize("agents.body"))
+          .when(nested, el => el.font_family(mono()))
           .when(!nested, el => el.font_weight(appearance().weights.semibold)).text_color(active ? t.foreground : t.muted).tooltip(hint || name).child(name))
+        // A worktree says what it is in words, not only with the branch icon.
+        .when(nested, el => el.child(div().flex_none().h(15).px(4).flex().items_center().border_1().border_color(t.border)
+          .font_family(mono()).text_size(9).text_color(t.dim).tooltip(hint).child("WORKTREE")))
         .when(Boolean(detail) && !TRUNK.has(detail), el => el.child(branchMark(detail)))
         .when(Boolean(status), el => el.child(owner.status(t, { status }, true)))
         .when(members.length > 0, el => el.child(div().min_w(16).h(16).px(3).flex().items_center().justify_center().border_1().border_color(t.border)
           .font_family(mono()).text_size(10).text_color(t.dim).tooltip(L(`Agents: ${members.length}`, `Агентов: ${members.length}`)).child(String(members.length))))
         .when(Boolean(space), el => el.child(button(`${id}-add`, "plus", L("New session / worktree", "Новая сессия / worktree"), () => this.add(space))));
     };
+    // The rail is a line drawn first, so a card's selection bar can cover it.
+    const rail = el => el.relative().pl(5).child(div().absolute().left(0).top(0).bottom(0).w(1).bg(t.border));
     const rows = [];
     const machineNames = [...new Set([...projects.map(p => p.machine), ...machines().map(m => m.name)])];
     // One section per computer once any remote machine is known: this Mac first.
@@ -221,15 +231,26 @@ export class ProjectTree {
         rows.push(this.drag(head(id, project.name, members, active, target, false, tip, main?.meta.branch), t, "project", project.key, JSON.stringify(machine), peers,
           (from, to) => setShared(PROJECT_ORDER, moved(projects.map(p => p.key), from, to))));
         if (this.folded.has(id)) continue;
+        // Everything a project owns hangs on one rail under its fold arrow: the
+        // main checkout's sessions first, then each worktree in its own box.
+        const inside = [];
         for (const c of project.checkouts) {
           const cid = `checkout-${c.key}`, nested = Boolean(c.meta.linked);
-          if (nested) rows.push(head(cid, c.meta.branch || leaf(c.root), c.members, c.spaces.some(s => s.active), preferredSpace(c.spaces), true, `${c.root}\n${L("Git worktree of this project", "Git worktree этого проекта")}`, null));
-          if (nested && this.folded.has(cid)) continue;
-          if (c.meta.unavailable) rows.push(h_flex().pl(nested ? 44 : 34).pb(4).gap(6).items_center().font_family(mono()).text_size(10).text_color(t.blocked)
-            .child(div().size(5).flex_none().bg(t.blocked)).child(L("Folder unavailable", "Папка недоступна")));
-          const content = c.members.flatMap(a => withKids(a, index.get(a.address)));
-          rows.push(v_flex().id(`checkout-content-${c.key}`).flex_none().min_w(0).pl(nested ? 16 : 4).children(content));
+          const part = [];
+          if (nested) part.push(head(cid, c.meta.branch || leaf(c.root), c.members, c.spaces.some(s => s.active), preferredSpace(c.spaces), true, `${c.root}\n${L("Git worktree of this project", "Git worktree этого проекта")}`, null));
+          if (!nested || !this.folded.has(cid)) {
+            if (c.meta.unavailable) part.push(h_flex().pl(10).pb(4).gap(6).items_center().font_family(mono()).text_size(10).text_color(t.blocked)
+              .child(div().size(5).flex_none().bg(t.blocked)).child(L("Folder unavailable", "Папка недоступна")));
+            part.push(v_flex().id(`checkout-content-${c.key}`).flex_none().min_w(0).children(c.members.flatMap(a => withKids(a, index.get(a.address)))));
+          }
+          if (!nested) { inside.push(...part); continue; }
+          // A worktree branches off the project rail and carries its own rail.
+          const [top, ...body] = part;
+          inside.push(v_flex().id(`checkout-box-${c.key}`).flex_none().min_w(0).mt(2)
+            .child(h_flex().min_w(0).items_center().child(div().w(7).h(1).ml(-5).flex_none().bg(t.border)).child(div().flex_1().min_w(0).child(top)))
+            .when(body.length > 0, el => el.child(rail(v_flex().min_w(0).ml(13)).children(body))));
         }
+        rows.push(rail(v_flex().id(`project-content-${project.key}`).flex_none().min_w(0).ml(12).pb(4)).children(inside));
       }
     });
     return this.frame(rows, collapsed, t, view);
@@ -265,11 +286,36 @@ export class ProjectTree {
         .child(div().min_w(0).truncate().text_color(t.muted).child(name))
         .when(Boolean(branch), el => el.child(svg(px("branch")).size(11).flex_none()).child(div().min_w(0).max_w(90).truncate().font_family(mono()).text_size(10).child(branch)))];
     }));
-    const rows = flat.flatMap((a, i) => withKids(a, i));
+    // By status: the same sections as the Workshop (need you, done, working,
+    // resting); each header folds its section. By hand: one flat list.
+    const rows = [];
+    let last = null;
+    flat.forEach((a, i) => {
+      const r = urgency(a) || ranks.idle, id = `sessions-sec-${r}`;
+      if (!manual && !collapsed && last !== r) {
+        last = r;
+        rows.push(this.section(cx, owner, t, id, r, flat.filter(x => (urgency(x) || ranks.idle) === r).length));
+      }
+      if (manual || collapsed || !owner.folded.has(id)) rows.push(...withKids(a, i));
+    });
     if (!flat.length && !collapsed) rows.push(v_flex().px(10).pt(10).gap(6)
       .child(div().font_family(appearance().fonts.mono).text_size(fontSize("agents.secondary")).text_color(t.foreground).frames(typed(L("> start an agent", "> запусти агента")), 110))
       .child(div().text_size(fontSize("agents.meta")).text_color(t.dim).child(L("Agent sessions from every project show up here.", "Здесь появятся сессии агентов из всех проектов."))));
     return this.frame(rows, collapsed, t, "sessions", manual);
+  }
+
+  // A status section header in SESSIONS: colored mark, label, count, fold.
+  section(cx, owner, t, id, r, count) {
+    const open = !owner.folded.has(id), status = SECTION_STATUS[r];
+    return h_flex().id(id).h(26).px(8).pt(6).flex_none().gap(6).items_center().cursor_pointer()
+      .font_family(mono()).text_size(fontSize("agents.meta")).font_weight(appearance().weights.medium)
+      .hover(s => s.text_color(t.foreground))
+      .on_click((_e, cx) => { open ? owner.folded.add(id) : owner.folded.delete(id); cx.notify(); })
+      .when(Boolean(status), el => el.child(div().size(6).flex_none().bg(t[status])))
+      .child(div().truncate().text_color(t[status] ?? t.dim).child(SECTION()[r]))
+      .child(div().text_color(t.dim).child(String(count)))
+      .child(div().flex_1())
+      .when(!open, el => el.child(svg(px("fold-right")).size(14).flex_none().text_color(t.dim)));
   }
 
   // The column: PROJECTS | SESSIONS tabs, the open button and the scrolling list.
@@ -288,7 +334,18 @@ export class ProjectTree {
       .child(h_flex().h(36).px(collapsed ? 4 : 12).flex_none().items_center().gap(14)
         .when(!collapsed, el => el.child(tab("projects", L("PROJECTS", "ПРОЕКТЫ"))).child(tab("sessions", L("SESSIONS", "СЕССИИ"))))
         .child(div().flex_1())
-        .when(view === "sessions" && manual && !collapsed, el => el.child(button("sessions-urgency", "clock", L("Back to urgency order", "Снова по срочности"), cx => { setShared(SESSIONS_MANUAL, false); cx.notify(); })))
+        // SESSIONS sorts like the Workshop did: by status, or in your own order.
+        .when(view === "sessions" && !collapsed, el => el.child(h_flex().flex_none().gap(2).items_center().children([
+          ["sessions-sort-status", "clock", L("By status: need you, done, working, resting", "По статусу: ждут тебя, готово, работают, отдыхают"), false],
+          ["sessions-sort-manual", "order", L("Your order (drag to arrange)", "Свой порядок (перетаскивай)"), true],
+        ].map(([id, icon, hint, hand]) => {
+          const on = manual === hand;
+          return div().id(id).size(22).flex_none().flex().items_center().justify_center().tooltip(hint)
+            .when(on, e => e.bg(t.raised).text_color(t.foreground))
+            .when(!on, e => e.cursor_pointer().text_color(t.dim).hover(h => h.text_color(t.foreground))
+              .on_click((_e, cx) => { cx.stop_propagation(); setShared(SESSIONS_MANUAL, hand); cx.notify(); }))
+            .child(svg(px(icon)).size(14));
+        }))))
         .child(collapsed ? button("project-new", "folder-plus", L("Open project…", "Открыть проект…"), openProjectDialog)
           : h_flex().id("project-new").h(24).px(7).gap(6).flex_none().items_center().border_1().border_color(t.border).text_color(t.muted)
             .cursor_pointer().hover(s => s.bg(t.hover).text_color(t.foreground).border_color(t.input)).tooltip(L("Open project… (⌘N)", "Открыть проект… (⌘N)"))

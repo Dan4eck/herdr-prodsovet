@@ -164,7 +164,13 @@ solid pixel icons in `mods/prodsovet/art/px`, the halftone in
 - Spaces (`prodsovet` role `spaces`, derived from Herdr's stock mod): square
   letter tiles in the dashboard colors, mono machine headers, pixel icons;
 - Workshop: both sort orders as pixel buttons (clock = urgency, layers =
-  spaces); section labels get a colored square;
+  spaces); section labels get a colored square; ProdAdvice2 SESSIONS uses the
+  same pair (clock = status sections, `order` grip = your own order);
+- ProdAdvice2 PROJECTS: a 1 px rail ties a project's sessions and worktrees to
+  it; each worktree branches off that rail with its own rail, a mono branch
+  name and a `WORKTREE` tag; fold arrows are solid chevrons, not pixel ones;
+  the current session lights its stretch of that rail (one 2 px paper bar, `onRail`)
+  instead of a bar on the card; SESSIONS keeps the bar on the card;
 - icons: a 15 px grid, 1 px solid strokes and rounded corners; the Files tree
   keeps dot-matrix type icons and Herdr's chevrons;
 - pane headers: a lead running along a dotted rail; pixel split/zoom/close;

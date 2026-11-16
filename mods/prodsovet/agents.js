@@ -7,7 +7,7 @@ import { div, image, svg } from "gpui-kit";
 import { word, artPath, artKind, ART_FRAMES } from "./creatures.js";
 import { spaceLabel } from "./filesystem.js";
 import { ProjectTree } from "./projects.js";
-import { agency, accentOf, current, hovered, glitchy, halftone, typed, icon as assetIcon } from "./agency.js";
+import { agency, accentOf, current, onRail, hovered, glitchy, halftone, typed, px, icon as assetIcon } from "./agency.js";
 import { v_flex, h_flex } from "gpui-base";
 import { agents, terminals, panes, focused, spaces, run, theme, shared, setShared, setAgentOrder, openOverlay, closeOverlay, props, window, layout, appHome, exec } from "herdr";
 
@@ -230,7 +230,7 @@ export class Agents {
       .items_center()
       .text_size(fontSize("agents.compact"))
       .when(on && !agency(), (el) => el.bg(t.raised))
-      .when(on && agency(), (el) => current(el, t))
+      .when(on && agency(), (el) => (this.rail ? onRail : current)(el, t))
       .when(!on && !agency(), (el) => el.hover((s) => s.bg(t.hover)))
       .when(!on && agency(), (el) => hovered(el, t))
       .on_click(() => (this.listed.has(k.address) ? run("pane.focus", { terminal: k.address }) : this.peek(k.address)))
@@ -342,7 +342,7 @@ export class Agents {
           open ? this.folded.add(a.address) : this.folded.delete(a.address);
           cx.notify();
         })
-        .child(svg(chrome(`chevron-${open ? "down" : "right"}`)).size(11).flex_none())
+        .child(this.projects ? svg(px(`fold-${open ? "down" : "right"}`)).size(13).flex_none() : svg(chrome(`chevron-${open ? "down" : "right"}`)).size(11).flex_none())
         .when(!open, (el) => el.child(String(subs.length)));
     };
 
@@ -421,7 +421,7 @@ export class Agents {
         .gap(8)
         .rounded(radius(8))
         .when(a.focused && !agency(), (el) => el.bg(t.selected).when(style("selectionBar"), (e) => e.border_l(2).border_color(own).pl(4)))
-        .when(on && agency(), (el) => current(el, t))
+        .when(on && agency(), (el) => (this.rail ? onRail : current)(el, t))
         .when(agency(), (el) => el.relative())
         .cursor_pointer()
         .when(!agency(), (el) => el.hover((s) => s.bg(t.hover)))

@@ -39,9 +39,10 @@ The SESSIONS tab beside PROJECTS lists every agent session in one list, most
 urgent and most recent first, each card naming its project (and worktree
 branch); the chosen tab is remembered. Drag to reorder: project headers
 within their machine, sessions within their checkout on PROJECTS, and any
-session on SESSIONS. The order is shared by both tabs; after a drag SESSIONS
-keeps the hand order (new sessions on top) until the clock button restores
-urgency order. Plain terminals are shown only in the top tab bar, without grey
+session on SESSIONS. The order is shared by both tabs. SESSIONS has two sort
+buttons, as the old Workshop had: by status (clock; NEED YOU / DONE / WORKING /
+RESTING sections that fold) and your own order (a flat list; new sessions on
+top). A drag switches to your own order. Plain terminals are shown only in the top tab bar, without grey
 placeholder cards in the sidebar. Open files also appear only in the top tab
 bar. The sidebar lists agent sessions beneath projects and worktrees.
 Each worktree keeps its own native Space, files and Changes panel. Git identities

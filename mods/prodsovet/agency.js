@@ -30,6 +30,9 @@ export function selected(el, t, _color) {
 export function current(el, t) {
   return selected(el, t).relative().child(div().absolute().left(0).top(0).bottom(0).w(2).bg(t.foreground));
 }
+// On the PROJECTS tree the same 2 px bar sits on the project rail beside the
+// card (the rail line runs 5 px left of a card) and covers it there.
+export function onRail(el, t) { return selected(el, t).relative().child(div().absolute().left(-5).top(0).bottom(0).w(2).bg(t.foreground)); }
 export function hovered(el, t) {
   return el.hover(s => s.bg(t.foreground + "0b"));
 }

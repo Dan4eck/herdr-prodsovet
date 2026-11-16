@@ -268,8 +268,21 @@ try {
    press('ag-a1');byId(owner.render(cx),'ag-a2').events.on_mouse_move({},cx);byId(owner.render(cx),'ag-a2').events.on_mouse_up({},cx);
    assert.equal(state.get('projects.sessionsManual.v1'),true);assert.deepEqual(plain(state.get('projects.sessionOrder.v1').slice(0,2)),['a1','a2']);
    tree=owner.render(cx);assert.deepEqual(plain(order),['a1','a2','a3']);
-   byId(tree,'sessions-urgency').events.on_click({},cx);tree=owner.render(cx);assert.deepEqual(plain(order),['a2','a3','a1']);assert.ok(!byId(tree,'sessions-urgency'));
+   assert.ok(!nodes(tree).some(n=>String(n.attrs.id).startsWith('sessions-sec-')));
+   byId(tree,'sessions-sort-status').events.on_click({},cx);tree=owner.render(cx);assert.deepEqual(plain(order),['a2','a3','a1']);assert.equal(state.get('projects.sessionsManual.v1'),false);
+   byId(tree,'sessions-sort-manual').events.on_click({},cx);tree=owner.render(cx);assert.deepEqual(plain(order),['a1','a2','a3']);
+   byId(tree,'sessions-sort-status').events.on_click({},cx);tree=owner.render(cx);
    state.set('projects.view.v1','projects');state.delete('projects.sessionOrder.v1');state.delete('projects.sessionsManual.v1');tree=owner.render(cx);
+ });
+ await test('Sessions by status shows Workshop sections that fold their cards',()=>{
+   state.set('projects.view.v1','sessions');tree=owner.render(cx);
+   const secs=nodes(tree).filter(n=>String(n.attrs.id).startsWith('sessions-sec-')).map(n=>n.attrs.id);
+   assert.ok(secs.length>=2);assert.equal(new Set(secs).size,secs.length);
+   const last=secs.at(-1);assert.ok(text(byId(tree,last)).length>0);
+   assert.ok(byId(tree,'ag-a1'));byId(tree,last).events.on_click({},cx);tree=owner.render(cx);
+   assert.ok(!byId(tree,'ag-a1'));assert.ok(byId(tree,'ag-a2'));
+   byId(tree,last).events.on_click({},cx);tree=owner.render(cx);assert.ok(byId(tree,'ag-a1'));
+   state.set('projects.view.v1','projects');tree=owner.render(cx);
  });
  await test('in Projects a session cannot be dragged into another checkout',()=>{
    tree=owner.render(cx);byId(tree,'ag-a1').events.on_mouse_down();byId(owner.render(cx),'ag-a2').events.on_mouse_move({},cx);byId(owner.render(cx),'ag-a2').events.on_mouse_up({},cx);
@@ -289,7 +302,12 @@ try {
    const a1=byId(tree,'ag-a1'),a2=byId(tree,'ag-a2');
    assert.equal(a1.attrs.bg,'#7777771a');assert.equal(a1.attrs.hover,undefined);
    assert.notEqual(a2.attrs.bg,'#7777771a');assert.equal(typeof a2.attrs.hover,'function');
-   assert.notEqual(byId(tree,pid).attrs.bg,'#7777771a');ag.find(a=>a.address==='a2').focused=false;
+   assert.notEqual(byId(tree,pid).attrs.bg,'#7777771a');
+   // PROJECTS lights the project rail beside the card; SESSIONS keeps the bar on the card.
+   const bar=n=>n._children.find(c=>c.attrs.absolute!==undefined&&c.attrs.w!==undefined);
+   assert.equal(bar(a1).attrs.left,-5);
+   state.set('projects.view.v1','sessions');tree=owner.render(cx);assert.equal(bar(byId(tree,'ag-a1')).attrs.left,0);
+   state.set('projects.view.v1','projects');tree=owner.render(cx);ag.find(a=>a.address==='a2').focused=false;
  });
  await test('classic workshop retains its grouping and does not list shell-only sessions',async()=>{
    pr={role:'agents'};state.set('layout','ProdAdvice');const old=new mod.namespace.Agents();old.init({},cx);await flush();tree=old.render(cx);

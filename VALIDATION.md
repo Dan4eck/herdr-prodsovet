@@ -180,3 +180,25 @@ only to unselected rows. ProdAdvice2 marks as current only the session with
 the window's focus (`focused()`), not every tab's focused pane, and project
 rows have no fill. A new project case checks this (35 cases). A live frame
 after installation showed one highlighted session and a bright active project.
+
+## Sessions sort (2026-11-16)
+
+SESSIONS has the Workshop's two sort buttons: by status, with foldable NEED YOU /
+DONE / WORKING / RESTING sections, and your own order, a flat list that a drag
+also switches to. A new pixel icon `art/px/order.svg` marks your own order. The
+project suite has 36 cases (switching between both sorts, sections present only
+by status, a folded section hiding its cards).
+
+## Worktree belonging (2026-11-16)
+
+On PROJECTS everything a project owns hangs on a 1 px rail under its fold arrow:
+the main checkout's sessions first, then each git worktree, which branches off
+that rail with a short tick and carries its own rail for its sessions; its header
+shows the branch in mono and a `WORKTREE` tag. Fold arrows in ProdAdvice2 are
+solid 16 px chevrons (`art/px/fold-down.svg`, `fold-right.svg`) instead of pixel
+ones. Ids `project-content-<key>` and `checkout-box-<key>` are new;
+existing ids are kept. Checked in a live frame of the installed copy (the
+PROJECTS view was forced in that copy only for the frame, then restored).
+On PROJECTS the current session lights its stretch of the project rail (a 2 px
+bar drawn over the rail line, which is now a plain 1 px div painted first) instead of a bar on the card; SESSIONS, which has
+no rail, keeps the card bar. The focused-session test checks both placements.
