@@ -16,6 +16,13 @@ MANIFEST = json.loads((ROOT / 'manifest.json').read_text())
 RECEIPT = '.herdr-prodsovet-install.json'
 # Settings the person owns once written: kept as they are on update.
 PERSONAL = {'mods/prodsovet/limits.local.json'}
+
+def live(name):
+    """A layout file: Herdr itself writes window state into it (panel sizes,
+    the open side panel, pane colors), so a change there is not an edit."""
+    return name.startswith('layouts/') and name.endswith('.json')
+
+
 # Made at run time by file-tab from installed apps; removed on uninstall.
 GENERATED = 'mods/file-tab/app-icons'
 
@@ -149,14 +156,26 @@ def update(home, apply=False, skip_conflicts=False):
     receipt = json.loads(receipt_path.read_text())
     owned = receipt['files']
     files = payload()
-    changed = [n for n, d in owned.items() if n not in PERSONAL and safe(home, n).exists() and digest(safe(home, n).read_bytes()) != d]
+    changed = [n for n, d in owned.items() if n not in PERSONAL and not live(n) and safe(home, n).exists() and digest(safe(home, n).read_bytes()) != d]
     if changed:
         raise ValueError('Modified files preserved: ' + ', '.join(sorted(changed)) + '. Save your edits elsewhere and restore or remove them before updating.')
     for name, data in files.items():
         p = safe(home, name)
         if name not in owned and p.exists() and p.read_bytes() != data:
             raise ValueError(f'Name collision: {name}')
-    write = {n: d for n, d in files.items() if not safe(home, n).exists() or safe(home, n).read_bytes() != d}
+    write, backup = {}, []
+    for n, d in files.items():
+        p = safe(home, n)
+        if p.exists() and p.read_bytes() == d:
+            continue
+        if live(n) and p.exists() and n in owned and digest(p.read_bytes()) != owned[n]:
+            # Herdr has written window state into this layout. Keep it while the
+            # package's layout is unchanged; otherwise take the new one and
+            # leave the old next to it.
+            if digest(d) == owned[n]:
+                continue
+            backup.append(n)
+        write[n] = d
     remove = [n for n in owned if n not in files and n not in PERSONAL]
     # Bindings: drop the ones this installer added that the package no longer
     # has (when still unchanged), add the package's new ones.
@@ -184,10 +203,15 @@ def update(home, apply=False, skip_conflicts=False):
     print(f'{"UPDATE" if apply else "PLAN UPDATE"}: {receipt.get("version", "?")} -> {MANIFEST["version"]}: {len(write)} files written, {len(remove)} removed -> {home}')
     for n in remove:
         print(f'  remove {n}')
+    for n in backup:
+        print(f'  new layout {n}; yours is kept as {n}.before-update')
     if not apply:
         return
     saved = {n: safe(home, n).read_bytes() for n in [*write, *remove] if safe(home, n).exists()}
     try:
+        for name in backup:
+            p = safe(home, name)
+            p.with_name(p.name + '.before-update').write_bytes(p.read_bytes())
         for name, data in write.items():
             p = safe(home, name)
             p.parent.mkdir(parents=True, exist_ok=True)
@@ -237,8 +261,8 @@ def uninstall(home, apply=False):
     for name, expected in receipt['files'].items():
         p = safe(home, name)
         if p.exists() and digest(p.read_bytes()) != expected:
-            if name in PERSONAL:
-                continue  # an edited personal setting is simply left in place
+            if name in PERSONAL or live(name):
+                continue  # a personal setting is left in place; layouts carry Herdr's own window state
             raise ValueError(f'Modified file preserved: {name}. Save your edits and resolve before uninstalling.')
     _, keys = read_keys(home)
     for section, bindings in receipt['added_keys'].items():

@@ -234,3 +234,14 @@ made, a missing app exits 3, a second run reuses the PNG. The installer neither
 packages nor tracks `app-icons/`, and uninstall removes its PNGs. The UI suite
 stubs the conversion (no files written into the repository) and checks the
 requests and the fallback; the installed menu itself was not opened live.
+
+## Updater and Herdr-written layouts (2026-11-16)
+
+The first live `--update` refused because Herdr writes window state into
+`layouts/PA-*.json` (pane header color for the focused agent, the open side
+panel, column widths). Layout files no longer block update or uninstall: update
+keeps the installed layout while the package's copy is unchanged (receipt digest
+equals the package digest), else installs the new one and keeps the old as
+`.before-update`; uninstall removes them. Installer suite: 22 cases. A dry run
+against the real install now plans one file (file-tab/main.js) and keeps both
+layouts.

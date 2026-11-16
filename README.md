@@ -186,7 +186,10 @@ An update replaces only files the installer wrote and nobody changed since,
 removes files the new version no longer has, and adds new key bindings. If you
 edited a package file, it stops before writing and names the file: save your
 edits elsewhere, put the original back (or delete the file) and run it again.
-`limits.local.json` is yours and is kept. Updating from 0.3 renames the layouts
+`limits.local.json` is yours and is kept. Layout files are not treated as your
+edits: Herdr writes window state into them (panel sizes, the open side panel).
+Yours is kept while the new version leaves that layout unchanged; otherwise the
+new one is installed and yours stays beside it as `….json.before-update`. Updating from 0.3 renames the layouts
 (ProdAdvice → PA-Light, ProdAdvice2 → PA-Advanced); the
 installer prints the switch command if your window still uses an old name.
 

@@ -159,6 +159,32 @@ class InstallTests(unittest.TestCase):
         installer.uninstall(self.home, apply=True)
         self.assertFalse(icons.exists())
 
+    def test_update_keeps_layouts_herdr_wrote_into(self):
+        installer.install(self.home, apply=True)
+        p = self.home / 'layouts/PA-Advanced.json'
+        p.write_text(p.read_text().replace('"active": "files"', '"active": "changes"'))
+        mine = p.read_text()
+        installer.update(self.home, apply=True)
+        self.assertEqual(p.read_text(), mine)
+        self.assertFalse(p.with_name(p.name + '.before-update').exists())
+
+    def test_update_takes_a_changed_package_layout_and_keeps_the_old_one(self):
+        installer.install(self.home, apply=True)
+        receipt = json.loads((self.home / installer.RECEIPT).read_text())
+        receipt['files']['layouts/PA-Advanced.json'] = installer.digest(b'an older package layout')
+        (self.home / installer.RECEIPT).write_text(json.dumps(receipt))
+        p = self.home / 'layouts/PA-Advanced.json'
+        p.write_text('{"window": "state"}')
+        installer.update(self.home, apply=True)
+        self.assertEqual(p.read_bytes(), (ROOT / 'layouts/PA-Advanced.json').read_bytes())
+        self.assertEqual(p.with_name(p.name + '.before-update').read_text(), '{"window": "state"}')
+
+    def test_uninstall_is_not_blocked_by_layout_window_state(self):
+        installer.install(self.home, apply=True)
+        p = self.home / 'layouts/PA-Light.json'; p.write_text('{"window": "state"}')
+        installer.uninstall(self.home, apply=True)
+        self.assertFalse(p.exists())
+
     def test_update_needs_an_install(self):
         with self.assertRaisesRegex(ValueError, 'Not installed'):
             installer.update(self.home)
