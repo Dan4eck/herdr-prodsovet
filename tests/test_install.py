@@ -152,6 +152,13 @@ class InstallTests(unittest.TestCase):
         installer.uninstall(self.home, apply=True)
         self.assertEqual(p.read_text(), '{"claude": true, "codex": false}')
 
+    def test_uninstall_removes_converted_app_icons_only(self):
+        installer.install(self.home, apply=True)
+        icons = self.home / installer.GENERATED; icons.mkdir()
+        (icons / 'code.png').write_bytes(b'png')
+        installer.uninstall(self.home, apply=True)
+        self.assertFalse(icons.exists())
+
     def test_update_needs_an_install(self):
         with self.assertRaisesRegex(ValueError, 'Not installed'):
             installer.update(self.home)

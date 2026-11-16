@@ -6,7 +6,7 @@ contact GitHub, change your active layout, install agent hooks or upload data.
 | Component | Access / side effects |
 |---|---|
 | File manager | Lists chosen workspace folders, reads Git metadata, executes Python filesystem operations on selected local paths. Can create, rename, copy, move and send items to macOS Trash after user actions. |
-| File editor | Reads/saves selected files through Herdr. Unsaved drafts persist in local mod storage. External editor actions run `open`. |
+| File editor | Reads/saves selected files through Herdr. Unsaved drafts persist in local mod storage. External editor actions run `open`. To show the real VS Code/Obsidian icons it finds the installed apps (`mdfind`, else `/Applications`), reads their icon name (`PlistBuddy`) and converts the icon once with `sips` into `mods/file-tab/app-icons/` (removed on uninstall). Nothing is downloaded. |
 | Search | Runs `rg` and shell utilities in the workspace. Can open results or send selected text/path to the focused agent via terminal input and clipboard. |
 | Clipboard actions | Use `pbcopy`/`pbpaste`; temporary clipboard replacement/restoration is possible when sending text to an agent. |
 | Tabs / agents | Read Herdr space/terminal/agent metadata and Git repository identity; persist project associations and fold state locally; user actions can launch terminals/agents or close tabs. Focused agent may change pane styling in this layout. |

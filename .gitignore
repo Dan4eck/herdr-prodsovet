@@ -25,3 +25,4 @@ __pycache__/
 **/gpui-kit.d.ts
 **/jsconfig.json
 *.appearance-tmp
+mods/file-tab/app-icons/

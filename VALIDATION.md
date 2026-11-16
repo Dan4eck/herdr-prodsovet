@@ -222,3 +222,15 @@ Renamed again the same day to the short **PA-Advanced** / **PA-Light** (themes
 `PA-*-Night`, `PA-*-Day`, previews `layouts/pa-*.png`); the brief
 `ProdAdvice-Advanced` / `ProdAdvice-Light` names also map to their profiles and
 are listed in `former_layouts` so `--update` removes them and prints the switch.
+
+## Real app icons in "Open in" (2026-11-16)
+
+file-tab shows VS Code's and Obsidian's own icons, converted at run time from
+the apps installed on the Mac (`mdfind` by bundle id, else `/Applications`;
+`CFBundleIconFile`; `sips -Z 64` to `mods/file-tab/app-icons/<id>.png`, redone
+only when the app's icon is newer). No logo is shipped; without the app the
+neutral badge stays. The conversion script was run on this Mac: both PNGs were
+made, a missing app exits 3, a second run reuses the PNG. The installer neither
+packages nor tracks `app-icons/`, and uninstall removes its PNGs. The UI suite
+stubs the conversion (no files written into the repository) and checks the
+requests and the fallback; the installed menu itself was not opened live.

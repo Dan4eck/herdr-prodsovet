@@ -16,6 +16,8 @@ MANIFEST = json.loads((ROOT / 'manifest.json').read_text())
 RECEIPT = '.herdr-prodsovet-install.json'
 # Settings the person owns once written: kept as they are on update.
 PERSONAL = {'mods/prodsovet/limits.local.json'}
+# Made at run time by file-tab from installed apps; removed on uninstall.
+GENERATED = 'mods/file-tab/app-icons'
 
 
 def digest(data):
@@ -63,7 +65,7 @@ def payload():
             if p.is_symlink():
                 raise ValueError('Package symlink refused')
             if p.is_file() and p.suffix in {'.js', '.py', '.svg', '.png', '.json'}:
-                if p.name in {'limits.local.json', 'jsconfig.json'} or '__pycache__' in p.parts:
+                if p.name in {'limits.local.json', 'jsconfig.json'} or '__pycache__' in p.parts or 'app-icons' in p.parts:
                     continue
                 files[str(p.relative_to(ROOT))] = p.read_bytes()
     for name in MANIFEST['appearance_files']:
@@ -261,6 +263,12 @@ def uninstall(home, apply=False):
         p.unlink(missing_ok=True)
         parents.update(p.parents)
     receipt_path.unlink()
+    # PNGs file-tab converted from the person's installed apps (not shipped).
+    made = safe(home, GENERATED)
+    if made.is_dir():
+        for p in made.glob('*.png'):
+            p.unlink()
+        parents.add(made)
     for parent in sorted(parents, key=lambda p: len(p.parts), reverse=True):
         if parent == home or home not in parent.parents:
             continue

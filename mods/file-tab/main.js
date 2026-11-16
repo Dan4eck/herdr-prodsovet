@@ -6,7 +6,7 @@ import { appearance, fontSize, metric, radius, L, style } from "./appearance.js"
 // Edit and Cmd+S to save; double-click the name to rename the file; "Открыть в" sends it to Obsidian or VS Code.
 import { View, div, svg, image } from "gpui-kit";
 import { v_flex, h_flex, Editor, EditorState, InputState, Input, TextView, set_theme } from "gpui-base";
-import { props, exec, readTextFile, writeTextFile, theme, settings, focused, spaces, panes, run, notify, shared, setShared, nextCommand } from "herdr";
+import { props, exec, appHome, readTextFile, writeTextFile, theme, settings, focused, spaces, panes, run, notify, shared, setShared, nextCommand } from "herdr";
 
 import { operation, isLocked, activeDocuments, workspace, fileGlyph } from "./filesystem.js";
 
@@ -24,14 +24,38 @@ function selectionAccent(t) {
   return "#" + bg.map((b, i) => Math.max(0, Math.min(255, Math.round(b + (sel[i] - b) / SEL_ALPHA))).toString(16).padStart(2, "0")).join("");
 }
 const OPEN_IN = [
-  { id: "code", label: "VS Code", app: "Visual Studio Code", icon: "mods/file-tab/code.svg" },
-  { id: "obsidian", label: "Obsidian", icon: "mods/file-tab/notes.svg" },
+  { id: "code", label: "VS Code", app: "Visual Studio Code", bundle: "com.microsoft.VSCode", icon: "mods/file-tab/code.svg" },
+  { id: "obsidian", label: "Obsidian", app: "Obsidian", bundle: "md.obsidian", icon: "mods/file-tab/notes.svg" },
 ];
+// The real app icons are not shipped: each is read from the app installed on
+// this Mac and converted once to a PNG in this mod's folder (app-icons/).
+// Without the app (or on failure) the neutral badge stays.
+const APP_ICONS = "mods/file-tab/app-icons";
+const ICON_SCRIPT = `set -e
+app=$(mdfind "kMDItemCFBundleIdentifier == '$1'" 2>/dev/null | head -n 1)
+[ -d "$app" ] || app="/Applications/$2.app"
+[ -d "$app" ] || exit 3
+icon=$(/usr/libexec/PlistBuddy -c "Print :CFBundleIconFile" "$app/Contents/Info.plist")
+case "$icon" in *.icns) ;; *) icon="$icon.icns" ;; esac
+src="$app/Contents/Resources/$icon"
+[ -f "$src" ] || exit 4
+mkdir -p "$(dirname "$3")"
+[ "$3" -nt "$src" ] || sips -s format png -Z 64 "$src" --out "$3" >/dev/null`;
+let appIcons = null;
+function loadAppIcons() {
+  appIcons ??= Promise.all(OPEN_IN.map(async (a) => {
+    const rel = `${APP_ICONS}/${a.id}.png`;
+    const r = await exec("sh", ["-c", ICON_SCRIPT, "app-icon", a.bundle, a.app, `${appHome()}/${rel}`], { timeout: 15000 }).catch(() => null);
+    return [a.id, r?.code === 0 ? rel : null];
+  })).then(Object.fromEntries);
+  return appIcons;
+}
 
 export default class FileTab extends View {
   init(p, cx) {
     const pr = { ...(p ?? {}), ...(props() ?? {}) };
     this.file = pr.file; this.on = pr.on ?? null;
+    this.appIcons = null;
     const allSpaces = spaces(), allPanes = panes();
     const validTab = id => allSpaces.some(s => (!pr.space || s.id === pr.space) && s.tabs.some(t => t.id === id)) && allPanes.some(p => p.tab === id && p.mod === "file-tab");
     const remembered = localStorage.getItem("tab");
@@ -63,7 +87,8 @@ export default class FileTab extends View {
         else if (name === "focus") this.h.focus();
         cx.notify();
       }
-    });
+    });    // Last, so the file's own load stays the first task.
+    cx.spawn(async (cx) => { this.appIcons = await loadAppIcons(); cx.notify(); });
   }
 
   // file -> tab id, so opening the same file again just shows its tab
@@ -298,7 +323,7 @@ export default class FileTab extends View {
           .children(OPEN_IN.map((a) => h_flex().id(`ft-in-${a.id}`).h(metric("fileTab.menuRow")).px(8).gap(9).items_center().rounded(radius(6)).cursor_pointer()
             .text_size(fontSize("fileTab.body")).text_color(t.foreground).hover((s) => s.bg(t.hover))
             .on_click((_e, cx) => { this.openMenu = false; this.openIn(a); cx.notify(); })
-            .child(svg(a.icon).size(18).flex_none())
+            .child(this.appIcons?.[a.id] ? image(this.appIcons[a.id]).size(18).flex_none() : svg(a.icon).size(18).flex_none())
             .child(a.label)))));
   }
 }

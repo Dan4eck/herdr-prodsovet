@@ -9,6 +9,7 @@ const app=fileURLToPath(new URL('..',import.meta.url)).replace(/\/$/,''), root=f
 const shared=new Map([['ui.lang','ru']]), storage=new Map(), calls=[]; // assertions read the Russian strings
 let props={}, focus={space:'test',tab:'terminal',terminal:'t1'}, space={id:'test',active:true,folder:root,machine:null,tabs:[{id:'terminal',name:'Terminal'},{id:'file',name:'sample.md'}]};
 const extraSpaces=[];
+let appIconCode=3; // no app found unless a test says otherwise
 const allPanes=[{tab:'terminal',terminal:'t1',cwd:root},{tab:'file',mod:'file-tab',cwd:null}];
 const input=({value='' }={})=>({text:value, value(){return this.text},set_value(v){this.text=v},on(){},focus(){},release(){},set_selected_range(){}});
 const element=()=>new Proxy({}, {get:(_,key)=>key==='then'?undefined:(...args)=>key==='when'?(args[0]?args[1](element()):element()):element()});
@@ -20,7 +21,7 @@ const host={
   appHome:()=>app,window:()=>({platform:'macos'}),nextCommand:()=>new Promise(()=>{}),
   readTextFile:async p=>fs.existsSync(p)?fs.readFileSync(p,'utf8'):null,
   writeTextFile:async(p,text,expected)=>{assert.equal(fs.existsSync(p)?fs.readFileSync(p,'utf8'):null,expected);fs.writeFileSync(p,text)},
-  exec:async(command,args)=>{const r=spawnSync(command,args,{encoding:'utf8'});return {code:r.status,stdout:r.stdout??'',stderr:r.stderr??''}},
+  exec:async(command,args)=>{if(args?.[2]==='app-icon'){calls.push({appIcon:args[3],out:args[5]});return {code:appIconCode,stdout:'',stderr:''};}const r=spawnSync(command,args,{encoding:'utf8'});return {code:r.status,stdout:r.stdout??'',stderr:r.stderr??''}},
 };
 const ctx=vm.createContext({console,Date,JSON,Object,String,Number,Set,Map,Error,Boolean,Math,localStorage:{getItem:k=>storage.get(k)??null,setItem:(k,v)=>storage.set(k,v),removeItem:k=>storage.delete(k)}});
 const cache=new Map();
@@ -49,6 +50,11 @@ try {
   await test('goto changes browsing without changing workspace launch directory',async()=>{const d=await dialog('goto',root,true,root+'/folder');assert.ok(!d.error);assert.equal(api.location().cwd,root+'/folder');assert.equal(api.workspace().cwd,root);});
   await test('context menu for a file contains all requested operations',()=>{props={target:{path:root+'/folder/moved.md',dir:false,on:null,space:'test'}};const menu=new ui.namespace.FileMenu();menu.init({},newCx());const actions=menu.items().map(x=>x[1]);for(const action of ['create-file','create-folder','rename','duplicate','copy','cut','copy-path','reveal','trash'])assert.ok(actions.includes(action));for(const action of ['goto','workspace'])assert.ok(!actions.includes(action));menu.render(newCx());});
   await test('unsaved buffer survives a mod reload and detects disk conflicts',async()=>{editor.code.set_value('draft recovery');editor.snapshot();fs.writeFileSync(editor.file,'external edit');props={file:root+'/sample.md',on:null};const cx=newCx(), reloaded=new ft.namespace.default();reloaded.init({},cx);await cx.tasks[0];assert.equal(reloaded.code.value(),'draft recovery');await reloaded.save(cx);assert.equal(fs.readFileSync(editor.file,'utf8'),'external edit');assert.ok(reloaded.saveError);});
+  await test('open-in menu shows an installed app icon converted into the mod folder, else the neutral badge',async()=>{
+   const icons=calls.filter(c=>c.appIcon).map(c=>c.appIcon);assert.ok(icons.includes('com.microsoft.VSCode'));assert.ok(icons.includes('md.obsidian'));
+   assert.ok(calls.filter(c=>c.appIcon).every(c=>c.out.startsWith(app+'/mods/file-tab/app-icons/')));
+   assert.equal(editor.appIcons.code,null);assert.ok(!fs.existsSync(app+'/mods/file-tab/app-icons'));
+  });
   await test('same file opened in another space receives its own tab identity',async()=>{storage.clear();extraSpaces.push({id:'other',tabs:[{id:'other-file',name:'moved.md'}]});space.tabs.push({id:'new-file',name:'moved.md'});allPanes.push({tab:'other-file',mod:'file-tab'},{tab:'new-file',mod:'file-tab'});shared.set('file-tab.open',{[root+'/folder/moved.md']:'other-file'});focus={space:'test',tab:'new-file'};props={file:root+'/folder/moved.md',space:'test',on:null};const cx=newCx(), separate=new ft.namespace.default();separate.init({},cx);await cx.tasks[0];assert.equal(separate.tab,'new-file');assert.equal(separate.space,'test');});
   await test('changing an open editor style retains unsaved text and disk conflict protection',async()=>{
     const helper=(await load(app+'/mods/file-tab/appearance.js')).namespace;

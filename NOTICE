@@ -43,7 +43,9 @@ redistribution permission confirmed by the project owner. These third-party
 mascots are not relicensed under the project's Apache-2.0 code license.
 Underlying artwork and trademark rights remain with their respective owners.
 VS Code/Obsidian raster logos of unrecorded provenance were replaced by neutral
-code/notes badges. Their integration and names are retained.
+code/notes badges. No app logo is distributed: when VS Code or Obsidian is
+installed, file-tab converts that app's own icon on the user's Mac and shows it;
+without the app the neutral badge remains. Their integration and names are retained.
 
 Herdr, OpenAI, Codex, Claude, Anthropic, Gemini, Google, Hermes, Nous Research,
 VS Code and Obsidian are names of their respective owners. This community
