@@ -245,3 +245,12 @@ equals the package digest), else installs the new one and keeps the old as
 `.before-update`; uninstall removes them. Installer suite: 22 cases. A dry run
 against the real install now plans one file (file-tab/main.js) and keeps both
 layouts.
+
+## Release v0.4.0 (2026-11-16)
+
+`verify.py` passes. In temporary homes with Herdr 0.1.16's stock mods: a clean
+install of this tree and an update from the 0.3 commit `f6f2248` both pass
+`herdr-app check` for all five mods and leave only the PA-* layouts and themes.
+The author's own install was updated from the repository with `--update`
+(layouts kept) and runs PA-Advanced without errors; the "Open in" app icons were
+confirmed in the live window by the author.

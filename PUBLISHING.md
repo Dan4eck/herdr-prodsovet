@@ -1,27 +1,43 @@
-# Publication
+# Development and releases
 
 Repository: https://github.com/Dan4eck/herdr-prodsovet (public). Description:
 "ProdAdvice: workspace-aware files, editor tabs, search and animated agents for Herdr. macOS."
 
-This directory is the repository root. Publish only this directory, not the
-parent workspace or installed Herdr configuration. Review README, NOTICE and
-ACCESS before the first commit. The public package intentionally differs from
-the personal install: limits opt-in and neutral external-editor badges. All agent
-mascots match the personal install.
+## Day to day
 
-1. Run `python3 -B verify.py`; perform the native checks listed in README.
-2. Review the final file list and diff, including images. Do not add local state,
-   credentials, receipts, caches, old archives or screenshots of private projects.
-3. Initialize Git here if necessary, select only the reviewed files and make the
-   initial commit. No GitHub account or owner name is embedded in the package.
-4. Create the public repository in the desired account and push that commit.
-   Creation/push is a separate publishing action; preparation does not do it.
-5. Set topic `herdr-layout` (and optionally `herdr-mod`). The installed Herdr
-   sharing guide describes catalog discovery by topics. Check catalog behavior
-   at publication time; it is an external service, not part of this installer.
-6. Tag `v0.4.0` (the version in manifest.json), attach a source archive and include tested Herdr/macOS versions
-   plus the known limitations in the release notes.
+`main` is the development branch; people install tagged releases. The author's
+own Herdr runs the working copy:
 
-Future releases: preserve the mods' shared API copies, refresh checks and
-compatibility evidence, update manifest version and record any changes to access
-or external provider integrations. Never add a blanket force-overwrite installer.
+1. Change code in this repository (never in `~/.config/herdr-app/mods`: the
+   next update refuses files changed there).
+2. `python3 dev.py` runs `verify.py`, updates your Herdr from this copy with
+   `install.py --update --apply` and runs the native `herdr-app check` for all
+   five mods; Herdr reloads the mods by itself. `python3 dev.py --fast` skips
+   `verify.py` for quick visual iterations; run the full one before committing.
+3. Commit and push to `main` in small steps. Add a line for anything a user
+   would notice under **Unreleased** in CHANGELOG.md.
+4. When a change adds or removes files, regenerate CHECKSUMS.sha256 (sorted
+   `shasum -a 256` of the tracked files except itself).
+
+## Release
+
+When Unreleased holds enough:
+
+1. Pick the version (`0.x.0` for features, `0.x.y` for fixes) and set it in
+   `manifest.json`; set `herdr_tested` to the Herdr version you tested with.
+2. Move the Unreleased lines in CHANGELOG.md under that version with the date;
+   leave Unreleased empty.
+3. `python3 -B verify.py`, then a clean install and an update in a temporary
+   home (`install.py --home /tmp/x`, from the previous tag then this one) and
+   the manual checks in RECIPE that the release touched. Record them in
+   VALIDATION.md.
+4. Regenerate CHECKSUMS.sha256, commit "release: vX.Y.Z", tag `vX.Y.Z`, push
+   the commit and the tag.
+5. Create the GitHub release from the tag with that CHANGELOG section as notes,
+   plus the tested Herdr/macOS versions and known limitations.
+
+Never publish local state: receipts, `data/`, `shared.json`, `view.json`,
+credentials, caches or screenshots of private projects. Keep topic
+`herdr-layout` (and `herdr-mod`). Preserve the mods' shared API copies, record
+changes to access or external integrations in ACCESS.md, and never add a
+blanket force-overwrite installer.

@@ -62,8 +62,19 @@ become remote operations. Remote forks require Python, `hc` and the agent on the
 
 ## Install
 
-Download or clone this repository, then run commands **from its root**.
-Repository: https://github.com/Dan4eck/herdr-prodsovet
+Install a **release**, not the `main` branch: `main` is where development
+happens between releases. Get the latest release from
+[Releases](https://github.com/Dan4eck/herdr-prodsovet/releases) (source archive),
+or with Git:
+
+```sh
+git clone https://github.com/Dan4eck/herdr-prodsovet
+cd herdr-prodsovet
+git checkout "$(git describe --tags --match 'v*' --abbrev=0)"   # the latest release
+```
+
+Run the commands below **from that folder**. What changed in each release is in
+[CHANGELOG.md](CHANGELOG.md).
 
 Read [ACCESS.md](ACCESS.md) and the source before installation: mods can execute
 programs and read/write the files you work with.
@@ -175,9 +186,11 @@ generic robot for unknown agents. See [NOTICE](NOTICE) for attribution.
 
 ## Updates and uninstall
 
-Update from a newer copy of this repository, run from its root:
+Update to a newer release, from the same folder:
 
 ```sh
+git fetch --tags
+git checkout "$(git describe --tags --match 'v*' --abbrev=0 origin/main)"
 python3 install.py --update            # review the plan; does not write
 python3 install.py --update --apply    # replace the old version
 ```
