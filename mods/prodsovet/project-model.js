@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 // Stable checkout identities, independent of terminal cwd, names and agent status.
-export const pathKey = (on, path) => JSON.stringify([on ?? null, path]);
+import { isWindowsPath, native, samePath } from "./filesystem.js";
+// Keep display paths intact; only identity keys fold Windows case/separators.
+export const pathKey = (on, path) => JSON.stringify([on ?? null, isWindowsPath(path) ? native(path).toLowerCase() : path]);
 export const leaf = path => path?.replace(/[/\\]+$/, "").split(/[/\\]/).pop() || "/";
 // Git prints Windows folders as C:/x/y; Herdr reports them as C:\x\y. Use one form.
-const gitPath = path => /^[A-Za-z]:\//.test(path) ? path[0].toUpperCase() + path.slice(1).replace(/\//g, "\\") : path;
+const gitPath = path => native(path);
 
 export async function inspectCheckout(exec, cwd, on, previous) {
   const git = args => exec("git", args, { cwd, on, timeout: 8000 });
@@ -18,10 +20,10 @@ export async function inspectCheckout(exec, cwd, on, previous) {
       return { ...previous, cwd, on, unavailable: true };
     }
     const root = gitPath(top.stdout.trimEnd()), repo = gitPath(common.stdout.trimEnd());
-    const sep = /^[A-Z]:\\/.test(root) ? "\\" : "/";
-    const main = repo.endsWith(`${sep}.git`) ? repo.slice(0, -5) : repo;
+    const sep = isWindowsPath(root) ? "\\" : "/";
+    const main = (isWindowsPath(repo) ? repo.toLowerCase() : repo).endsWith(`${sep}.git`) ? repo.slice(0, -5) : repo;
     const own = root.endsWith(sep) ? `${root}.git` : `${root}${sep}.git`;
-    return { cwd, on, root, repo, main, kind: "git", linked: repo !== own, branch: branch.code ? "(detached)" : branch.stdout.trim() };
+    return { cwd, on, root, repo, main, kind: "git", linked: !samePath(repo, own), branch: branch.code ? "(detached)" : branch.stdout.trim() };
   } catch {
     return { ...previous, cwd, on, unavailable: true };
   }
@@ -38,7 +40,7 @@ export function projectGroups(entries) {
       projects.set(key, group);
     }
     const root = m.root || e.cwd;
-    let checkout = group.checkouts.find(c => c.root === root);
+    let checkout = group.checkouts.find(c => samePath(c.root, root));
     if (!checkout) {
       checkout = { key: pathKey(machine, root), root, meta: m, spaces: [], members: [] };
       group.checkouts.push(checkout);

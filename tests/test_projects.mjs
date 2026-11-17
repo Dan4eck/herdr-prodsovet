@@ -11,6 +11,7 @@ const plain=x=>JSON.parse(JSON.stringify(x));
 const state=new Map([['layout','PA-Advanced'],['ui.lang','ru']]);
 const storage=new Map(), calls=[], pending=[];
 let sp=[], ps=[], ts=[], ag=[], pr={role:'projects'}, width=341, order=[], machineList=[{name:null,layout:'ready'}], agentHosts=[], picker=async()=>null;
+let execFixture=null;
 function element(type='div') {
  const node={type,_children:[],events:{},attrs:{}};
  const proxy=new Proxy(node,{get(target,key){
@@ -36,6 +37,7 @@ const host={
  run:(name,args)=>calls.push({name,args}),openOverlay:p=>calls.push({overlay:p}),closeOverlay:id=>calls.push({close:id}),
  knownAgents:async({on})=>{agentHosts.push(on);return [{key:'codex',name:'Codex',run:['codex'],installed:true}];},pickFolder:()=>picker(),keys:()=>[],
  exec:async(cmd,args,opts)=>{
+   if(execFixture)return execFixture(cmd,args,opts);
    if(cmd==='test')return {code:0,stdout:'',stderr:''};
    if(['py','python','python3'].includes(cmd)){const r=spawnSync(cmd,args,{encoding:'utf8'});return {code:r.status??1,stdout:r.stdout??'',stderr:r.stderr??String(r.error??'')};}
    if(opts?.cwd?.startsWith(temp)) {const r=spawnSync(cmd,args,{cwd:opts.cwd,encoding:'utf8'});return {code:r.status??1,stdout:r.stdout??'',stderr:r.stderr??String(r.error??'')};}
@@ -77,6 +79,38 @@ try {
    assert.equal(result.repo,main.repo);assert.equal(result.unavailable,true);
  });
  const entry=(id,cwd,meta,machine=null)=>({space:{id,machine,tabs:[]},cwd,meta,label:id,members:[]});
+ await test('Windows drive and UNC aliases share project and checkout identities',async()=>{
+   for(const [first,second] of [['C:/Work/Project','c:\\work\\project'],['//Server/Share/Project','\\\\server\\share\\project']]) {
+     const inspect=async(folder,common)=>inspectCheckout(async(_cmd,args)=>({code:0,stdout:args.includes('--show-toplevel')?folder:args.includes('--git-common-dir')?common:'main'}),folder,null);
+     const a=await inspect(first,second+'/.git'),b=await inspect(second,first+'/.git');
+     assert.equal(a.linked,false);assert.equal(b.linked,false);
+     const groups=projectGroups([entry('a',first,a),entry('b',second,b)]);
+     assert.equal(groups.length,1);assert.equal(groups[0].checkouts.length,1);assert.equal(groups[0].checkouts[0].spaces.length,2);
+     assert.equal(pathKey(null,first+'/'),pathKey(null,second));
+     assert.notEqual(pathKey(null,first),pathKey('server',second));
+   }
+   assert.notEqual(pathKey(null,'/Work/Project'),pathKey(null,'/work/project'));
+ });
+ await test('opening a Windows path alias reuses its existing Space and tabs',async()=>{
+   const savedSpaces=sp,savedState=new Map(state),savedProps=pr;
+   const existing='C:\\Work\\Project',typed='c:/work/project';
+   sp=[{id:'win',active:true,folder:existing,machine:null,tabs:[{id:'win-tab',active:true}]},
+       {id:'alias',folder:typed,machine:null,tabs:[{id:'alias-tab'}]}];
+   state.set('files.workspace-roots',{win:existing,alias:typed});
+   execFixture=(cmd,args,opts)=>{
+     if(['py','python','python3'].includes(cmd)) return {code:0,stdout:args.includes('-c')?'3':JSON.stringify({path:typed})};
+     if(cmd==='pwd')return {code:0,stdout:typed};
+     if(cmd==='git')return {code:0,stdout:args.includes('--show-toplevel')?opts.cwd:args.includes('--git-common-dir')?opts.cwd+'/.git':'main'};
+     throw Error('Unexpected command: '+cmd);
+   };
+   try {
+     assert.deepEqual(plain(contextModule.namespace.checkoutContext().tabs.map(t=>t.id)),['win-tab','alias-tab']);
+     pr={role:'open-project'};const dialog=new openerModule.namespace.default();dialog.init({},cx);await flush();
+     dialog.path=typed;calls.length=0;dialog.submit(cx);await flush();
+     assert.ok(!dialog.error,dialog.error);assert.ok(!calls.some(c=>c.name==='space.new'));
+     assert.equal(calls.find(c=>c.name==='space.select')?.args.id,'win');
+   } finally {execFixture=null;sp=savedSpaces;pr=savedProps;state.clear();for(const [k,v] of savedState)state.set(k,v);calls.length=0;}
+ });
  await test('worktree stays in its repository group after the main space closes',()=>{
    const groups=projectGroups([entry('wt',wt,linked)]);assert.equal(groups[0].name,'project');assert.equal(groups[0].checkouts[0].meta.linked,true);
  });

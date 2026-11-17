@@ -87,7 +87,7 @@ export default class OpenProject extends View {
         for (const s of spaces().filter(s => (s.machine ?? null) === on)) {
           const root = workspace(s.id).cwd;
           const own = cache[pathKey(on, root)] ?? await inspectCheckout(exec, root, on);
-          if ((own.root || root) === folder) candidates.push(s);
+          if (pathKey(on, own.root || root) === pathKey(on, folder)) candidates.push(s);
         }
         if (this.closed) return;
         const existing = preferredSpace(candidates);

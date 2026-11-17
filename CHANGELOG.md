@@ -6,6 +6,9 @@ committed; the release moves it under the new version.
 
 ## Unreleased
 
+- Windows project identities ignore path case and separator differences, including UNC paths; reopening a project reuses its existing Space.
+- Package validation checks raw bytes to reject CRLF line endings.
+
 - **Windows support.** `py install.py --apply` installs the same five mods and
   two layouts on Windows 10/11 with Herdr's Windows key conventions
   (`keys.windows.json`: Ctrl+Shift instead of Cmd, Ctrl+S in the editor,

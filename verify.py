@@ -27,9 +27,10 @@ for path in ROOT.rglob('*'):
     assert not path.is_symlink(), f'Unexpected symlink: {path}'
     assert path.name not in {'shared.json','view.json','settings.json','limits.local.json','auth.json'}, f'Private state: {path}'
     if path.suffix in {'.py','.js','.mjs','.json','.md','.html','.svg'}:
-        text = read(path)
+        raw = path.read_bytes()
         # Herdr and the installer's digests expect LF files (see .gitattributes).
-        assert '\r\n' not in text, f'CRLF line endings: {path}'
+        assert b'\r\n' not in raw, f'CRLF line endings: {path}'
+        text = raw.decode('utf-8')
         # Match actual local user paths, not test fixtures or this scanner's pattern.
         assert not re.search(r'/Users/' + r'daniel(?:/|\b)', text), f'Personal path: {path}'
         assert not re.search(r'(?:gh[pousr]_[A-Za-z0-9]{30,}|sk-ant-[A-Za-z0-9_-]{20,}|-----BEGIN [A-Z ]*PRIVATE KEY-----)', text), f'Credential-shaped data: {path}'
