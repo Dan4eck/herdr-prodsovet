@@ -4,9 +4,9 @@ import { appearance, fontSize, metric, radius, L, style } from "./appearance.js"
 import { View, div, svg } from "gpui-kit";
 import { v_flex, h_flex, Input, InputState } from "gpui-base";
 import { props, theme, closeOverlay, shared, notify, run, exec } from "herdr";
-import { basename, parent, browse, openFile, showDialog, operation, localOperation, clipboard, paste, copyPath, reveal } from "./filesystem.js";
+import { basename, parent, browse, openFile, showDialog, operation, localOperation, clipboard, paste, copyPath, reveal, revealLabel, trashLabel, onWindows } from "./filesystem.js";
 
-const labels = () => ({ "create-file": L("New file", "Новый файл"), "create-folder": L("New folder", "Новая папка"), rename: L("Rename", "Переименовать"), duplicate: L("Duplicate", "Дублировать"), trash: L("Move to Trash", "Отправить в корзину"), paste: L("Paste", "Вставить"), goto: L("Go to folder", "Перейти в папку") });
+const labels = () => ({ "create-file": L("New file", "Новый файл"), "create-folder": L("New folder", "Новая папка"), rename: L("Rename", "Переименовать"), duplicate: L("Duplicate", "Дублировать"), trash: onWindows() ? L("Delete to Recycle Bin", "Отправить в корзину") : L("Move to Trash", "Отправить в корзину"), paste: L("Paste", "Вставить"), goto: L("Go to folder", "Перейти в папку") });
 const report = error => notify({ title: L("Failed", "Не выполнено"), body: String(error.message ?? error), level: "error" });
 
 export class FileMenu extends View {
@@ -19,8 +19,8 @@ export class FileMenu extends View {
       ...(local && selected ? [[L("Rename…", "Переименовать…"), "rename"], [L("Duplicate", "Дублировать"), "duplicate"], [L("Copy", "Копировать"), "copy"], [L("Cut", "Вырезать"), "cut"]] : []),
       ...(local && shared("files.clipboard") ? [[L("Paste…", "Вставить…"), "paste"]] : []),
       [L("Copy path", "Копировать путь"), "copy-path"],
-      ...(local ? [[L("Reveal in Finder", "Показать в Finder"), "reveal"]] : []),
-      ...(local && selected ? [[L("Move to Trash…", "В корзину…"), "trash"]] : []),
+      ...(local ? [[revealLabel(), "reveal"]] : []),
+      ...(local && selected ? [[trashLabel(), "trash"]] : []),
     ];
   }
   choose(action, cx) {
@@ -75,9 +75,10 @@ export class FileDialog extends View {
       try {
         const t = this.target, action = t.action, name = this.input.value();
         if (action === "goto") {
-          const path = name.trim();
+          let path = name.trim();
           if (t.on) { const r = await exec("test", ["-d", path], { on: t.on }); if (r.code) throw new Error(L("Folder not found", "Папка не найдена")); }
-          else await localOperation({ action: "directory", path });
+          // The normalized path: a typed C:\x/y must match the tree's C:\x\y.
+          else path = (await localOperation({ action: "directory", path })).path ?? path;
           browse(path, t.space);
         } else {
           const request = { ...t, path: action.startsWith("create-") ? (t.dir ? t.path : parent(t.path)) : t.path };
@@ -98,12 +99,12 @@ export class FileDialog extends View {
       .child(div().text_size(fontSize("fileDialog.title")).font_weight(appearance().weights.semibold).child(labels()[target.action]))
       .child(div().truncate().tooltip(target.path).text_size(fontSize("fileDialog.hint")).text_color(t.dim).child(target.path))
       .when(this.needsInput(), el => el.child(Input.new(this.input).h(metric("fileDialog.input")).px(10).rounded(radius(7)).border_1().border_color(t.input).bg(t.background)))
-      .when(target.action === "trash", el => el.child(div().text_color(t.muted).child(L("The file or folder will be moved to the macOS Trash.", "Файл или папка будут перемещены в корзину macOS."))))
+      .when(target.action === "trash", el => el.child(div().text_color(t.muted).child(onWindows() ? L("The file or folder will be moved to the Recycle Bin.", "Файл или папка будут перемещены в корзину Windows.") : L("The file or folder will be moved to the macOS Trash.", "Файл или папка будут перемещены в корзину macOS."))))
       .when(target.action === "paste", el => el.child(div().text_size(fontSize("fileDialog.hint")).text_color(t.dim).child(L("You can change the name. Existing files are never overwritten.", "Можно изменить имя. Существующие файлы не перезаписываются."))))
       .when(target.action === "duplicate", el => el.child(div().text_color(t.muted).child(L("The copy appears next to the original under a free name.", "Копия появится рядом с оригиналом под свободным именем."))))
       .child(div().flex_1().min_h(0).overflow_y_scrollbar().text_size(fontSize("fileDialog.hint")).text_color(t.ansi1).child(this.error ?? ""))
       .child(h_flex().gap(8).justify_end()
         .child(button("files-cancel", L("Cancel", "Отмена"), () => { if (!this.busy) closeOverlay(props().overlay); }))
-        .child(button("files-confirm", this.busy ? L("Working…", "Выполняю…") : target.action === "trash" ? L("Move to Trash", "В корзину") : L("Done", "Готово"), (_e, cx) => this.submit(cx), true)));
+        .child(button("files-confirm", this.busy ? L("Working…", "Выполняю…") : target.action === "trash" ? (onWindows() ? L("Delete", "В корзину") : L("Move to Trash", "В корзину")) : L("Done", "Готово"), (_e, cx) => this.submit(cx), true)));
   }
 }

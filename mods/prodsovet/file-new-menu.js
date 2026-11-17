@@ -4,7 +4,7 @@ import { mono, tint, kbd, glyphTile, projectTile } from "./project-ui.js";
 import { leaf } from "./project-model.js";
 // SPDX-License-Identifier: Apache-2.0
 // ProdAdvice for Herdr: customized interface and behavior, 2026. See NOTICE.
-import { newTerminal, workspace } from "./filesystem.js";
+import { newTerminal, workspace, tilde } from "./filesystem.js";
 import { View, div, svg, image } from "gpui-kit";
 import { h_flex, v_flex } from "gpui-base";
 import { theme, spaces, panes, knownAgents, run, openOverlay, closeOverlay, props, window, keys, shared, setShared, home } from "herdr";
@@ -66,7 +66,7 @@ export default class NewMenu extends View {
     const t = theme();
     const cwd = workspace(space?.id).cwd || "";
     const name = cwd ? leaf(cwd) : L("Project", "Проект");
-    const where = cwd.startsWith(home() + "/") ? "~" + cwd.slice(home().length) : cwd;
+    const where = cwd && tilde(cwd) !== "~" ? tilde(cwd) : cwd;
     const pxIcon = n => div().size(22).flex_none().flex().items_center().justify_center().child(svg(px(n)).size(15).text_color(t.muted));
     const worktree = action => () => openOverlay({ mod: "worktree", kind: "dialog", width: action === "new" ? 460 : 560, height: action === "new" ? 280 : 480, props: { space: space?.id, folder: cwd, action } });
     const rows = choices.length + (this.failed || this.agents.length === 0 ? 1 : 0);

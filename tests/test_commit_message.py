@@ -63,7 +63,10 @@ class CommitMessage(unittest.TestCase):
     def test_private_binary_and_symlink_contents_omitted(self):
         (self.root / '.env').write_text('PRIVATE_VALUE=do-not-send')
         (self.root / 'image.bin').write_bytes(b'\x00private-binary')
-        (self.root / 'link.txt').symlink_to(self.root / '.env')
+        try:  # Windows allows symlinks only with Developer Mode
+            (self.root / 'link.txt').symlink_to(self.root / '.env')
+        except OSError:
+            pass
         text = helper.snapshot(self.root)['text']
         self.assertNotIn('do-not-send', text)
         self.assertNotIn('private-binary', text)
@@ -89,6 +92,19 @@ class CommitMessage(unittest.TestCase):
             return subprocess.CompletedProcess(argv, 0)
         with patch.dict(os.environ, {'HERDR_TERMINAL': 'fake'}), patch.object(helper.subprocess, 'run', side_effect=run):
             self.assertEqual(helper.generate({'text': 'diff', 'language': 'en'})['message'], 'fix(workspace): resolve project root')
+
+    def test_generate_reads_the_diff_from_root(self):
+        # The diff is not passed in argv (Windows limits command lines to 32,767 characters).
+        seen = {}
+        def run(argv, **kwargs):
+            seen['input'] = kwargs['input']
+            Path(argv[argv.index('-o') + 1]).write_text('feat: add notes', encoding='utf-8')
+            return subprocess.CompletedProcess(argv, 0)
+        snap = {'fingerprint': 'f', 'empty': False, 'conflict': False, 'text': 'x' * 40000}
+        with patch.object(helper, 'snapshot', return_value=snap) as snapshot, patch.object(helper.subprocess, 'run', side_effect=run):
+            self.assertEqual(helper.generate({'root': str(self.root), 'language': 'en'})['message'], 'feat: add notes')
+        snapshot.assert_called_once_with(str(self.root))
+        self.assertIn('x' * 1000, seen['input'])
 
     def test_generation_failure_is_actionable(self):
         with patch.object(helper.subprocess, 'run', return_value=subprocess.CompletedProcess([], 1)):

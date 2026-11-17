@@ -10,6 +10,7 @@ import { appearance, fontSize, metric, radius, labelFont, style, L } from "./app
 import { div, svg } from "gpui-kit";
 import { v_flex, h_flex } from "gpui-base";
 import { spaces, panes, focused, exec, theme, shared, run, notify } from "herdr";
+import { openExternal, pasteInto } from "./filesystem.js";
 
 const REFRESH = 120000;
 const px = (name) => `mods/prodsovet/art/px/${name}.svg`;
@@ -105,18 +106,13 @@ export class GitHub {
     });
   }
 
-  open(url) { if (url) exec("open", [url]); }
+  open(url) { if (url) openExternal(url).catch((e) => notify({ title: L("Not opened", "Не открылось"), body: String(e.message ?? e), level: "error" })); }
 
   // Paste "PR #12 title <url>" into the space's agent, as the editor's "@ to agent" does.
   async toAgent(text) {
     const target = (shared("files.agents") ?? {})[location().space];
     if (!target) return notify({ title: L("No agent", "Нет агента"), body: L("Click the agent terminal once and try again", "Кликни в терминал агента один раз и попробуй снова"), level: "warning" });
-    const copy = (v) => exec("sh", ["-c", 'printf %s "$1" | pbcopy', "copy", v]);
-    const old = await exec("pbpaste", []).catch(() => null);
-    await copy(text + " ");
-    run("pane.focus", { terminal: target });
-    run("terminal.paste");
-    if (old?.code === 0 && old.stdout) exec("sh", ["-c", 'sleep 0.7; printf %s "$1" | pbcopy', "copy", old.stdout]);
+    await pasteInto(target, text + " ").catch((e) => notify({ title: L("Not sent", "Не отправлено"), body: String(e.message ?? e), level: "error" }));
   }
 
   mark(t, state) {

@@ -2,23 +2,130 @@
 import { spaces, panes, focused, home, shared, setShared, exec, appHome, run, openOverlay, window, settings } from "herdr";
 import { L, style } from "./appearance.js";
 
-export const basename = p => p?.split("/").filter(Boolean).pop() || "/";
-export const parent = p => p?.slice(0, p.lastIndexOf("/")) || "/";
-export const join = (p, name) => `${p === "/" ? "" : p}/${name}`;
-export const within = (p, root) => p === root || p.startsWith(root === "/" ? "/" : root + "/");
+// ── Platform ──
+// macOS keeps its own programs (pbcopy, open, trash). On Windows the same
+// actions go through mods/my-files/system.py and file-ops.py. Commands on
+// another machine (`on`) are Unix commands, as before.
+export const onWindows = (on = null) => !on && window()?.platform === "windows";
+export const onMac = (on = null) => !on && window()?.platform === "macos";
+// A shortcut as people read it on this platform: shortcut("⌘⇧O", "Ctrl+Shift+S").
+export const shortcut = (mac, pc) => onMac() ? mac : pc;
+export const thisComputer = () => onWindows() ? L("THIS PC", "ЭТОТ ПК") : L("THIS MAC", "ЭТОТ MAC");
+
+// ── Paths ──
+// Unix paths use "/". A Windows path (C:\x, \\server\share\x) may use either
+// separator; helpers return it with "\" and an upper-case drive letter, the
+// way Herdr reports folders on Windows, and compare it without case.
+const WINDOWS_PATH = /^(?:[A-Za-z]:(?:[\\/]|$)|[\\/]{2}[^\\/]+[\\/][^\\/]+)/;
+export const isWindowsPath = p => typeof p === "string" && WINDOWS_PATH.test(p);
+const windowsRoot = p => /^(?:[A-Za-z]:|\\\\[^\\]+\\[^\\]+)/.exec(p)[0] + "\\";
+export function native(p) {
+  if (!isWindowsPath(p)) return p;
+  let s = p.replace(/\//g, "\\").replace(/^[a-z]:/, d => d.toUpperCase());
+  s = s.slice(0, 2) + s.slice(2).replace(/\\{2,}/g, "\\");
+  const root = windowsRoot(s);
+  return s.length <= root.length ? root : s.replace(/\\+$/, "");
+}
+const folded = p => native(p).toLowerCase();
+export const samePath = (a, b) => isWindowsPath(a) || isWindowsPath(b) ? Boolean(a && b) && folded(a) === folded(b) : a === b;
+export const isAbsolute = p => typeof p === "string" && (p.startsWith("/") || isWindowsPath(p));
+export function basename(p) {
+  if (!isWindowsPath(p)) return p?.split("/").filter(Boolean).pop() || "/";
+  const s = native(p), root = windowsRoot(s);
+  return s.length <= root.length ? root : s.slice(s.lastIndexOf("\\") + 1);
+}
+export function parent(p) {
+  if (!isWindowsPath(p)) return p?.slice(0, p.lastIndexOf("/")) || "/";
+  const s = native(p), root = windowsRoot(s), at = s.lastIndexOf("\\");
+  return at < root.length ? root : s.slice(0, at);
+}
+// `name` may be a relative path with "/" (tree keys, ripgrep output).
+export function join(p, name) {
+  if (!isWindowsPath(p)) return `${p === "/" ? "" : p}/${name}`;
+  const s = native(p), rest = String(name).replace(/\//g, "\\");
+  return s.endsWith("\\") ? s + rest : `${s}\\${rest}`;
+}
+export function within(p, root) {
+  if (!isWindowsPath(p) && !isWindowsPath(root)) return p === root || p.startsWith(root === "/" ? "/" : root + "/");
+  if (!p || !root) return false;
+  const a = folded(p), b = folded(root);
+  return a === b || a.startsWith(b.endsWith("\\") ? b : b + "\\");
+}
+// "~" for the home folder in labels.
+export function tilde(p) {
+  const h = home();
+  if (!isWindowsPath(p)) return p === h ? "~" : p?.startsWith(h + "/") ? "~" + p.slice(h.length) : p;
+  return samePath(p, h) ? "~" : within(p, h) ? "~" + native(p).slice(native(h).length) : native(p);
+}
+
+// ── Programs ──
+// Python 3: `python3` on macOS and other machines. On Windows `python3` is
+// often the Microsoft Store stub, so the py launcher (or python) is used, in
+// UTF-8 mode: the JSON these scripts print carries Russian text.
+let windowsPython = null;
+export async function python(args, options = {}) {
+  if (!onWindows(options.on)) return exec("python3", args, options);
+  if (!windowsPython) {
+    for (const candidate of [["py", "-3"], ["python"]]) {
+      const r = await exec(candidate[0], [...candidate.slice(1), "-c", "import sys; print(sys.version_info[0])"], { timeout: 15000 }).catch(() => null);
+      if (r?.code === 0 && r.stdout.trim() === "3") { windowsPython = [...candidate, "-X", "utf8"]; break; }
+    }
+    if (!windowsPython) throw new Error(L("Python 3 is required: install it from python.org", "Нужен Python 3: установите его с python.org"));
+  }
+  return exec(windowsPython[0], [...windowsPython.slice(1), ...args], options);
+}
+async function system(request) {
+  const r = await python([`${appHome()}/mods/my-files/system.py`, JSON.stringify(request)], { timeout: 30000 });
+  let value;
+  try { value = JSON.parse(r.stdout); } catch { throw new Error(r.stderr || L("The system action failed", "Системное действие не выполнено")); }
+  if (r.code || value.error) throw new Error(value.error || r.stderr);
+  return value;
+}
+// Clipboard text. `delay` (seconds) writes it later without holding a timer.
+export async function copyText(text, delay = 0) {
+  if (onWindows()) return void await system({ action: "clipboard-set", text, delay });
+  const r = await exec("sh", ["-c", `${delay ? `sleep ${Number(delay)}; ` : ""}printf %s "$1" | pbcopy`, "copy", text]);
+  if (r.code) throw new Error(r.stderr);
+}
+export async function readClipboard() {
+  if (onWindows()) return (await system({ action: "clipboard-get" }).catch(() => null))?.text ?? null;
+  const r = await exec("pbpaste", []).catch(() => null);
+  return r?.code === 0 ? r.stdout : null;
+}
+// Type text into an agent's terminal as a paste, then give the clipboard back.
+// `ready` runs once the clipboard holds the text (a popup closes itself there):
+// everything after it starts its programs at once, so a closed mod copy, which
+// cancels what it still awaits, cannot stop the paste or the restore.
+export async function pasteInto(terminal, text, ready) {
+  const old = await readClipboard();
+  await copyText(text);
+  ready?.();
+  run("pane.focus", { terminal });
+  run("terminal.paste");
+  if (old) copyText(old, 0.7).catch(() => {});
+}
+// A local file in its default app, or a web/app link (https:, vscode:, obsidian:).
+export async function openExternal(target) {
+  if (onWindows()) return void await system({ action: "open", target });
+  const r = await exec("open", [target]);
+  if (r.code) throw new Error(r.stderr);
+}
+export const revealLabel = () => onWindows() ? L("Show in Explorer", "Показать в Проводнике") : L("Reveal in Finder", "Показать в Finder");
+export const trashLabel = () => onWindows() ? L("Delete to Recycle Bin…", "В корзину…") : L("Move to Trash…", "В корзину…");
+
 export const fileKey = (file, on = null, space = "") => JSON.stringify([on, space, file]);
 export function workspace(id) {
   const s = spaces().find(s => id ? s.id === id : s.active);
   if (!s) return { space: null, cwd: null, on: null };
   const roots = shared("files.workspace-roots") ?? {};
   let cwd = roots[s.id];
-  if (!cwd || (!s.machine && cwd === home())) {
+  if (!cwd || (!s.machine && samePath(cwd, home()))) {
     // HOME is provisional until a terminal reaches a project. Once found,
     // keep that root stable across tab switches and later shell navigation.
     const all = panes();
     const candidates = s.tabs.flatMap(t => all.filter(p => p.tab === t.id && p.terminal && p.cwd));
-    const anchor = candidates.find(p => s.machine || p.cwd !== home());
-    cwd = anchor && s.folder && (s.machine || s.folder !== home()) && within(anchor.cwd, s.folder)
+    const anchor = candidates.find(p => s.machine || !samePath(p.cwd, home()));
+    cwd = anchor && s.folder && (s.machine || !samePath(s.folder, home())) && within(anchor.cwd, s.folder)
       ? s.folder : anchor?.cwd || s.folder || candidates[0]?.cwd || (!s.machine ? home() : null);
     if (cwd && cwd !== roots[s.id]) setShared("files.workspace-roots", { ...roots, [s.id]: cwd });
   }
@@ -31,7 +138,7 @@ export function spaceLabel(s) {
   if (!s || s.named) return s?.name ?? "";
   const root = workspace(s.id).cwd;
   if (!root) return s.name;
-  return !s.machine && root === home() ? "~" : basename(root) || s.name;
+  return !s.machine && samePath(root, home()) ? "~" : basename(root) || s.name;
 }
 export function location() {
   const w = workspace(), browsed = (shared("files.browsed") ?? {})[w.space];
@@ -83,7 +190,7 @@ export function showDialog(target, action) {
   openOverlay({ mod: "my-files", kind: "dialog", width: 500, height: 272, props: { role: "dialog", target: { ...target, action } } });
 }
 export async function localOperation(request) {
-  const result = await exec("python3", [`${appHome()}/mods/my-files/file-ops.py`, JSON.stringify(request)], { timeout: 600000 });
+  const result = await python([`${appHome()}/mods/my-files/file-ops.py`, JSON.stringify(request)], { timeout: 600000 });
   let value;
   try { value = JSON.parse(result.stdout); } catch { throw new Error(result.stderr || L("The operation failed", "Не удалось выполнить операцию")); }
   if (result.code || value.error) throw new Error(value.error || result.stderr);
@@ -102,8 +209,8 @@ export function isLocked(file) {
   return Boolean(l && Date.now() - l.at < 610000 && within(file, l.path));
 }
 export async function operation(target, name) {
-  if (target.on) throw new Error(L("File changes work only on this Mac for now", "Изменение файлов пока доступно только на этом Mac"));
-  if (window()?.platform !== "macos") throw new Error(L("These operations are set up for macOS", "Эти операции настроены для macOS"));
+  if (target.on) throw new Error(L("File changes work only on this computer for now", "Изменение файлов пока доступно только на этом компьютере"));
+  if (!onMac() && !onWindows()) throw new Error(L("These operations are set up for macOS and Windows", "Эти операции настроены для macOS и Windows"));
   const action = target.action, destructive = ["rename", "move", "trash"].includes(action);
   const existing = shared("files.operation");
   if (existing && Date.now() - existing.at < 610000) throw new Error(L("Wait for the previous operation to finish", "Дождитесь завершения предыдущей операции"));
@@ -144,11 +251,9 @@ export async function paste(target, name) {
   if (source.cut) setShared("files.clipboard", null);
   return result;
 }
-export async function copyPath(path) {
-  const r = await exec("sh", ["-c", 'printf %s "$1" | pbcopy', "copy", path]);
-  if (r.code) throw new Error(r.stderr);
-}
+export const copyPath = path => copyText(path);
 export async function reveal(path) {
+  if (onWindows()) return void await system({ action: "reveal", path });
   const r = await exec("open", ["-R", path]);
   if (r.code) throw new Error(r.stderr);
 }

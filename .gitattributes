@@ -1,0 +1,5 @@
+# Herdr reads these files byte for byte and the installer compares SHA-256
+# digests, so every platform must check them out with LF line endings.
+* text=auto eol=lf
+*.png binary
+*.sha256 text eol=lf

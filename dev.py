@@ -14,7 +14,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
-MODS = json.loads((ROOT / 'manifest.json').read_text())['mods']
+MODS = json.loads((ROOT / 'manifest.json').read_text(encoding='utf-8'))['mods']
 
 
 def step(title, command):

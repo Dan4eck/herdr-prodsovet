@@ -18,7 +18,7 @@ import { GitHub } from "./github.js";
 import { mini, word, artPath, ART_FRAMES } from "./creatures.js";
 import { agency, accentOf, railFrames, glitchy, icon } from "./agency.js";
 
-import { workspace, newTerminal } from "./filesystem.js";
+import { workspace, newTerminal, python, tilde, thisComputer } from "./filesystem.js";
 import Tabs from "./file-tabs.js";
 import NewMenu from "./file-new-menu.js";
 import TabMenu from "./file-tab-menu.js";
@@ -40,9 +40,7 @@ function toggleSidebar() {
   run("layout.resize", { id: "sidebar", px: narrow() ? (shared("sidebar.width") ?? 268) : window()?.platform === "macos" ? 76 : 44 });
 }
 function folder(cwd) {
-  if (!cwd) return "";
-  const h = home();
-  return cwd === h ? "~" : cwd.startsWith(h + "/") ? "~" + cwd.slice(h.length) : cwd;
+  return cwd ? tilde(cwd) : "";
 }
 const counts = () => {
   const list = agents();
@@ -191,7 +189,7 @@ class Status {
   refresh(cx) {
     cx.spawn(async (cx) => {
       try {
-        const r = await exec("python3", [`${appHome()}/mods/prodsovet/limits.py`], { timeout: 40000 });
+        const r = await python([`${appHome()}/mods/prodsovet/limits.py`], { timeout: 40000 });
         if (r.code === 0) { this.limits = JSON.parse(r.stdout); cx.notify(); }
       } catch (_e) { /* keep the last numbers */ }
     });
@@ -253,7 +251,7 @@ class Status {
     return h_flex().size_full().px(10).gap(10).items_center().bg(t.chrome).border_t(1).border_color(t.border)
       .when(Boolean(labelFont()), (el) => el.font_family(labelFont()))
       .text_size(fontSize("status.body")).text_color(t.muted)
-      .child(cell((space?.machine ?? "THIS MAC").toUpperCase()))
+      .child(cell(space?.machine ? space.machine.toUpperCase() : thisComputer()))
       .when(Boolean(space?.branch), (el) => el.child(cell(`⎇ ${space.branch}`)))
       .child(cell(`${L("AGENTS", "АГЕНТЫ")} ${c.total}`))
       .when(c.working > 0, (el) => el.child(cell(`${L("WORKING", "РАБОТАЮТ")} ${c.working}`, t.working)))

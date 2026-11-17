@@ -12,7 +12,11 @@ import shutil
 import sys
 
 ROOT = Path(__file__).resolve().parent
-MANIFEST = json.loads((ROOT / 'manifest.json').read_text())
+MANIFEST = json.loads((ROOT / 'manifest.json').read_text(encoding='utf-8'))
+WINDOWS = sys.platform == 'win32'
+# Herdr's own defaults use Cmd on macOS and Ctrl / Ctrl+Shift on Windows; the
+# package follows them with one key file per platform.
+PACKAGE_KEYS = ROOT / ('keys.windows.json' if WINDOWS else 'keys.json')
 RECEIPT = '.herdr-prodsovet-install.json'
 # Settings the person owns once written: kept as they are on update.
 PERSONAL = {'mods/prodsovet/limits.local.json'}
@@ -56,7 +60,7 @@ def read_keys(home):
 
 def atomic_json(path, value):
     temp = path.with_name(path.name + '.prodsovet-tmp')
-    with temp.open('x') as f:
+    with temp.open('x', encoding='utf-8', newline='\n') as f:
         json.dump(value, f, ensure_ascii=False, indent=2)
         f.write('\n')
     try:
@@ -74,7 +78,8 @@ def payload():
             if p.is_file() and p.suffix in {'.js', '.py', '.svg', '.png', '.json'}:
                 if p.name in {'limits.local.json', 'jsconfig.json'} or '__pycache__' in p.parts or 'app-icons' in p.parts:
                     continue
-                files[str(p.relative_to(ROOT))] = p.read_bytes()
+                # "/" on every system: receipts and PERSONAL compare these names.
+                files[p.relative_to(ROOT).as_posix()] = p.read_bytes()
     for name in MANIFEST['appearance_files']:
         files[name] = (ROOT / name).read_bytes()
     return files
@@ -89,13 +94,15 @@ def install(home, apply=False, skip_conflicts=False, with_limits=False):
             raise ValueError(f'Name collision: mods/{name}. Existing files are preserved.')
     files = payload()
     if with_limits:
-        files['mods/prodsovet/limits.local.json'] = b'{"claude": true, "codex": true}\n'
+        # The Claude source reads a subscription token from the macOS Keychain
+        # and is not offered on Windows (see ACCESS.md).
+        files['mods/prodsovet/limits.local.json'] = b'{"claude": false, "codex": true}\n' if WINDOWS else b'{"claude": true, "codex": true}\n'
     for name in files:
         if safe(home, name).exists():
             raise ValueError(f'Name collision: {name}')
     original, keys = read_keys(home)
     added = {}
-    for section, bindings in json.loads((ROOT / 'keys.json').read_text()).items():
+    for section, bindings in json.loads(PACKAGE_KEYS.read_text(encoding='utf-8')).items():
         for key, action in bindings.items():
             old = keys.get(section, {}).get(key)
             if key in keys.get(section, {}) and old != action:
@@ -125,7 +132,7 @@ def install(home, apply=False, skip_conflicts=False, with_limits=False):
             atomic_json(home / 'keys.json', keys)
             keys_written = True
         receipt = {'version': MANIFEST['version'], 'files': {n: digest(d) for n, d in files.items()}, 'added_keys': added, 'keys_existed': original is not None, 'original_sections': list(json.loads(original)) if original else []}
-        with safe(home, RECEIPT).open('x') as f:
+        with safe(home, RECEIPT).open('x', encoding='utf-8', newline='\n') as f:
             json.dump(receipt, f, indent=2)
     except Exception:
         for p in reversed(made):
@@ -144,6 +151,7 @@ def install(home, apply=False, skip_conflicts=False, with_limits=False):
                 parent = parent.parent
         raise
     print(f'Installed. Check all five mods, then switch to layout {MANIFEST["layout"]}. Layout was not activated.')
+    print('  ' + switch_command(MANIFEST['layout']))
 
 
 def update(home, apply=False, skip_conflicts=False):
@@ -153,7 +161,7 @@ def update(home, apply=False, skip_conflicts=False):
     receipt_path = safe(home, RECEIPT)
     if not receipt_path.exists():
         raise ValueError('Not installed by this installer; run a normal install.')
-    receipt = json.loads(receipt_path.read_text())
+    receipt = json.loads(receipt_path.read_text(encoding='utf-8'))
     owned = receipt['files']
     files = payload()
     changed = [n for n, d in owned.items() if n not in PERSONAL and not live(n) and safe(home, n).exists() and digest(safe(home, n).read_bytes()) != d]
@@ -180,7 +188,7 @@ def update(home, apply=False, skip_conflicts=False):
     # Bindings: drop the ones this installer added that the package no longer
     # has (when still unchanged), add the package's new ones.
     original, keys = read_keys(home)
-    package = json.loads((ROOT / 'keys.json').read_text())
+    package = json.loads(PACKAGE_KEYS.read_text(encoding='utf-8'))
     added = {}
     for section, bindings in receipt['added_keys'].items():
         for key, action in bindings.items():
@@ -245,19 +253,19 @@ def update(home, apply=False, skip_conflicts=False):
             parent = parent.parent
     print(f'Updated. Check all five mods. Layouts are now {" and ".join(MANIFEST["layouts"])}.')
     try:
-        current = json.loads((home / 'shared.json').read_text()).get('layout')
+        current = json.loads((home / 'shared.json').read_text(encoding='utf-8')).get('layout')
     except (OSError, ValueError, AttributeError):
         current = None
     renamed = MANIFEST.get('former_layouts', {}).get(current)
     if renamed:
         print(f'Your window still uses the former layout name "{current}". Switch with:')
-        print(f'  herdr-app do layout.switch \'{{"name":"{renamed}"}}\'')
+        print('  ' + switch_command(renamed))
 
 
 def uninstall(home, apply=False):
     home = Path(home).resolve()
     receipt_path = safe(home, RECEIPT)
-    receipt = json.loads(receipt_path.read_text())
+    receipt = json.loads(receipt_path.read_text(encoding='utf-8'))
     for name, expected in receipt['files'].items():
         p = safe(home, name)
         if p.exists() and digest(p.read_bytes()) != expected:
@@ -300,12 +308,24 @@ def uninstall(home, apply=False):
         except OSError: pass
 
 
+def switch_command(layout):
+    """The command that switches layouts. The --name form needs no JSON quotes,
+    which Windows PowerShell 5.1 would strip before herdr-app sees them."""
+    return f'herdr-app do layout.switch --name {layout}'
+
+
 def dependencies(home):
-    missing = [x for x in ('python3', 'herdr-app', 'hc', 'rg') if not shutil.which(x)]
-    if platform.system() != 'Darwin':
-        missing.append('macOS (this release is macOS-only)')
-    if not Path('/usr/bin/trash').is_file():
-        missing.append('/usr/bin/trash')
+    if WINDOWS:
+        # Python is the one running this. Herdr finds its own core (hc) on
+        # Windows, so hc need not be on PATH. Recycle Bin and clipboard use the
+        # Windows API through mods/my-files/system.py and file-ops.py.
+        missing = [x for x in ('herdr-app', 'rg') if not shutil.which(x)]
+    else:
+        missing = [x for x in ('python3', 'herdr-app', 'hc', 'rg') if not shutil.which(x)]
+        if platform.system() != 'Darwin':
+            missing.append('macOS or Windows (this release supports these two)')
+        elif not Path('/usr/bin/trash').is_file():
+            missing.append('/usr/bin/trash')
     for mod in MANIFEST['stock_mods']:
         if not (home / 'mods' / mod / 'main.js').is_file():
             missing.append('Herdr built-in mod: ' + mod)

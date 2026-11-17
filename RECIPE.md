@@ -96,6 +96,16 @@ Commands include tab.new/close/focus, terminal.open, agent focus, layout changes
 window controls and custom workspace-aware terminal/split commands. Consult the
 source and installed herdr.d.ts for exact signatures.
 
+Windows: the same mods. filesystem.js holds the platform layer (python(),
+copyText/readClipboard/pasteInto, openExternal, reveal, and path helpers that
+accept `\`, drive letters and UNC roots and compare Windows paths without case).
+Local Windows actions go through mods/my-files/system.py (clipboard, open,
+Explorer; Windows API through ctypes) and file-ops.py (os.rename without
+replace, Recycle Bin through SHFileOperationW). Other machines (`on`) stay Unix.
+Keys come from keys.windows.json. Python runs as `py -3 -X utf8`. Claude limits
+are macOS-only (ACCESS.md says why). filesystem.js is also copied into
+session_fork, which needs python().
+
 Programs: Python 3, hc, rg, Git, shell utilities, macOS open/pbcopy/pbpaste/trash;
 security only for opted-in Claude limits. See ACCESS.md for data flow. Uses
 macOS renamex_np(RENAME_EXCL) to prevent destination clobbering. Python standard

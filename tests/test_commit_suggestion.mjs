@@ -45,7 +45,7 @@ const modules={
  'herdr':shim(host),'gpui-kit':shim({div:element,svg:element}),
  'gpui-base':shim({v_flex:element,h_flex:element,InputState:{new:input},Input:{new:element},Scrollbar:{vertical:element},v_virtual_list:element}),
  './appearance.js':shim({appearance:()=>({weights:{},fonts:{}}),fontSize:()=>12,metric:()=>30,radius:x=>x,labelFont:()=>null,style:()=>false,L:en=>en}),
- './filesystem.js':shim({fileGlyph:()=>({})}),'./commit-suggestion.js':module,
+ './filesystem.js':shim({fileGlyph:()=>({}),python:(...a)=>host.exec('python3',...a)}),'./commit-suggestion.js':module,
 };
 const panel=new vm.SourceTextModule(fs.readFileSync(new URL('../mods/prodsovet/changes.js',import.meta.url),'utf8'),{context});
 await panel.link(s=>modules[s]);await panel.evaluate();const {Changes}=panel.namespace;

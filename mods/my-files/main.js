@@ -5,7 +5,7 @@ import { appearance, fontSize, metric, radius, style, labelFont, L } from "./app
 import { View, div, svg } from "gpui-kit";
 import { v_flex, h_flex, InputState, Input, ScrollHandle } from "gpui-base";
 import { spaces, panes, focused, props, exec, watchFolder, theme, window, nextCommand, notify, run, shared, settings } from "herdr";
-import { location, browse, basename, parent, join, openFile, showMenu, showDialog, clipboard, copyPath, fileGlyph, fileKind, kindColor } from "./filesystem.js";
+import { location, browse, basename, parent, join, openFile, showMenu, showDialog, clipboard, pasteInto, shortcut, fileGlyph, fileKind, kindColor } from "./filesystem.js";
 import { FileMenu, FileDialog } from "./dialogs.js";
 const PER_FOLDER = 500, TOTAL = 5000;
 async function directory(path, on) {
@@ -85,9 +85,7 @@ export default class Files extends View {
     const term = (shared("files.agents") ?? {})[s?.id] || panes().find(p => tabs.has(p.tab) && p.terminal)?.terminal;
     if (!term) return notify({ title: L("No terminal", "Нет терминала"), body: L("Open a terminal in this space", "Откройте терминал в этом пространстве"), level: "warning" });
     const abs = join(this.root, path), text = (/\s/.test(abs) ? `"${abs}"` : `@${abs}`) + " ";
-    const old = await exec("pbpaste", []).catch(() => null);
-    await copyPath(text); run("pane.focus", { terminal: term }); run("terminal.paste");
-    cx.timer.after(700, () => { if (old?.code === 0) copyPath(old.stdout); });
+    await pasteInto(term, text);
   }
   key(e, cx) {
     const k = e.keystroke;
@@ -104,10 +102,11 @@ export default class Files extends View {
       if (cur.dir && this.folders.has(cur.path)) this.toggle(cur.path, cx);
       else this.sel = cur.path.includes("/") ? cur.path.slice(0, cur.path.lastIndexOf("/")) : null;
     } else if (k === "enter" && cur) cx.spawn(cx => this.insert(cur.path, cx));
-    else if (k === "cmd-c" && cur) clipboard(this.target(), false);
-    else if (k === "cmd-x" && cur) clipboard(this.target(), true);
-    else if (k === "cmd-v") this.dialog("paste");
-    else if (k === "cmd-backspace") this.dialog("trash");
+    // Cmd on macOS, Ctrl elsewhere; Delete is the Windows Explorer key for the Recycle Bin.
+    else if ((k === "cmd-c" || k === "ctrl-c") && cur) clipboard(this.target(), false);
+    else if ((k === "cmd-x" || k === "ctrl-x") && cur) clipboard(this.target(), true);
+    else if (k === "cmd-v" || k === "ctrl-v") this.dialog("paste");
+    else if (k === "cmd-backspace" || k === "delete") this.dialog("trash");
     else if (k === "escape") this.sel = null;
     else return;
     cx.stop_propagation(); cx.notify();
@@ -220,7 +219,7 @@ export default class Files extends View {
             .when(selected, el => el.child(button(`insert-${e.path}`, "@", (_ev, cx) => { cx.stop_propagation(); cx.spawn(cx => this.insert(e.path, cx)); })));
         }))
         .when(Boolean(this.error) || !this.flat.length, el => el.child(div().p(8).text_size(fontSize("files.hint")).text_color(t.dim).child(this.error || (this.loading ? L("Loading…", "Загрузка…") : this.query ? L("No matches in the expanded tree", "Нет совпадений в раскрытом дереве") : L("Empty folder", "Папка пуста"))))))
-      .when(this.limited, el => el.child(div().p(6).text_size(fontSize("files.badge")).text_color(t.dim).child(L("Limit: 500 per folder / 5000 total. Search: ⌘⇧O", "Лимит: 500 в папке / 5000 всего. Поиск: ⌘⇧O"))))
+      .when(this.limited, el => el.child(div().p(6).text_size(fontSize("files.badge")).text_color(t.dim).child(L(`Limit: 500 per folder / 5000 total. Search: ${shortcut("⌘⇧O", "Ctrl+Shift+S")}`, `Лимит: 500 в папке / 5000 всего. Поиск: ${shortcut("⌘⇧O", "Ctrl+Shift+S")}`))))
       .when(Boolean(shared("files.clipboard")), el => el.child(div().px(10).py(5).truncate().text_size(fontSize("files.meta")).text_color(t.dim).child(`${shared("files.clipboard")?.cut ? L("Cut", "Вырезано") : L("Copied", "Скопировано")}: ${basename(shared("files.clipboard")?.path)}`)));
   }
 }
