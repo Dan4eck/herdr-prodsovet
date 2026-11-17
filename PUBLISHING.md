@@ -1,7 +1,7 @@
 # Development and releases
 
 Repository: https://github.com/Dan4eck/herdr-prodsovet (public). Description:
-"ProdAdvice: workspace-aware files, editor tabs, search and animated agents for Herdr. macOS."
+"ProdAdvice: workspace-aware files, editor tabs, search and animated agents for Herdr. macOS and Windows."
 
 ## Day to day
 

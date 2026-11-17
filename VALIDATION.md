@@ -1,6 +1,35 @@
 # Validation record
 
-## Windows port (unreleased)
+## Release v0.5.0 (2026-11-17)
+
+Maintainer validation on macOS 26.5.2, Herdr App 0.1.16, Python 3.12.6,
+Node.js 22.14.0. Includes the Windows contribution from PR #1, the maintainer's
+path/CRLF fixes and the existing project-row drag-release fix.
+
+- `python3 -B verify.py`: 47 Python cases (42 passed, 5 Windows-only skipped)
+  and all 108 Node cases passed, including 39 project cases. The Windows
+  platform suite runs against a mocked host on macOS.
+- New regressions cover drive/UNC aliases, case and separator differences,
+  one project/checkout for aliases, shared tabs, and reopening the existing
+  Space. POSIX path case and machine separation remain distinct.
+- A temporary CRLF file is rejected by `verify.py` before the test suites.
+- All five mods passed `herdr-app check` in isolated copies forced to each
+  profile: PA-Light and PA-Advanced (10 checks). These validate initial native
+  loading/materialization, not every callback, interaction or painted frame.
+- Clean installation and uninstall in a temporary home passed. An actual
+  v0.4.0 tagged package was installed in another temporary home and updated to
+  v0.5.0; payload bytes, receipt version, custom keys/state, layout width and
+  custom limits configuration were checked. The real installed mods were not
+  changed during this validation.
+- The fork resolver identified the current live Codex session in read-only
+  mode; no fork was launched.
+
+Windows native evidence below belongs to the contributor's 2026-11-16 run.
+The maintainer did not rerun Windows, full interactive macOS search/clipboard
+or a newly launched fork. Windows Codex fork after `/title`, native external
+app opening and the folder picker retain the limitations recorded below.
+
+## Windows port (included in v0.5.0)
 
 Date: 2026-11-16. Host: Windows 11 Home 26300 x64, Python 3.13.5, Node.js 26.3,
 ripgrep 15.1. Herdr App was not installed on this host, so nothing below was
