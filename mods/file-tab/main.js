@@ -8,10 +8,10 @@ import { View, div, svg, image } from "gpui-kit";
 import { v_flex, h_flex, Editor, EditorState, InputState, Input, TextView, set_theme } from "gpui-base";
 import { props, exec, appHome, readTextFile, writeTextFile, theme, settings, focused, spaces, panes, run, notify, shared, setShared, nextCommand } from "herdr";
 
-import { operation, isLocked, activeDocuments, workspace, fileGlyph } from "./filesystem.js";
+import { operation, isLocked, activeDocuments, workspace, fileGlyph, basename, parent, native, isWindowsPath, tilde, onMac, openExternal, pasteInto, shortcut } from "./filesystem.js";
 
 const LANG = { ts: "js", tsx: "js", mjs: "js", cjs: "js", jsx: "js", js: "js", json: "json", jsonc: "json", md: "markdown", markdown: "markdown", py: "python", sh: "bash", zsh: "bash", yml: "yaml", yaml: "yaml", toml: "yaml", html: "html", css: "css", rs: "rust", go: "go", vue: "html", svelte: "html" };
-const base = (p) => p.split("/").pop();
+const base = (p) => isWindowsPath(p) ? basename(p) : p.split("/").pop();
 
 // The editor paints its selection with Base's "accent" at ~39% opacity, and Herdr maps
 // accent to the theme's hover color, so on dark themes the selection is invisible.
@@ -43,6 +43,8 @@ mkdir -p "$(dirname "$3")"
 [ "$3" -nt "$src" ] || sips -s format png -Z 64 "$src" --out "$3" >/dev/null`;
 let appIcons = null;
 function loadAppIcons() {
+  // Converting app icons needs macOS tools; elsewhere the neutral badges stay.
+  if (!onMac()) return Promise.resolve({});
   appIcons ??= Promise.all(OPEN_IN.map(async (a) => {
     const rel = `${APP_ICONS}/${a.id}.png`;
     const r = await exec("sh", ["-c", ICON_SCRIPT, "app-icon", a.bundle, a.app, `${appHome()}/${rel}`], { timeout: 15000 }).catch(() => null);
@@ -56,17 +58,9 @@ export default class FileTab extends View {
     const pr = { ...(p ?? {}), ...(props() ?? {}) };
     this.file = pr.file; this.on = pr.on ?? null;
     this.appIcons = null;
-    const allSpaces = spaces(), allPanes = panes();
-    const validTab = id => allSpaces.some(s => (!pr.space || s.id === pr.space) && s.tabs.some(t => t.id === id)) && allPanes.some(p => p.tab === id && p.mod === "file-tab");
-    const remembered = localStorage.getItem("tab");
-    const previous = (shared("file-tab.open") ?? {})[pr.file];
-    // A tab another file's editor already owns is never taken: a new file tab
-    // can mount while the previous file's tab still has the focus.
-    const docs = shared("files.documents") ?? {};
-    const free = id => !docs[id] || (docs[id].file === pr.file && (docs[id].on ?? null) === this.on);
-    const candidates = allSpaces.flatMap(s => s.tabs.filter(t => t.name === base(pr.file) && validTab(t.id) && free(t.id) && (!pr.space || s.id === pr.space)));
-    const focusedTab = validTab(focused()?.tab) && free(focused().tab) ? focused().tab : null;
-    this.tab = validTab(remembered) ? remembered : candidates.length === 1 ? candidates[0].id : pr.space && focusedTab ? focusedTab : validTab(previous) && !docs[previous] ? previous : focusedTab;
+    this.pr = pr;
+    const allSpaces = spaces();
+    this.tab = this.resolveTab(pr);
     this.space = pr.space || allSpaces.find(s => s.tabs.some(t => t.id === this.tab))?.id || focused()?.space;
     const document = (shared("files.documents") ?? {})[this.tab];
     if (document && document.on === this.on) { this.file = document.file; this.removed = document.removed; }
@@ -77,6 +71,7 @@ export default class FileTab extends View {
     this.code = null; this.original = null; this.preview = false; this.renaming = null; this.openMenu = Boolean(pr.menu);
     this.ext = (this.file?.includes(".") ? this.file.split(".").pop() : "txt").toLowerCase();
     this.register();
+    if (!this.tab) this.retryTab(cx);
     if (!this.file) { this.error = L("No file path", "Нет пути к файлу"); return; }
     this.load(cx);
     cx.spawn(async (cx) => {
@@ -89,6 +84,37 @@ export default class FileTab extends View {
       }
     });    // Last, so the file's own load stays the first task.
     cx.spawn(async (cx) => { this.appIcons = await loadAppIcons(); cx.notify(); });
+  }
+
+  // The tab this editor lives in: its own pane is a file-tab pane in that tab.
+  resolveTab(pr) {
+    const allSpaces = spaces(), allPanes = panes();
+    const validTab = id => allSpaces.some(s => (!pr.space || s.id === pr.space) && s.tabs.some(t => t.id === id)) && allPanes.some(p => p.tab === id && p.mod === "file-tab");
+    const remembered = localStorage.getItem("tab");
+    const previous = (shared("file-tab.open") ?? {})[pr.file];
+    // A tab another file's editor already owns is never taken: a new file tab
+    // can mount while the previous file's tab still has the focus.
+    const docs = shared("files.documents") ?? {};
+    const free = id => !docs[id] || (docs[id].file === pr.file && (docs[id].on ?? null) === this.on);
+    const candidates = allSpaces.flatMap(s => s.tabs.filter(t => t.name === base(pr.file) && validTab(t.id) && free(t.id) && (!pr.space || s.id === pr.space)));
+    const focusedTab = validTab(focused()?.tab) && free(focused().tab) ? focused().tab : null;
+    return (validTab(remembered) ? remembered : candidates.length === 1 ? candidates[0].id : pr.space && focusedTab ? focusedTab : validTab(previous) && !docs[previous] ? previous : focusedTab) || null;
+  }
+
+  // Herdr can start this copy before panes() lists its new pane (seen on
+  // Windows). Without a tab the document is never registered, so renames,
+  // moves and Trash would not reach this editor. Look again for a few seconds.
+  retryTab(cx, tries = 0) {
+    cx.timer.after(200, (cx) => {
+      if (this.tab || this.closed) return;
+      const tab = this.resolveTab(this.pr);
+      if (!tab) { if (tries < 25) this.retryTab(cx, tries + 1); return; }
+      this.tab = tab;
+      this.space = this.pr.space || spaces().find(s => s.tabs.some(t => t.id === tab))?.id || this.space;
+      localStorage.setItem("tab", tab);
+      this.register();
+      cx.notify();
+    });
   }
 
   // file -> tab id, so opening the same file again just shows its tab
@@ -233,6 +259,13 @@ export default class FileTab extends View {
 
   async openIn(a) {
     let r;
+    if (!onMac()) {
+      // Both apps register a link handler on Windows: vscode://file/C:/x.md, obsidian://open?path=...
+      const link = a.id === "obsidian" ? `obsidian://open?path=${encodeURIComponent(this.file)}` : `vscode://file/${encodeURI(native(this.file).replace(/\\/g, "/"))}`;
+      try { await openExternal(link); }
+      catch (e) { notify({ title: L(`Could not open in ${a.label}`, `Не открылось в ${a.label}`), body: String(e.message ?? e), level: "error" }); }
+      return;
+    }
     if (a.id === "obsidian") r = await exec("open", [`obsidian://open?path=${encodeURIComponent(this.file)}`]);
     else r = await exec("open", ["-a", a.app, this.file]);
     if (r.code !== 0) notify({ title: L(`Could not open in ${a.label}`, `Не открылось в ${a.label}`), body: r.stderr.trim(), level: "error" });
@@ -242,12 +275,7 @@ export default class FileTab extends View {
     const target = (shared("files.agents") ?? {})[this.space];
     if (!target) return notify({ title: L("No agent", "Нет агента"), body: L("Click the agent terminal once and try again", "Кликни в терминал агента один раз и попробуй снова"), level: "warning" });
     const text = (/\s/.test(this.file) ? `"${this.file}"` : `@${this.file}`) + " ";
-    const copy = (v) => exec("sh", ["-c", 'printf %s "$1" | pbcopy', "copy", v]);
-    const old = await exec("pbpaste", []).catch(() => null);
-    await copy(text);
-    run("pane.focus", { terminal: target });
-    run("terminal.paste");
-    if (old?.code === 0 && old.stdout) exec("sh", ["-c", 'sleep 0.7; printf %s "$1" | pbcopy', "copy", old.stdout]);
+    await pasteInto(target, text).catch((e) => notify({ title: L("Not sent", "Не отправлено"), body: String(e.message ?? e), level: "error" }));
   }
 
   async close() {
@@ -282,7 +310,7 @@ export default class FileTab extends View {
       .text_color(active ? t.foreground : t.muted).when(active, (el) => el.bg(t.selected))
       .when(style("agency"), (el) => el.font_family(appearance().fonts.mono))
       .hover((s) => s.bg(t.hover).text_color(t.foreground)).on_click(on).child(label);
-    const dir = this.file ? this.file.slice(0, this.file.lastIndexOf("/")).replace(/^\/Users\/[^/]+/, "~") : "";
+    const dir = !this.file ? "" : isWindowsPath(this.file) ? tilde(parent(this.file)) : this.file.slice(0, this.file.lastIndexOf("/")).replace(/^\/Users\/[^/]+/, "~");
 
     return v_flex().id("file-tab").relative().track_focus(this.h).size_full().min_h(0).bg(t.background).text_color(t.foreground).text_size(fontSize("fileTab.body"))
       .on_key_down((e, cx) => {
@@ -303,7 +331,7 @@ export default class FileTab extends View {
           .child(btn("ft-edit", L("Text", "Текст"), (_e, cx) => { this.preview = false; cx.notify(); }, !this.preview))
           .child(btn("ft-prev", L("Preview", "Превью"), (_e, cx) => { this.preview = true; cx.notify(); }, this.preview)))
         .child(btn("ft-agent", L("@ to agent", "@ агенту"), () => this.agent()))
-        .when(Boolean(this.code) && this.editable && !this.removed, (el) => el.child(btn("ft-save", this.saving ? L("Saving…", "Сохраняю…") : this.dirty() ? L("Save ⌘S", "Сохранить ⌘S") : L("Saved", "Сохранено"), (_e, cx) => this.save(cx), this.dirty())))
+        .when(Boolean(this.code) && this.editable && !this.removed, (el) => el.child(btn("ft-save", this.saving ? L("Saving…", "Сохраняю…") : this.dirty() ? L(`Save ${shortcut("⌘S", "Ctrl+S")}`, `Сохранить ${shortcut("⌘S", "Ctrl+S")}`) : L("Saved", "Сохранено"), (_e, cx) => this.save(cx), this.dirty())))
         .when(Boolean(this.code) && !this.editable, (el) => el.child(div().text_size(fontSize("fileTab.hint")).text_color(t.dim).child(L("read only", "только чтение"))))
         .when(!this.on, (el) => el.child(btn("ft-open", L("Open in ▾", "Открыть в ▾"), (_e, cx) => { this.openMenu = !this.openMenu; cx.notify(); }, this.openMenu))))
       .when(Boolean(this.removed), el => el.child(div().px(14).py(8).text_color(t.blocked).child(L("The file was moved to the Trash. The tab keeps its contents for viewing.", "Файл перемещён в корзину. Содержимое вкладки сохранено для просмотра."))))

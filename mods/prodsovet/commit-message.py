@@ -5,6 +5,7 @@ import json
 import os
 from pathlib import Path
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -66,7 +67,20 @@ def snapshot(root):
             'text': '\n\n'.join(chunks)[:48000]}
 
 
+def codex_command():
+    """`codex` as a program to start. On Windows npm installs codex.cmd, which
+    CreateProcess does not find by the bare name."""
+    return (shutil.which('codex') if sys.platform == 'win32' else None) or 'codex'
+
+
 def generate(data):
+    if 'text' not in data:
+        # Read the diff here rather than receive it in argv (Windows limits a
+        # command line to 32,767 characters). The caller compares fingerprints.
+        snap = snapshot(data['root'])
+        if snap['empty'] or snap['conflict']:
+            raise ValueError('Nothing to describe')
+        data = {**data, 'text': snap['text']}
     language = 'Russian' if data.get('language') == 'ru' else 'English'
     prompt = (
         f'Write one concise Git commit subject in {language}, at most 100 characters. '
@@ -92,17 +106,20 @@ def generate(data):
         # No project/global MCP, hooks, memory or inherited terminal identity.
         env = {k: v for k, v in os.environ.items()
                if not k.startswith(('HERDR_', 'HC_', 'CODEX_THREAD', 'CODEX_TURN'))}
-        argv = ['codex', 'exec', '--model', 'gpt-6-luna', '--ignore-user-config', '--ephemeral', '--sandbox', 'read-only',
+        argv = [codex_command(), 'exec', '--model', 'gpt-6-luna', '--ignore-user-config', '--ephemeral', '--sandbox', 'read-only',
                 '--skip-git-repo-check', '--color', 'never', '-C', folder,
                 '--disable', 'shell_tool', '--disable', 'apps', '--disable', 'hooks',
                 '--disable', 'memories', '--disable', 'multi_agent', '--disable', 'multi_agent_v2',
                 '-c', 'web_search="disabled"', '-c', 'model_reasoning_effort="low"',
                 '-o', str(output), '-']
-        result = subprocess.run(argv, input=prompt, text=True, capture_output=True,
-                                cwd=folder, env=env, timeout=75)
+        try:
+            result = subprocess.run(argv, input=prompt, text=True, encoding='utf-8', errors='replace',
+                                    capture_output=True, cwd=folder, env=env, timeout=75)
+        except FileNotFoundError:
+            raise ValueError('Codex unavailable: install the Codex CLI and sign in')
         if result.returncode or not output.exists():
             raise ValueError('Codex unavailable: check CLI login or retry')
-        subject = output.read_text().strip()
+        subject = output.read_text(encoding='utf-8').strip()
         pattern = r'(?:fix|feat|perf|refactor|docs|test|style|build|ci|revert|chore)(?:\([a-z0-9][a-z0-9._/-]*\))?!?: \S[^\r\n]*'
         if not re.fullmatch(pattern, subject) or len(subject) > 100 or re.search(r'[\x00-\x1f]', subject) or subject.endswith('.'):
             raise ValueError('Codex returned an invalid commit subject; retry')
@@ -110,6 +127,8 @@ def generate(data):
 
 
 def main():
+    # Subjects can be Russian; Herdr reads the answer as UTF-8 on every system.
+    sys.stdout.reconfigure(encoding='utf-8')
     try:
         mode, value = sys.argv[1:3]
         result = snapshot(value) if mode == 'snapshot' else generate(json.loads(value)) if mode == 'generate' else None

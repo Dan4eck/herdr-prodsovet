@@ -3,7 +3,7 @@
 import { div, svg } from "gpui-kit";
 import { h_flex, v_flex } from "gpui-base";
 import { spaces, machines, shared, setShared, exec, run, openOverlay, home, window, setAgentOrder } from "herdr";
-import { workspace, spaceLabel } from "./filesystem.js";
+import { workspace, spaceLabel, join, within, native, thisComputer, shortcut } from "./filesystem.js";
 import { appearance, fontSize, labelFont, L } from "./appearance.js";
 import { px, current, hovered, glitchy, typed } from "./agency.js";
 import { mono, projectTile } from "./project-ui.js";
@@ -123,9 +123,9 @@ export class ProjectTree {
     // repository. Cached Git identity takes precedence; never match arbitrary basenames.
     for (const e of entries) {
       if (e.space.machine || !e.meta?.unavailable || e.meta.repo) continue;
-      const prefix = `${home()}/.herdr/worktrees/`;
-      if (!e.cwd.startsWith(prefix)) continue;
-      const parts = e.cwd.slice(prefix.length).split("/");
+      const managed = join(join(home(), ".herdr"), "worktrees");
+      if (!within(e.cwd, managed) || within(managed, e.cwd)) continue;
+      const parts = native(e.cwd).slice(native(managed).length + 1).split(/[/\\]/);
       if (parts.length !== 2) continue;
       const candidates = new Map(entries.filter(x => !x.space.machine && x.meta?.repo && !x.meta.linked && leaf(x.meta.main) === parts[0]).map(x => [x.meta.repo, x.meta]));
       if (candidates.size === 1) {
@@ -214,7 +214,7 @@ export class ProjectTree {
         rows.push(h_flex().id(`projects-machine-${machine ?? "local"}`).h(28).mt(at > 0 ? 10 : 2).px(8).gap(7).items_center().flex_none()
           .font_family(mono()).text_size(fontSize("agents.meta")).text_color(t.muted)
           .child(svg(px(machine ? "server" : "monitor")).size(13).flex_none().text_color(away ? t.blocked : t.dim))
-          .child(div().flex_none().max_w(180).truncate().font_weight(appearance().weights.semibold).child(machine ? machine.toUpperCase() : L("THIS MAC", "ЭТОТ MAC")))
+          .child(div().flex_none().max_w(180).truncate().font_weight(appearance().weights.semibold).child(machine ? machine.toUpperCase() : thisComputer()))
           .child(div().flex_1().h(1).bg(t.border))
           .when(away, el => el.child(div().text_size(10).text_color(t.blocked).child(state === "loading" ? L("connecting", "подключаю") : L("offline", "нет связи")))));
         if (!mine.length) rows.push(div().px(28).pb(4).text_size(11).text_color(t.dim).child(L("No open projects", "Нет открытых проектов")));
@@ -353,7 +353,7 @@ export class ProjectTree {
         }))))
         .child(collapsed ? button("project-new", "folder-plus", L("Open project…", "Открыть проект…"), openProjectDialog)
           : h_flex().id("project-new").h(24).px(7).gap(6).flex_none().items_center().border_1().border_color(t.border).text_color(t.muted)
-            .cursor_pointer().hover(s => s.bg(t.hover).text_color(t.foreground).border_color(t.input)).tooltip(L("Open project… (⌘N)", "Открыть проект… (⌘N)"))
+            .cursor_pointer().hover(s => s.bg(t.hover).text_color(t.foreground).border_color(t.input)).tooltip(L(`Open project… (${shortcut("⌘N", "Ctrl+Shift+N")})`, `Открыть проект… (${shortcut("⌘N", "Ctrl+Shift+N")})`))
             .on_click((_e, cx) => { cx.stop_propagation(); openProjectDialog(); })
             .child(svg(px("folder-plus")).size(14).flex_none()).child(div().text_size(11).child(L("Open", "Открыть")))))
       .child(v_flex().id("project-list").flex_1().min_h(0).px(collapsed ? 0 : 6).pb(12).overflow_y_scrollbar().mode("always")

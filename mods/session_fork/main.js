@@ -3,6 +3,7 @@ import { appearance, fontSize, metric, L } from "./appearance.js";
 // ProdAdvice for Herdr: customized interface and behavior, 2026. See NOTICE.
 import { View, div } from "gpui-kit";
 import { focused, spaces, props, appHome, readTextFile, exec, run, closeOverlay, theme } from "herdr";
+import { python } from "./filesystem.js";
 
 export default class SessionFork extends View {
   init(_props, cx) {
@@ -23,7 +24,8 @@ export default class SessionFork extends View {
           ? terminal.slice(machine.length + 1) : terminal;
         const script = await readTextFile(appHome() + "/mods/session_fork/resolve.py");
         if (!script) throw new Error(L("session_fork/resolve.py not found.", "Не найден обработчик session_fork/resolve.py."));
-        const result = await exec("python3", ["-c", script, address], { on: machine, timeout: 20000 });
+        // python3 there; on this Windows PC the py launcher (see filesystem.js).
+        const result = await python(["-c", script, address], { on: machine, timeout: 20000 });
         let plan;
         try { plan = JSON.parse(result.stdout); }
         catch { throw new Error(L("Could not identify the session: ", "Не удалось определить сессию: ") + (result.stderr || L("no answer", "нет ответа"))); }

@@ -4,7 +4,7 @@ import { appearance, fontSize, metric, radius, L, style, labelFont } from "./app
 // Find: one popup to search files by name, text inside files, and the text of open terminals.
 // Root = the focused pane's folder (as my-files shows it). Tab switches mode.
 // Enter or click: open (file -> its own tab via file-tab, terminal -> go to it),
-// Cmd+Enter: put "@path" into the last agent terminal, Option+Enter: open in the default app,
+// Cmd+Enter (Ctrl+Enter on Windows): put "@path" into the last agent terminal, Option/Alt+Enter: open in the default app,
 // Ctrl+Up: search the parent folder, Esc: close.
 import { View, div, svg } from "gpui-kit";
 import { v_flex, h_flex, InputState, Input, ScrollHandle } from "gpui-base";
@@ -17,7 +17,9 @@ const MODES = [
 ];
 const MAX_ROWS = 200, TERM_LINES = 3000;
 
-import { openFile, location, fileGlyph, fileKind, kindColor } from "./filesystem.js";
+import { openFile, location, fileGlyph, fileKind, kindColor, join, parent, samePath, isWindowsPath, tilde, onWindows, onMac, openExternal, pasteInto, shortcut } from "./filesystem.js";
+// ripgrep prints "\" on Windows; the lists and labels here use "/" relative paths.
+const RG_SEP = () => onWindows() ? ["--path-separator", "/"] : [];
 
 // Agency profiles: pixel icons and tinted selection, as in the sidebar.
 const agency = () => style("agency") === true;
@@ -56,7 +58,9 @@ export default class Find extends View {
     this.scroll = ScrollHandle.new();
     this.input = InputState.new({ placeholder: L("Search for…", "Что ищем…") });
     this.input.on("change", (_e, cx) => { this.query = this.input.value(); this.at = 0; this.search(cx); });
-    this.input.on("submit", (_e, cx) => this.open(this.rows()[this.at], "open", cx));
+    // Cmd/Ctrl+Enter also submits (secondary): the key handler sends that row
+    // to the agent, so the plain "open in a tab" is only for Enter itself.
+    this.input.on("submit", (e, cx) => { if (!e?.secondary) this.open(this.rows()[this.at], "open", cx); });
     this.input.focus();
     cx.timer.after(400, () => this.input.focus());
     this.loadFiles(cx);
@@ -70,9 +74,9 @@ export default class Find extends View {
     const root = this.root;
     cx.spawn(async (cx) => {
       try {
-        const r = await exec("rg", ["--files", "--hidden", "-g", "!.git", "-g", "!.obsidian", "-g", "!.trash", "-g", "!*.pyc", "-g", "!.DS_Store", "--sortr", "modified"], { cwd: root, on: this.on, timeout: 20000 });
+        const r = await exec("rg", ["--files", "--hidden", ...(this.on ? [] : RG_SEP()), "-g", "!.git", "-g", "!.obsidian", "-g", "!.trash", "-g", "!*.pyc", "-g", "!.DS_Store", "--sortr", "modified"], { cwd: root, on: this.on, timeout: 20000 });
         if (root !== this.root) return;
-        this.files = r.stdout.split("\n").filter(Boolean);
+        this.files = r.stdout.split(/\r?\n/).filter(Boolean);
         this.error = r.code === 0 || this.files.length ? null : (r.stderr || L("rg could not read the folder", "rg не смог прочитать папку")).trim();
       } catch (e) { this.error = L(`ripgrep (rg) is required: ${e}`, `Нужен ripgrep (rg): ${e}`); this.files = []; }
       this.busy = false; cx.notify();
@@ -90,9 +94,17 @@ export default class Find extends View {
       cx.spawn(async (cx) => {
         let out = [];
         try {
-          const script = 'rg --null -n --no-heading --color never -S -F --hidden -g "!.git" -g "!.obsidian" -g "!.trash" --max-columns 240 --max-columns-preview --max-count 8 -e "$1" | head -n 400';
-          const r = await exec("sh", ["-c", script, "find", q], { cwd: this.root, on: this.on, timeout: 20000 });
-          for (const line of r.stdout.split("\n")) {
+          let lines;
+          if (onWindows(this.on)) {
+            // No sh or head on Windows: ripgrep alone, the first 400 lines kept.
+            const r = await exec("rg", ["--null", "-n", "--no-heading", "--color", "never", "-S", "-F", "--hidden", ...RG_SEP(), "-g", "!.git", "-g", "!.obsidian", "-g", "!.trash", "--max-columns", "240", "--max-columns-preview", "--max-count", "8", "-e", q], { cwd: this.root, timeout: 20000 });
+            lines = r.stdout.split(/\r?\n/).slice(0, 400);
+          } else {
+            const script = 'rg --null -n --no-heading --color never -S -F --hidden -g "!.git" -g "!.obsidian" -g "!.trash" --max-columns 240 --max-columns-preview --max-count 8 -e "$1" | head -n 400';
+            const r = await exec("sh", ["-c", script, "find", q], { cwd: this.root, on: this.on, timeout: 20000 });
+            lines = r.stdout.split("\n");
+          }
+          for (const line of lines) {
             const z = line.indexOf("\0");
             if (z < 0) continue;
             const rest = line.slice(z + 1), c = rest.indexOf(":");
@@ -150,8 +162,8 @@ export default class Find extends View {
   }
 
   up(cx) {
-    if (!this.root || this.root === "/") return;
-    this.root = this.root.replace(/\/[^/]+\/?$/, "") || "/";
+    if (!this.root || this.root === "/" || samePath(parent(this.root), this.root)) return;
+    this.root = isWindowsPath(this.root) ? parent(this.root) : this.root.replace(/\/[^/]+\/?$/, "") || "/";
     this.hits = []; this.loadFiles(cx); this.search(cx);
   }
 
@@ -165,24 +177,21 @@ export default class Find extends View {
       run("pane.focus", { pane: r.pane.pane });
       return;
     }
-    const abs = `${this.root.replace(/\/$/, "")}/${r.path}`;
+    const abs = isWindowsPath(this.root) ? join(this.root, r.path) : `${this.root.replace(/\/$/, "")}/${r.path}`;
     if (how === "agent") {
       const term = this.agent;
       if (!term) return notify({ title: L("No terminal", "Нет терминала"), body: L("Click the agent terminal and try again", "Кликни в терминал агента и попробуй снова"), level: "warning" });
-      this.close();
       const text = (/\s/.test(abs) ? `"${abs}"` : `@${abs}`) + " ";
-      const copy = (v) => exec("sh", ["-c", 'printf %s "$1" | pbcopy', "copy", v]);
-      const old = await exec("pbpaste", []).catch(() => null);
-      await copy(text);
-      run("pane.focus", { terminal: term });
-      run("terminal.paste");
-      cx.timer.after(700, () => { if (old?.code === 0 && old.stdout) copy(old.stdout); });
+      // Closing this popup ends its mod copy and cancels what it still awaits
+      // (on Windows the clipboard helper takes ~0.3 s), so close only when the
+      // clipboard is ready; pasteInto starts the rest at once.
+      await pasteInto(term, text, () => this.close()).catch((e) => { this.close(); notify({ title: L("Not sent", "Не отправлено"), body: String(e.message ?? e), level: "error" }); });
       return;
     }
     if (how === "app") {
       if (this.on) return notify({ title: L("File on another machine", "Файл на другой машине"), body: L("Only local files open in an app", "Открыть в приложении можно только локальные файлы"), level: "warning" });
+      await openExternal(abs).catch((e) => notify({ title: L("Not opened", "Не открылось"), body: String(e.message ?? e), level: "error" }));
       this.close();
-      exec("open", [abs]);
       return;
     }
     this.close();
@@ -194,7 +203,9 @@ export default class Find extends View {
   render(cx) {
     const t = theme(), rows = this.rows(), q = this.query.trim();
     if (this.at >= rows.length) this.at = Math.max(0, rows.length - 1);
-    const home = (s) => s?.replace(/^\/Users\/[^/]+/, "~") ?? "";
+    const home = (s) => isWindowsPath(s) ? tilde(s) : s?.replace(/^\/Users\/[^/]+/, "~") ?? "";
+    // Cmd on macOS, Ctrl elsewhere (there the platform key is the Windows key).
+    const primary = (m) => onMac() ? m?.platform : m?.control;
 
     const tab = (m) => {
       const on = m.id === this.mode;
@@ -209,7 +220,7 @@ export default class Find extends View {
       const on = i === this.at;
       const base = h_flex().id(`fd-r-${i}`).mx(4).px(10).min_h(30).py(4).rounded(radius(7)).gap(10).items_center().cursor_pointer()
         .when(on, (el) => el.bg(agency() ? (r.kind === "term" ? t.foreground : kindColor(t, fileKind(r.path, false))) + "24" : t.hover)).hover((s) => s.bg(t.hover))
-        .on_click((e, cx) => this.open(r, e.modifiers?.platform ? "agent" : e.modifiers?.alt ? "app" : "open", cx));
+        .on_click((e, cx) => this.open(r, primary(e.modifiers) ? "agent" : e.modifiers?.alt ? "app" : "open", cx));
       if (r.kind === "file") {
         const cut = r.path.lastIndexOf("/");
         return base
@@ -242,7 +253,7 @@ export default class Find extends View {
         else if (k === "up" && m.control) this.up(cx);
         else if (k === "down" && rows.length) { this.at = (this.at + 1) % rows.length; this.scroll.scroll_to_item(this.at); }
         else if (k === "up" && rows.length) { this.at = (this.at + rows.length - 1) % rows.length; this.scroll.scroll_to_item(this.at); }
-        else if (k === "enter" && m.platform) this.open(rows[this.at], "agent", cx);
+        else if (k === "enter" && primary(m)) this.open(rows[this.at], "agent", cx);
         else if (k === "enter" && m.alt) this.open(rows[this.at], "app", cx);
         else return;
         cx.stop_propagation(); cx.notify();
@@ -262,6 +273,7 @@ export default class Find extends View {
       .child(v_flex().id("fd-list").h(Math.min(420, Math.max(rows.length, 1) * (this.mode === "files" ? metric("find.fileRow") : metric("find.resultRow"))) * 1).flex_none().overflow_y_scrollbar().track_scroll(this.scroll)
         .children(rows.map(row)))
       .child(div().text_size(fontSize("find.hint")).text_color(t.dim)
-        .child(L("Tab mode · Enter open in a tab · ⌘Enter to agent · ⌥Enter in app · ⌃↑ folder up", "Tab режим · Enter открыть во вкладке · ⌘Enter в агента · ⌥Enter в приложении · ⌃↑ папка выше")));
+        .child(L(`Tab mode · Enter open in a tab · ${shortcut("⌘Enter", "Ctrl+Enter")} to agent · ${shortcut("⌥Enter", "Alt+Enter")} in app · ${shortcut("⌃↑", "Ctrl+↑")} folder up`,
+          `Tab режим · Enter открыть во вкладке · ${shortcut("⌘Enter", "Ctrl+Enter")} в агента · ${shortcut("⌥Enter", "Alt+Enter")} в приложении · ${shortcut("⌃↑", "Ctrl+↑")} папка выше`)));
   }
 }

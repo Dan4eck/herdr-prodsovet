@@ -1,9 +1,9 @@
 # ProdAdvice для Herdr
 
-Оформление для [Herdr](https://github.com/herdrdev/herdr-app) на macOS: проекты
-и сессии агентов в одной боковой панели, анимированные агенты, вкладки с
-файлами, файловый менеджер, Git, GitHub и поиск по проекту. Интерфейс на
-русском и английском.
+Оформление для [Herdr](https://github.com/herdrdev/herdr-app) на macOS и
+Windows: проекты и сессии агентов в одной боковой панели, анимированные агенты,
+вкладки с файлами, файловый менеджер, Git, GitHub и поиск по проекту. Интерфейс
+на русском и английском.
 
 ![Иллюстрация с вымышленными данными](preview.png)
 
@@ -28,6 +28,32 @@ herdr-app do layout.switch '{"name":"PA-Advanced"}'
   [ACCESS.md](ACCESS.md).
 - Если ваше сочетание клавиш уже занято, установщик остановится; добавьте
   `--skip-conflicting-keys`, чтобы оставить свои.
+
+### Windows
+
+Нужны Windows 10/11 x64, [Herdr](https://herdr.dev/download/) 0.1.16 (откройте
+его хотя бы раз), [Python 3](https://www.python.org/downloads/) и `rg`. В
+PowerShell:
+
+```powershell
+winget install BurntSushi.ripgrep.MSVC   # если rg ещё нет; затем перезапустите Herdr
+git clone https://github.com/Dan4eck/herdr-prodsovet
+cd herdr-prodsovet
+py install.py --apply                    # или --apply --with-limits (только Codex)
+herdr-app do layout.switch --name PA-Advanced
+```
+
+Обновление и удаление те же, только `py` вместо `python3`. На Windows:
+
+- клавиши свои: Cmd заменяется на Ctrl+Shift, как в самом Herdr (таблица ниже);
+- удаление идёт в Корзину Windows, «Показать в Проводнике» вместо Finder;
+- «Открыть в» запускает VS Code и Obsidian по их ссылкам `vscode://` и
+  `obsidian://`; программы и скрипты (`.exe`, `.bat`, `.ps1`…) отсюда не
+  запускаются, для них есть «Показать в Проводнике»;
+- `--with-limits` включает только лимиты Codex: лимиты Claude на Windows не
+  переносились, подробнее в [ACCESS.md](ACCESS.md);
+- в PA-Advanced маковские шрифты Avenir Next и Bodoni 72 заменяются системными;
+  PA-Light выглядит так же, как на Mac (его шрифты встроены в Herdr).
 
 ### Обновление
 
@@ -71,16 +97,20 @@ worktree висят на линии своего проекта, текущая 
 
 ## Клавиши
 
-| Где | Клавиши | Что делает |
-|---|---|---|
-| Везде | Cmd+T, Cmd+D / Cmd+Shift+D | терминал, сплит вправо / вниз в корне проекта |
-| Везде | Cmd+N | открыть проект (PA-Advanced) |
-| Везде | Cmd+Shift+O | поиск по проекту |
-| Терминал | Cmd+Shift+F | форк текущего разговора Claude Code / Codex |
-| Дерево файлов | F2, Cmd+N / Cmd+Shift+N | переименовать, новый файл / папка |
-| Дерево файлов | Cmd+C / X / V, Cmd+Backspace | копировать / вырезать / вставить, в Корзину |
-| Дерево файлов | Enter | отправить путь агенту |
-| Редактор | Cmd+S | сохранить |
+| Где | macOS | Windows | Что делает |
+|---|---|---|---|
+| Везде | Cmd+T, Cmd+D / Cmd+Shift+D | Ctrl+Shift+T, Ctrl+Shift+O / Ctrl+Shift+E | терминал, сплит вправо / вниз в корне проекта |
+| Везде | Cmd+N | Ctrl+Shift+N | открыть проект (PA-Advanced) |
+| Везде | Cmd+P | Ctrl+Shift+K | выбор сессии (PA-Advanced) |
+| Везде | Cmd+Shift+O | Ctrl+Shift+S | поиск по проекту |
+| Терминал | Cmd+Shift+F | Ctrl+Shift+Y | форк текущего разговора Claude Code / Codex |
+| Дерево файлов | F2, Cmd+N / Cmd+Shift+N | F2, Ctrl+N / Ctrl+Shift+N | переименовать, новый файл / папка |
+| Дерево файлов | Cmd+C / X / V, Cmd+Backspace | Ctrl+C / X / V, Delete | копировать / вырезать / вставить, в Корзину |
+| Дерево файлов | Enter | Enter | отправить путь агенту |
+| Поиск | Cmd+Enter, Option+Enter | Ctrl+Enter, Alt+Enter | путь агенту, открыть в приложении |
+| Редактор | Cmd+S | Ctrl+S | сохранить |
+
+На Windows клавиши взяты из `keys.windows.json`, на Mac из `keys.json`.
 
 ## Что внутри
 
@@ -88,9 +118,10 @@ worktree висят на линии своего проекта, текущая 
 GitHub, статус-бар), **my-files** (файловый менеджер), **file-tab** (редактор и
 Markdown), **find** (поиск через ripgrep), **session_fork** (форк разговора).
 
-Только macOS: буфер обмена, Корзина, Finder и `open` — системные. Моды запускают
-программы и работают с вашими файлами; что именно и куда — в
-[ACCESS.md](ACCESS.md).
+macOS и Windows: буфер обмена, Корзина, Finder/Проводник и открытие файлов
+системные. На Mac это `pbcopy`, `trash` и `open`, на Windows — Windows API через
+`mods/my-files/system.py` и `file-ops.py`. Моды запускают программы и работают с
+вашими файлами; что именно и куда — в [ACCESS.md](ACCESS.md).
 
 ## Подробнее
 

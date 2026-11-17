@@ -1,5 +1,108 @@
 # Validation record
 
+## Windows port (unreleased)
+
+Date: 2026-11-16. Host: Windows 11 Home 26300 x64, Python 3.13.5, Node.js 26.3,
+ripgrep 15.1. Herdr App was not installed on this host, so nothing below was
+checked in the native window.
+
+Passed:
+
+- `python -B verify.py`: structure, JSON, both key files bind the same
+  commands, five identical filesystem.js copies, LF-only files, privacy scan;
+  43 Python cases (5 skipped: 4 need symlinks, which Windows allows only with
+  Developer Mode; 1 is the macOS Trash) and all Node suites, including 11
+  Windows platform cases, 16 dialog/editor integration cases that run the real
+  file-ops.py, and 36 project tree cases that run real Git on Windows paths.
+- Real Windows file operations: Cyrillic names, case-only rename, refusal of an
+  existing name, invalid and reserved names, drive root and home refused,
+  copy/duplicate/move, Recycle Bin for a file and a folder (the test removes its
+  own items from the Recycle Bin afterwards).
+- system.py on the real clipboard: Cyrillic text round trip (~50 ms a call),
+  delayed write, refusal of programs and unknown links; the previous clipboard
+  text was restored.
+- ripgrep output with `--path-separator /` and `--null` matches the parser.
+- install / update / uninstall into a temporary home seeded with Herdr's real
+  Windows `keys.json`: 132 files, 21 bindings, no key conflicts, defaults kept,
+  no CRLF installed, `{"claude": false, "codex": true}` with `--with-limits`,
+  uninstall restored keys.json exactly.
+
+Native Herdr App 0.1.16 on the same host (fresh home, Windows PowerShell 5.1
+terminals), driven with `herdr-app do` and checked with `herdr-app shot`:
+
+- `py install.py --apply` into the real home: 131 files, 21 bindings, no
+  conflicts with Herdr's Windows defaults; `herdr-app status` reports no errors.
+- `herdr-app check` passed for all five mods.
+- PA-Advanced renders: THIS PC and the branch in the status strip, Windows
+  window buttons, `Ctrl+Shift+P COMMANDS`; the PA-Advanced font fallback is
+  readable.
+- A Git test project with Cyrillic names: one project in PROJECTS, the file tree
+  lists Cyrillic names with Git marks, the file tab opens `Заметки\план.md`
+  with its text and a `~\…` folder label, Find lists files through ripgrep
+  (`/` relative paths, newest first) with Windows key hints, Changes shows the
+  diff with Cyrillic text.
+- Python inside Herdr: the fork popup on a PowerShell terminal answers with
+  resolve.py's own Russian message, so `py -3 -X utf8 -c <script>`, the core
+  lookup (`hc get` reports `powershell.exe` with pid and cwd as foreground) and
+  UTF-8 output all work. The commit helper's snapshot runs; generation stops
+  with "Codex unavailable" because no Codex CLI is installed on this host.
+
+Clicks and keys in the native window (mouse and keyboard on the real window;
+frames read with `herdr-app shot`, because screen capture returned blank
+frames on this host):
+
+- Context menu labels: Show in Explorer, Delete to Recycle Bin…
+- Show in Explorer opened an Explorer window on the project folder.
+- Rename… with a Cyrillic name renamed the file on disk and in the tree; the
+  open tab followed the rename after the file-tab fix below.
+- Delete to Recycle Bin…: Windows wording in the confirmation; the file left the
+  folder and was found in the Recycle Bin (then removed from it by hand).
+- Ctrl+Shift+S opened Find; Text mode found Cyrillic lines in two files.
+- Ctrl+Enter put `@C:\…\Заметки\план.md ` into the terminal and the previous
+  clipboard text came back.
+- Ctrl+Shift+T opened a terminal tab and Ctrl+Shift+O split it, both in the
+  project root; Ctrl+S saved Cyrillic text in the editor.
+
+Found and fixed during the check (both also apply to macOS):
+
+- A new file tab started before Herdr listed its pane, kept no tab id and never
+  registered its document, so a rename did not reach the open editor. The tab
+  now looks for its pane again (every 200 ms, up to 5 s).
+- Find closed its popup before awaiting the clipboard; closing ends the mod
+  copy and cancelled the Windows helper, so nothing was pasted. It now closes
+  once the clipboard is ready. Cmd/Ctrl+Enter also no longer opens the file in
+  a tab as well (the input's submit event fires for it too).
+
+With live agents (Claude Code 2.1.304 from npm on the person's own Max plan,
+Codex CLI 0.169.0 from npm on their ChatGPT plan, both started from the
+project's + menu or Herdr's own space/tab commands; the person typed every
+prompt):
+
+- The + menu lists installed agents (Claude Code, Codex, Hermes) and marks the
+  rest "not installed"; the Open project dialog shows THIS PC and Windows
+  labels (its native folder picker could not be driven blind here).
+- Herdr reports both agents through OSC 7501 (`claude-code`, `codex`): agent
+  card and count in PROJECTS, AGENTS in the status strip, done/idle states.
+- Ctrl+Enter from Find put `@…\src\main.js ` into Codex's input.
+- Commit subject from the real Codex: `chore: remove readme and add a…`.
+- Ctrl+Shift+Y in Claude Code opened "Claude fork"
+  (`claude --resume <id> --fork-session`) with the whole conversation.
+- Ctrl+Shift+Y in Codex recognized Codex (`node.exe`) and, without a thread-id
+  title, showed the `/title …` instruction with Ctrl+Shift+Y instead of
+  guessing. The full Codex fork after `/title` was not run.
+
+Lesson: Herdr had first been started from this agent's shell, so every Herdr
+terminal inherited the agent's `CLAUDE_CODE_*` / `ANTHROPIC_*` variables and
+Claude Code ran as its child session (no transcript, no session file). Herdr
+was restarted from the Start menu for the checks above. Do not start Herdr from
+an agent's shell when testing agents.
+
+Not yet checked on Windows: the Codex fork after `/title`, "open in app"
+(Alt+Enter) and "Open in" VS Code / Obsidian in the native window (the helper
+behind them was tested directly), and the Open project folder picker.
+
+## macOS releases
+
 Date: 2026-11-15. Source package: 0.3.0. Host: macOS, Herdr App 0.1.15,
 Python 3.15 and Node.js 22.14.0. Published at https://github.com/Dan4eck/herdr-prodsovet.
 
