@@ -6,6 +6,12 @@ committed; the release moves it under the new version.
 
 ## Unreleased
 
+- A file tab reloads a file that another program changed on disk (when the tab has no unsaved edits), so a generated
+  document no longer shows stale text or a stale preview.
+- Markdown preview in a file tab now draws pictures: `![alt](path)`, `<img>`, `<figure>` with a caption, and
+  `<video>` as a still frame with a play badge. Paths may be relative to the file, absolute, `~/`, `file://`
+  or `https://` (downloaded once into `data/md-preview`). macOS only; Windows and remote files keep the text preview.
+
 - Nothing yet.
 
 ## 0.5.0 (2026-11-17)

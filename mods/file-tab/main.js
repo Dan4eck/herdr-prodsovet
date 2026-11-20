@@ -9,6 +9,7 @@ import { v_flex, h_flex, Editor, EditorState, InputState, Input, TextView, set_t
 import { props, exec, appHome, readTextFile, writeTextFile, theme, settings, focused, spaces, panes, run, notify, shared, setShared, nextCommand } from "herdr";
 
 import { operation, isLocked, activeDocuments, workspace, fileGlyph, basename, parent, native, isWindowsPath, tilde, onMac, openExternal, pasteInto, shortcut } from "./filesystem.js";
+import { MdPreview } from "./md-preview.js";
 
 const LANG = { ts: "js", tsx: "js", mjs: "js", cjs: "js", jsx: "js", js: "js", json: "json", jsonc: "json", md: "markdown", markdown: "markdown", py: "python", sh: "bash", zsh: "bash", yml: "yaml", yaml: "yaml", toml: "yaml", html: "html", css: "css", rs: "rust", go: "go", vue: "html", svelte: "html" };
 const base = (p) => isWindowsPath(p) ? basename(p) : p.split("/").pop();
@@ -68,12 +69,13 @@ export default class FileTab extends View {
     localStorage.setItem("tab", this.tab ?? "");
     workspace(this.space);
     this.h = cx.focus_handle();
-    this.code = null; this.original = null; this.preview = false; this.renaming = null; this.openMenu = Boolean(pr.menu);
+    this.code = null; this.original = null; this.preview = Boolean(pr.preview); this.renaming = null; this.openMenu = Boolean(pr.menu);
     this.ext = (this.file?.includes(".") ? this.file.split(".").pop() : "txt").toLowerCase();
     this.register();
     if (!this.tab) this.retryTab(cx);
     if (!this.file) { this.error = L("No file path", "Нет пути к файлу"); return; }
     this.load(cx);
+    this.watchDisk(cx);
     cx.spawn(async (cx) => {
       for (;;) {
         const c = await nextCommand();
@@ -173,6 +175,22 @@ export default class FileTab extends View {
       } catch (e) { this.error = L(`Could not open: ${e}`, `Не открылся: ${e}`); }
       cx.notify();
     });
+  }
+
+  // A file changed on disk by another program (an agent, a generator) shows up here too, as long as
+  // the tab holds no unsaved edits: Text and Preview reload within a couple of seconds.
+  watchDisk(cx) {
+    const tick = (cx) => {
+      if (this.closed) return;
+      if (this.code && !this.dirty() && !this.saving && !this.removed) {
+        readTextFile(this.file, { on: this.on }).then((text) => {
+          if (this.closed || text === null || text.includes("\0") || !this.code || this.dirty() || this.saving) return;
+          if (text !== this.original) { this.original = text; this.code = this.makeEditor(text); this.publish(); cx.notify(); }
+        }).catch(() => {});
+      }
+      cx.timer.after(this.on ? 5000 : 1500, tick);
+    };
+    cx.timer.after(1500, tick);
   }
 
   editorOptions() {
@@ -291,6 +309,15 @@ export default class FileTab extends View {
     }
   }
 
+  // Markdown preview. On macOS the pictures are drawn too (relative paths, ~/, file://, https://).
+  markdownPreview(cx) {
+    const text = this.code.value();
+    if (!onMac(this.on) || isWindowsPath(this.file)) return TextView.markdown("ft-md-view", text);
+    const dir = this.file.slice(0, this.file.lastIndexOf("/")) || "/";
+    if (!this.mdp || this.mdp.dir !== dir) this.mdp = new MdPreview(dir, this.on);
+    return this.mdp.render(text, cx);
+  }
+
   render(cx) {
     this.syncDocument();
     this.refreshEditorStyle(cx);
@@ -337,7 +364,7 @@ export default class FileTab extends View {
       .when(Boolean(this.removed), el => el.child(div().px(14).py(8).text_color(t.blocked).child(L("The file was moved to the Trash. The tab keeps its contents for viewing.", "Файл перемещён в корзину. Содержимое вкладки сохранено для просмотра."))))
       .child(this.code
         ? (this.preview
-          ? div().id("ft-md").flex_1().min_h(0).overflow_y_scrollbar().px(28).py(18).child(TextView.markdown("ft-md-view", this.code.value()))
+          ? div().id("ft-md").flex_1().min_h(0).overflow_y_scrollbar().px(28).py(18).child(this.markdownPreview(cx))
           : div().id("ft-editor").flex_1().min_h(0).px(6)
               .on_mouse_down("left", (_e, cx) => this.applySelection(cx, true))
               .on_modifiers_changed((e, cx) => { if (e.modifiers?.shift) this.applySelection(cx, true); })
