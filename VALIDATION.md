@@ -1,5 +1,31 @@
 # Validation record
 
+## Release v0.6.0 (2026-11-20)
+
+Maintainer validation on macOS 26.5, Herdr App 0.1.16, Python 3.15.2,
+Node.js 22.14.0.
+
+- `python3 -B verify.py`: 47 Python cases (42 passed, 5 Windows-only skipped)
+  and all Node suites passed (118 `ok` lines, 41 project cases), including the
+  new suites for the Issues panel (6 cases, `gh` mocked) and Markdown blocks.
+- New regressions cover: the home folder prefilled in Open project (local and
+  remote), sub-agent menu actions (keep/park/kill with a second click), commit
+  suggestions only while the Changes panel is shown, and a Claude Code turn that
+  ends with background shells counting as done until seen, then idle.
+- All five mods passed `herdr-app check` from a clean install in a temporary
+  home. The v0.5.0 tag installed in another temporary home updated to 0.6.0
+  (17 files written, 0 removed) and its payload matched the clean install byte
+  for byte. Uninstall removed the package files and restored keys.json exactly.
+- In the maintainer's own window: the Issues panel listed a real repository's
+  open issues with labels; the Open project dialog, the new sidebar icon and the
+  idle state of a Claude Code session with two background shells were seen in
+  screenshots. Creating, editing, commenting on or closing a real issue, the
+  sub-agent menu on a live sub-agent and the background-turn sound were not
+  exercised natively; they are covered by the mocked suites only.
+- Windows was not rerun. The Issues panel passes text to `gh` as arguments, so
+  on Windows an issue body or comment near 32,000 characters can exceed the
+  command-line limit.
+
 ## Release v0.5.0 (2026-11-17)
 
 Maintainer validation on macOS 26.5.2, Herdr App 0.1.16, Python 3.12.6,

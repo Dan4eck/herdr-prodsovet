@@ -15,7 +15,7 @@ Windows: проекты и сессии агентов в одной боков�
 ```sh
 git clone https://github.com/Dan4eck/herdr-prodsovet
 cd herdr-prodsovet
-git checkout v0.5.0                  # последний релиз, см. Releases
+git checkout v0.6.0                  # последний релиз, см. Releases
 python3 install.py --apply           # или --apply --with-limits, см. ниже
 herdr-app do layout.switch '{"name":"PA-Advanced"}'
 ```
@@ -39,7 +39,7 @@ PowerShell:
 winget install BurntSushi.ripgrep.MSVC   # если rg ещё нет; затем перезапустите Herdr
 git clone https://github.com/Dan4eck/herdr-prodsovet
 cd herdr-prodsovet
-git checkout v0.5.0                      # последний релиз
+git checkout v0.6.0                      # последний релиз
 py install.py --apply                    # или --apply --with-limits (только Codex)
 herdr-app do layout.switch --name PA-Advanced
 ```
@@ -62,7 +62,7 @@ herdr-app do layout.switch --name PA-Advanced
 
 ```sh
 git fetch --tags
-git checkout v0.5.0                  # номер нового релиза
+git checkout v0.6.0                  # номер нового релиза
 python3 install.py --update --apply
 ```
 
