@@ -1,11 +1,11 @@
 import { appearance, fontSize, metric, radius, L, advanced } from "./appearance.js";
-import { agency, accentOf, selected as selectedLook, hovered, icon } from "./agency.js";
+import { agency, accentOf, selected as selectedLook, hovered, icon, settled } from "./agency.js";
 // SPDX-License-Identifier: Apache-2.0
 // ProdAdvice for Herdr: customized interface and behavior, 2026. See NOTICE.
 import { checkoutContext, selectProjectTab, nextProjectTab, openSessionMenu } from "./project-context.js";
 import { View, div, svg, image } from "gpui-kit";
 import { h_flex, ScrollHandle } from "gpui-base";
-import { spaces, panes, run, openOverlay, theme, window, shared, setShared, layout, settings } from "herdr";
+import { spaces, panes, run, openOverlay, theme, window, shared, setShared, layout, settings, terminals } from "herdr";
 
 function find(node, id) {
   if (node?.id === id) return node;
@@ -67,7 +67,16 @@ export default class Tabs extends View {
     const stop = (_e, cx) => cx.stop_propagation();
     const button = (id, label, action) => div().id(id).size(26).flex_none().flex().items_center().justify_center().rounded(radius(6)).text_color(t.dim).hover(s => s.bg(t.hover).text_color(t.foreground))
       .on_mouse_down("left", stop).on_click(action).child(label);
+    const all = terminals();
+    // A tab works only while one of its agents is in a turn, not while a
+    // finished agent's background shells run.
+    const tabStatus = c => {
+      if (c.status !== "working") return c.status;
+      const busy = panes().filter(p => p.tab === c.id && p.status === "working");
+      return busy.length && busy.every(p => settled(p.status, p.terminal, all) !== "working") ? "idle" : "working";
+    };
     const item = (c, i) => {
+      const status = tabStatus(c);
       const program = panes().find(p => p.tab === c.id && p.program?.agent)?.program ?? panes().find(p => p.tab === c.id)?.program;
       const automatic = !c.named && (/^\d+$/.test(c.name) || /^tb\d+$/.test(c.name));
       const name = unified && automatic ? (program?.agent ? program.name : L("Terminal", "Терминал")) + ` ${i + 1}` : /^tb\d+$/.test(c.name) ? program?.name ?? "Terminal" : c.name;
@@ -90,8 +99,8 @@ export default class Tabs extends View {
         .on_mouse_down("right", (_e, cx) => { cx.stop_propagation(); openOverlay({ mod: "prodsovet", kind: "popup", width: 200, props: { role: "tab-menu", tab: "tab", target: { id: c.id, space: c.owner } } }); })
         .when(Boolean(program?.icon), el => el.child(program.tint ? svg(program.icon).size(14).text_color(t.muted) : image(program.icon).size(14)))
         .child(div().max_w(170).truncate().child(c.zoomed ? `${name} Z` : name))
-        .when(c.status === "working", el => el.child(svg("mods/workspace-chrome/spinner.svg").size(12).flex_none().text_color(agency() ? accentOf(program, t) : t.working).spin(900)))
-        .when(c.status === "blocked" || c.status === "done", el => el.child(div().size(6).rounded(radius(3)).bg(t[c.status])))
+        .when(status === "working", el => el.child(svg("mods/workspace-chrome/spinner.svg").size(12).flex_none().text_color(agency() ? accentOf(program, t) : t.working).spin(900)))
+        .when(status === "blocked" || status === "done", el => el.child(div().size(6).rounded(radius(3)).bg(t[c.status])))
         .when(c.active, el => el.child(div().id(`close-${c.id}`).text_color(t.dim).on_mouse_down("left", stop).on_click((_e, cx) => { cx.stop_propagation(); run("tab.close", { id: c.id }); }).child(svg(icon("close", "mods/pane/close.svg")).size(agency() ? 15 : 12))));
     };
     const root = layout(), sidebar = find(root, "sidebar"), w = window();
@@ -101,10 +110,15 @@ export default class Tabs extends View {
       : 10;
     const panel = find(root, "panel"), body = find(root, "panel-body");
     // Panels shown as buttons: those the person enabled whose block this layout has.
-    // Agency profiles enable Changes and GitHub once (shared "workspace.panels").
-    if (agency() && !shared("prodsovet.panels") && find(root, "github")) {
+    // Agency profiles enable Changes and GitHub once, then Issues once (shared
+    // "workspace.panels"; "prodsovet.panels" counts which of these already ran).
+    if (agency() && (shared("prodsovet.panels") ?? 0) < 1 && find(root, "github")) {
       setShared("workspace.panels", [...new Set([...(shared("workspace.panels") ?? ["files"]), "changes", "github"])]);
       setShared("prodsovet.panels", 1);
+    }
+    if (agency() && (shared("prodsovet.panels") ?? 0) < 2 && find(root, "issues")) {
+      setShared("workspace.panels", [...new Set([...(shared("workspace.panels") ?? ["files"]), "issues"])]);
+      setShared("prodsovet.panels", 2);
     }
     const enabled = (shared("workspace.panels") ?? ["files", "changes"]).filter((id) => find(root, id));
     this.syncPanel(unified && space ? { ...space, id: context.key } : space, panel, body, enabled);
@@ -128,6 +142,7 @@ export default class Tabs extends View {
       .when(enabled.includes("files"), el => el.child(panelButton("files", L("Files", "Файлы"), icon("file", "mods/files/file.svg"))))
       .when(enabled.includes("changes"), el => el.child(panelButton("changes", L("Changes", "Изменения"), icon("changes", "mods/changes/changes.svg"))))
       .when(enabled.includes("github"), el => el.child(panelButton("github", "GitHub", icon("pr", "mods/workspace-chrome/branch.svg"))))
+      .when(enabled.includes("issues"), el => el.child(panelButton("issues", L("Issues", "Задачи"), "mods/prodsovet/art/px/issue.svg")))
       .when(w?.buttons, el => el.child(button("minimize", w.platform === "windows" ? svg("mods/tabs/win-min.svg").size(16) : "−", () => run("window.minimize")))
         .child(button("maximize", w.platform === "windows" ? svg(`mods/tabs/${w.maximized ? "win-restore" : "win-max"}.svg`).size(16) : "□", () => run("window.maximize")))
         .child(button("close-window", w.platform === "windows" ? svg("mods/tabs/win-close.svg").size(16) : svg("mods/pane/close.svg").size(13), () => run("window.close"))));

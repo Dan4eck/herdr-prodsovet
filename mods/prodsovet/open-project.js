@@ -2,13 +2,13 @@
 // Choose an explicit machine, folder and first session; reuse an open checkout.
 import { View, div, svg } from "gpui-kit";
 import { h_flex, v_flex, Input, InputState } from "gpui-base";
-import { spaces, machines, knownAgents, pickFolder, exec, run, theme, props, closeOverlay, shared, setShared } from "herdr";
+import { spaces, machines, knownAgents, pickFolder, exec, run, theme, props, closeOverlay, shared, setShared, home } from "herdr";
 import { workspace, isAbsolute, localOperation, onWindows, thisComputer } from "./filesystem.js";
 import { inspectCheckout, pathKey, leaf } from "./project-model.js";
 import { preferredSpace } from "./project-context.js";
 import { L, radius, appearance, fontSize } from "./appearance.js";
 import { px, glitchy } from "./agency.js";
-import { mono, tint, stepLabel, kbd, glyph, glyphTile, hasMascot, mascot } from "./project-ui.js";
+import { mono, tint, stepLabel, kbd, glyphTile } from "./project-ui.js";
 
 export default class OpenProject extends View {
   init(_props, cx) {
@@ -18,6 +18,23 @@ export default class OpenProject extends View {
     this.input.on("submit", (_e, cx) => this.submit(cx));
     this.handle = cx.focus_handle(); this.handle.focus();
     this.loadAgents(cx);
+    this.loadHome(cx);
+    cx.timer.after(100, () => this.input.focus());
+  }
+
+  // The chosen machine's home folder is the default, so Open works at once;
+  // another folder is typed in or picked. A path the person already typed is kept.
+  loadHome(cx) {
+    const on = this.on, request = this.homeRequest = (this.homeRequest ?? 0) + 1;
+    const fill = path => {
+      if (!path || this.homeRequest !== request || this.closed || this.path.trim()) return;
+      this.path = path; this.input.set_value(path); cx.notify();
+    };
+    if (!on) { fill(home()); return; }
+    cx.spawn(async () => {
+      // exec on another machine starts in its home.
+      try { const r = await exec("pwd", ["-P"], { on, timeout: 8000 }); if (!r.code) fill(r.stdout.trimEnd()); } catch {}
+    });
   }
 
   loadAgents(cx) {
@@ -36,7 +53,8 @@ export default class OpenProject extends View {
     if (this.busy || this.picking || this.on === on) return;
     this.on = on; this.path = ""; this.input.set_value(""); this.error = "";
     this.loadAgents(cx);
-    if (on) cx.timer.after(100, () => this.input.focus());
+    this.loadHome(cx);
+    cx.timer.after(100, () => this.input.focus());
     cx.notify();
   }
 
@@ -130,50 +148,37 @@ export default class OpenProject extends View {
         .child(div().truncate().font_family(mono()).text_size(10).text_color(t.dim).child(caption)));
   }
 
-  // The chosen first session, large: its mascot, or its icon in a frame.
-  hero(t, agent) {
-    const key = agent?.key ?? "terminal", color = tint(t, key);
-    if (hasMascot(key)) return div().size(44).flex_none().child(mascot(key, 44));
-    return div().size(44).flex_none().relative().flex().items_center().justify_center().rounded(radius(8))
-      .bg(color + "14").border_1().border_color(color + "40")
-      .child(glyph(agent, 22, color))
-      .when(!agent, el => el.child(div().absolute().right(7).bottom(4).font_family(appearance().fonts.mono).text_size(11).text_color(t.foreground).frames(["_", " "], 530)));
-  }
-
   render() {
     const t = theme(), p = props();
     const idle = !this.busy && !this.picking;
     const choices = [{ name: null, layout: "ready" }, ...machines().filter(m => m.name)];
     const agent = this.agents.find(a => a.key === this.choice);
-    const where = this.on ?? L("This computer", "Этот компьютер");
     const sessionName = agent?.name ?? L("Terminal", "Терминал");
     const working = text => div().font_family(mono()).text_size(10).text_color(t.dim).frames([`${text}`, `${text}.`, `${text}..`, `${text}...`], 280);
     const canOpen = idle && Boolean(this.path.trim()) && (!this.loading || this.choice === "terminal");
 
-    const folder = this.on
-      ? v_flex().gap(6)
-        .child(h_flex().gap(6).items_center()
-          .child(h_flex().flex_1().min_w(0).h(38).px(10).gap(8).items_center().rounded(radius(6)).border_1().border_color(t.input).bg(t.background)
-            .child(svg(px("path")).size(15).flex_none().text_color(t.dim))
-            .child(Input.new(this.input).flex_1().min_w(0).h_full().font_family(appearance().fonts.mono).text_size(12)))
-          .child(h_flex().id("project-open").h(38).px(14).gap(7).flex_none().items_center().rounded(radius(6))
-            .bg(canOpen ? t.solid : t.raised).text_color(canOpen ? t.solid_foreground : t.dim)
-            .text_size(fontSize("agents.secondary")).font_weight(appearance().weights.semibold)
-            .when(canOpen, el => el.cursor_pointer().hover(s => s.opacity(0.88)).on_click((_e, cx) => this.submit(cx)))
-            .child(this.busy ? L("Opening…", "Открываю…") : L("Open", "Открыть"))
-            .child(svg(px("go")).size(15).flex_none())))
-        .child(div().text_size(11).text_color(t.dim).child(L(`Absolute path on ${this.on}. An already open project is selected, not duplicated.`, `Полный путь на ${this.on}. Уже открытый проект будет выбран, а не продублирован.`)))
-      : h_flex().id("project-browse").h(56).px(12).gap(12).items_center().rounded(radius(6))
-        .border_1().border_dashed().border_color(this.picking || this.busy ? t.foreground + "70" : t.input).bg(t.background)
-        .when(idle, el => el.cursor_pointer().hover(s => s.bg(t.hover).border_color(t.foreground + "70")).on_click((_e, cx) => this.chooseFolder(cx)))
-        .child(div().size(32).flex_none().flex().items_center().justify_center().rounded(radius(6)).bg(t.foreground + "12")
-          .child(svg(px("folder")).size(15).text_color(t.foreground)))
-        .child(v_flex().flex_1().min_w(0).gap(2)
-          .child(div().truncate().text_size(fontSize("agents.body")).font_weight(appearance().weights.semibold).text_color(t.foreground)
-            .child(this.busy ? L("Opening…", "Открываю…") : this.picking ? (onWindows() ? L("Waiting for the folder dialog…", "Жду выбора папки…") : L("Waiting for Finder…", "Жду Finder…")) : onWindows() ? L("Choose folder…", "Выбрать папку…") : L("Choose folder in Finder…", "Выбрать папку в Finder…")))
-          .child(div().truncate().text_size(11).text_color(t.dim)
-            .child(L(`Opens at once with ${sessionName}. An open project is selected again.`, `Откроется сразу с: ${sessionName}. Открытый проект выберется повторно.`))))
-        .child(svg(px("go")).size(15).flex_none().text_color(t.muted));
+    const local = !this.on;
+    const browseLabel = this.picking ? L("Waiting…", "Жду…") : onWindows() ? L("Choose…", "Выбрать…") : L("Finder…", "Finder…");
+    const folder = v_flex().gap(6)
+      .child(h_flex().gap(6).items_center()
+        .child(h_flex().flex_1().min_w(0).h(38).px(10).gap(8).items_center().rounded(radius(6)).border_1().border_color(t.input).bg(t.background)
+          .child(svg(px("path")).size(15).flex_none().text_color(t.dim))
+          .child(Input.new(this.input).flex_1().min_w(0).h_full().font_family(appearance().fonts.mono).text_size(12)))
+        .when(local, el => el.child(h_flex().id("project-browse").h(38).px(12).gap(7).flex_none().items_center().rounded(radius(6))
+          .border_1().border_color(this.picking ? t.foreground + "70" : t.border).bg(t.surface)
+          .text_size(fontSize("agents.secondary")).text_color(idle ? t.foreground : t.dim)
+          .when(idle, el => el.cursor_pointer().hover(s => s.bg(t.hover).border_color(t.input)).on_click((_e, cx) => this.chooseFolder(cx)))
+          .child(svg(px("folder")).size(15).flex_none())
+          .child(browseLabel)))
+        .child(h_flex().id("project-open").h(38).px(14).gap(7).flex_none().items_center().rounded(radius(6))
+          .bg(canOpen ? t.solid : t.raised).text_color(canOpen ? t.solid_foreground : t.dim)
+          .text_size(fontSize("agents.secondary")).font_weight(appearance().weights.semibold)
+          .when(canOpen, el => el.cursor_pointer().hover(s => s.opacity(0.88)).on_click((_e, cx) => this.submit(cx)))
+          .child(this.busy ? L("Opening…", "Открываю…") : L("Open", "Открыть"))
+          .child(svg(px("go")).size(15).flex_none())))
+      .child(div().text_size(11).text_color(t.dim).child(local
+        ? L(`Home folder by default. Opens with ${sessionName}; an open project is selected, not duplicated.`, `По умолчанию домашняя папка. Откроется с: ${sessionName}; уже открытый проект выберется, а не продублируется.`)
+        : L(`Home folder on ${this.on} by default. An already open project is selected, not duplicated.`, `По умолчанию домашняя папка на ${this.on}. Уже открытый проект будет выбран, а не продублирован.`)));
 
     return v_flex().id("open-project").track_focus(this.handle).size_full().min_h(0).bg(t.popover).text_color(t.foreground)
       .on_key_down((e, cx) => { if (e.key === "escape" && idle) { closeOverlay(p.overlay); cx.stop_propagation(); } })
@@ -193,17 +198,6 @@ export default class OpenProject extends View {
         .child(stepLabel(t, "03", this.on ? L("FOLDER ON THE SERVER", "ПАПКА НА СЕРВЕРЕ") : L("FOLDER", "ПАПКА")))
         .child(folder)
         .when(Boolean(this.error), el => el.child(h_flex().gap(8).px(10).py(7).items_center().rounded(radius(6)).bg(t.blocked + "18").border_1().border_color(t.blocked + "50")
-          .child(div().size(6).flex_none().bg(t.blocked)).child(div().flex_1().min_w(0).text_size(12).text_color(t.blocked).child(this.error)))))
-      .child(h_flex().h(72).flex_none().px(20).gap(12).items_center().border_t(1).border_color(t.border).bg(t.chrome)
-        .child(this.hero(t, agent))
-        .child(v_flex().flex_1().min_w(0).gap(2)
-          .child(div().truncate().text_size(14).font_weight(appearance().weights.semibold).text_color(t.foreground).child(sessionName))
-          .child(h_flex().gap(6).items_center().min_w(0).font_family(mono()).text_size(10).text_color(t.dim)
-            .child(svg(px(this.on ? "server" : "monitor")).size(12).flex_none())
-            .child(div().truncate().child(where.toUpperCase()))))
-        .child(div().id("project-cancel").h(32).px(12).flex().items_center().rounded(radius(6)).text_size(fontSize("agents.secondary"))
-          .text_color(idle ? t.muted : t.dim).border_1().border_color(t.border)
-          .when(idle, el => el.cursor_pointer().hover(s => s.bg(t.hover).text_color(t.foreground)).on_click(() => closeOverlay(p.overlay)))
-          .child(L("Cancel", "Отмена"))));
+          .child(div().size(6).flex_none().bg(t.blocked)).child(div().flex_1().min_w(0).text_size(12).text_color(t.blocked).child(this.error)))));
   }
 }

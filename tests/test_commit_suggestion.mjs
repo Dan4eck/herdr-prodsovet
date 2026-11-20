@@ -4,7 +4,7 @@ import vm from 'node:vm';
 const context=vm.createContext({JSON,Object,String,Boolean,Number,Math,Map,Error});
 const source=fs.readFileSync(new URL('../mods/prodsovet/commit-suggestion.js',import.meta.url),'utf8');
 const module=new vm.SourceTextModule(source,{context});await module.link(()=>{});await module.evaluate();
-const {CommitSuggestion}=module.namespace;
+const {CommitSuggestion,changesShown}=module.namespace;
 let n=0;
 async function test(name,fn){await fn();console.log(`ok ${++n} - ${name}`)}
 const snap=(fingerprint='one')=>({fingerprint,text:'diff',empty:false,conflict:false});
@@ -39,7 +39,8 @@ function element(){const state={};let proxy;proxy=new Proxy(state,{get:(o,k)=>k=
  if(k==='when'&&a[0])a[1](proxy);return proxy;
  }});return proxy;}
 const input=()=>({text:'',events:{},value(){return this.text},set_value(v){this.text=v},on(k,fn){this.events[k]=fn},focus(){},set_loading(){}});
-const host={spaces:()=>[{active:true,folder:'/repo',machine:null}],panes:()=>[],focused:()=>({cwd:'/repo'}),exec:async()=>{throw Error('Unexpected exec')},readTextFile:noop,watchFolder:noop,theme:()=>({}),settings:()=>({}),appHome:()=>'/app'};
+const host={spaces:()=>[{active:true,folder:'/repo',machine:null}],panes:()=>[],focused:()=>({cwd:'/repo'}),exec:async()=>{throw Error('Unexpected exec')},readTextFile:noop,watchFolder:noop,theme:()=>({}),settings:()=>({}),appHome:()=>'/app',layout:()=>shownLayout,window:()=>({active:true})};
+let shownLayout={id:'root',children:[{id:'panel',children:[{id:'panel-body',type:'stack',active:'changes',children:[{id:'files'},{id:'changes'}]}]}]};
 function shim(exports){return new vm.SyntheticModule(Object.keys(exports),function(){for(const[k,v]of Object.entries(exports))this.setExport(k,v)},{context});}
 const modules={
  'herdr':shim(host),'gpui-kit':shim({div:element,svg:element}),
@@ -79,3 +80,17 @@ await test('commit refuses an autofilled subject when the diff changed',async()=
  assert.equal(p.message,'');assert.match(p.note,/Changes updated/);assert.equal(p.busy,false);
 });
 console.log(`${n} commit suggestion tests passed`);
+await test('suggestions run only while the Changes panel is on screen',()=>{
+ const tree=(hidden,active)=>({id:'root',children:[{id:'panel',hidden,children:[{id:'panel-body',type:'stack',active,children:[{id:'files'},{id:'changes'}]}]}]});
+ assert.equal(changesShown(tree(false,'changes'),{active:true}),true);
+ assert.equal(changesShown(tree(false,'files'),{active:true}),false);
+ assert.equal(changesShown(tree(true,'changes'),{active:true}),false);
+ assert.equal(changesShown(tree(false,'changes'),{active:false}),false);
+ assert.equal(changesShown({id:'root',children:[]},{active:true}),true);
+});
+await test('a hidden Changes panel schedules no generation and catches up when shown',async()=>{
+ const {p,cx}=setup();let timers=0;cx.timer.after=()=>timers++;p.files=[{path:'a',status:'M'}];p.messageOrigin='empty';
+ shownLayout.children[0].children[0].active='files';p.suggest(cx);assert.equal(timers,0);
+ p.render(cx);assert.equal(timers,0);
+ shownLayout.children[0].children[0].active='changes';p.render(cx);assert.equal(timers,1);
+});

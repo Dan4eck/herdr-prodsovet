@@ -7,9 +7,9 @@ import { appearance, fontSize, metric, radius, labelFont, style, L } from "./app
 // Commit messages are prefilled from a read-only snapshot; manual edits win.
 import { div, svg } from "gpui-kit";
 import { fileGlyph, python } from "./filesystem.js";
-import { CommitSuggestion } from "./commit-suggestion.js";
+import { CommitSuggestion, changesShown as shownIn } from "./commit-suggestion.js";
 import { v_flex, h_flex, InputState, Input, Scrollbar, v_virtual_list } from "gpui-base";
-import { spaces, panes, focused, exec, readTextFile, watchFolder, theme, settings, appHome } from "herdr";
+import { spaces, panes, focused, exec, readTextFile, watchFolder, theme, settings, appHome, layout, window } from "herdr";
 
 function location() {
   const space = spaces().find((s) => s.active), f = focused();
@@ -18,6 +18,7 @@ function location() {
   return { cwd: pane?.cwd || f?.cwd || space?.folder, on };
 }
 const key = () => JSON.stringify(location());
+const changesShown = () => shownIn(layout(), window());
 // Reads write nothing under .git (no index refresh or lock, no fsmonitor cookie):
 // the folder watch would see it, and every refresh would start the next one.
 const READ = ["--no-optional-locks", "-c", "core.fsmonitor=false", "-c", "diff.autoRefreshIndex=false"];
@@ -131,6 +132,8 @@ export class Changes {
   }
 
   suggest(cx) {
+    // Hidden: nothing new is asked for. Showing the panel again asks (render).
+    if (!changesShown()) return;
     if (!this.root || this.on || !this.files.length || this.messageOrigin === "manual" || this.files.some(f => f.status === "U")) {
       if (!this.files.length || this.on || this.files.some(f => f.status === "U")) { this.suggestion.reset(); this.syncSuggestion(cx); }
       return;
@@ -138,7 +141,7 @@ export class Changes {
     const seq = this.suggestSeq = (this.suggestSeq ?? 0) + 1;
     const context = this.context, root = this.root;
     cx.timer.after(1500, cx => {
-      if (seq !== this.suggestSeq || this.context !== context || key() !== context || this.messageOrigin === "manual" || this.busy) return;
+      if (seq !== this.suggestSeq || this.context !== context || key() !== context || this.messageOrigin === "manual" || this.busy || !changesShown()) return;
       cx.spawn(async cx => this.suggestion.update(root, L("en", "ru"),
         () => this.context === context && key() === context && !this.busy,
         () => this.syncSuggestion(cx)));
@@ -235,6 +238,10 @@ export class Changes {
 
   render(cx) {
     if (key() !== this.context) this.refresh(cx);
+    // Back on screen: catch up on the diff that changed while hidden.
+    const shown = changesShown();
+    if (shown && this.shown === false && !this.loading) this.suggest(cx);
+    this.shown = shown;
     const t = theme(), add = this.files.reduce((n, f) => n + f.add, 0), del = this.files.reduce((n, f) => n + f.del, 0);
     const enabled = Boolean(this.message.trim() && this.root && !this.busy && !this.loading && !(this.messageOrigin === "auto" && this.suggestion.busy));
     const agency = style("agency") === true;

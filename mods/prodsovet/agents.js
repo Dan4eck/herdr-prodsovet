@@ -7,7 +7,7 @@ import { div, image, svg } from "gpui-kit";
 import { word, artPath, artKind, ART_FRAMES } from "./creatures.js";
 import { spaceLabel } from "./filesystem.js";
 import { ProjectTree } from "./projects.js";
-import { agency, accentOf, current, onRail, hovered, glitchy, halftone, typed, px, icon as assetIcon } from "./agency.js";
+import { agency, accentOf, current, onRail, hovered, glitchy, halftone, typed, px, icon as assetIcon, settled } from "./agency.js";
 import { v_flex, h_flex } from "gpui-base";
 import { agents, terminals, panes, focused, spaces, run, theme, shared, setShared, setAgentOrder, openOverlay, closeOverlay, props, window, layout, appHome, exec } from "herdr";
 
@@ -68,7 +68,7 @@ const RANK = { blocked: 4, done: 3, working: 2, idle: 1 };
 // A sub-agent without a pane isn't in agents(): its raw word, error counting as
 // blocked. It's never done: it reports to its parent, and the parent's done is the news.
 const kidStatus = (k, listed) => {
-  const s = listed.get(k.address) ?? k.status;
+  const s = listed.get(k.address) ?? settled(k.status, k.address);
   return s === "error" ? "blocked" : s === "done" ? "idle" : s;
 };
 const SORTS = [
@@ -234,6 +234,12 @@ export class Agents {
       .when(!on && !agency(), (el) => el.hover((s) => s.bg(t.hover)))
       .when(!on && agency(), (el) => hovered(el, t))
       .on_click(() => (this.listed.has(k.address) ? run("pane.focus", { terminal: k.address }) : this.peek(k.address)))
+      .on_mouse_down("right", (_e, cx) => { cx.stop_propagation(); this.subMenu(k.address); })
+      .on_hover((over, cx) => {
+        if (over) this.hoveredSub = k.address;
+        else if (this.hoveredSub === k.address) this.hoveredSub = null;
+        cx.notify();
+      })
       .when(!agency(), el => el.children(s.lines.map(l => div().self_start().mt(-4).w(9).h(17).mr(4).flex_none()
         .when(Boolean(l), el => el.border_l(1.5).border_color(t.input))
         .when(l === "└" || l === "├", el => el.border_b(1.5).rounded_bl(radius(6))))))
@@ -242,7 +248,28 @@ export class Agents {
         .text_color(st === "working" ? accentOf(k.program, t) : t.input)
         .child(s.lines.map((l, i) => (i === s.lines.length - 1 ? `${l}─` : l ? `${l} ` : "  ")).join(""))))
       .child(div().flex_1().truncate().text_color(on ? t.foreground : t.muted).child(k.name || k.template || k.program?.name || k.address))
+      .when(this.hoveredSub === k.address, el => el.child(this.subActions(t, k)))
       .child(this.status(t, { ...k, status: st }, compact));
+  }
+
+  // Hovered sub-agent: detach it into a tab (or send a detached one back under
+  // its parent), and the menu with everything else, stopping included.
+  subActions(t, k) {
+    const kept = panes().some(p => p.terminal === k.address);
+    const action = (id, glyph, hint, act) => div().id(`${id}-${k.address}`).size(20).flex_none().flex().items_center().justify_center()
+      .rounded(radius(4)).text_color(t.dim).cursor_pointer().hover(s => s.bg(t.hover).text_color(t.foreground)).tooltip(hint)
+      .on_mouse_down("left", (_e, cx) => cx.stop_propagation())
+      .on_click((_e, cx) => { cx.stop_propagation(); act(); })
+      .child(svg(px(glyph)).size(15));
+    return h_flex().flex_none().gap(1).mr(4).items_center()
+      .child(kept
+        ? action("sub-park", "fold-down", L("Send back under its parent", "Вернуть под родителя"), () => run("terminal.park", { terminal: k.address }))
+        : action("sub-detach", "layers", L("Detach to a tab", "Открепить во вкладку"), () => run("terminal.keep", { terminal: k.address, place: "tab" })))
+      .child(action("sub-more", "more", L("More…", "Ещё…"), () => this.subMenu(k.address)));
+  }
+
+  subMenu(address) {
+    openOverlay({ mod: "prodsovet", kind: "popup", width: 270, props: { role: "sub-menu", terminal: address } });
   }
 
   // compact: a ! for blocked where a header already says "Needs you".
@@ -284,6 +311,8 @@ export class Agents {
       });
       listed.add(p.terminal);
     }
+    // A finished turn with only background work left is done until seen, then idle.
+    list = list.map(a => ({ ...a, status: settled(a.status, a.address, all) }));
     // PA-Advanced has no pinning: existing pins are left alone in core but ignored here.
     if (this.projects) list = list.filter(a => a.program?.agent || a.status != null).map(a => ({ ...a, pinned: false }));
     this.projectSpaces = this.projects ? new Map(list.map(a => [a.address, a.space])) : null;

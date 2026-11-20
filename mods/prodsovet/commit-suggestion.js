@@ -1,3 +1,23 @@
+// The suggestion spends the person's model quota, so it runs only while this
+// panel is on screen: every hidden ancestor and every stack on the way must
+// show it, and the window must be in front. A layout without the block counts
+// as shown (the panel then lives somewhere this check can't see).
+function onPath(node, id, path = []) {
+  if (!node) return null;
+  if (node.id === id) return [...path, node];
+  for (const child of node.children ?? []) {
+    const found = onPath(child, id, [...path, node]);
+    if (found) return found;
+  }
+  return null;
+}
+export function changesShown(root, win) {
+  if (win && win.active === false) return false;
+  const path = onPath(root, "changes");
+  if (!path) return true;
+  return path.every((node, i) => !node.hidden && (node.active == null || !path[i + 1] || node.active === path[i + 1].id));
+}
+
 // A suggestion belongs to one complete diff. Late results never cross spaces.
 export class CommitSuggestion {
   constructor(call) {

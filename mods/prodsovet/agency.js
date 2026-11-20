@@ -1,4 +1,4 @@
-import { style, agentAccent, appearance } from "./appearance.js";
+import { style, agentAccent, appearance, L } from "./appearance.js";
 // SPDX-License-Identifier: Apache-2.0
 // ProdAdvice for Herdr: customized interface and behavior, 2026. See NOTICE.
 // Agency-page decoration (profiles with style.agency): agent colors, tinted
@@ -6,12 +6,53 @@ import { style, agentAccent, appearance } from "./appearance.js";
 // Everything here is native gpui: tinted one-color SVGs and text frames.
 
 import { div, svg } from "gpui-kit";
-import { settings } from "herdr";
+import { settings, terminals, shared, setShared, focused, window, notify, playSound } from "herdr";
 import { artKind } from "./creatures.js";
 
 const ART = "mods/prodsovet/art/agency";
 
 export const agency = () => style("agency") === true;
+
+// Claude Code keeps reporting "working" after its turn ends while background
+// shells or agents it started still run ("1 shell still running"); a dev
+// server never ends, so the spinner would never stop. The report's message
+// tells the two apart (during a turn it names the current step). A turn that
+// is over counts as done, with Herdr's sound and a notification, until you
+// look at that agent; then it is idle (watchBackground, run by the status bar).
+const BACKGROUND = /\bstill running\b/i;
+export function backgroundOnly(terminal) {
+  const r = terminal?.report ?? terminal?.status;
+  const msg = typeof r === "object" && r ? r.msg : null;
+  return typeof msg === "string" && BACKGROUND.test(msg);
+}
+const BACKGROUND_TURNS = "prodsovet.backgroundTurns.v1";
+export function settled(status, address, all = terminals()) {
+  if (status !== "working" || !address) return status;
+  const t = all.find(x => x.address === address);
+  if (!backgroundOnly(t)) return status;
+  const seen = (shared(BACKGROUND_TURNS) ?? {})[address];
+  return seen && seen.turn === (t.turn ?? null) && !seen.seen ? "done" : "idle";
+}
+
+// One pass: a finished turn nobody is looking at is announced once and kept
+// "done"; looking at it (focus, window in front) marks it seen.
+export function watchBackground() {
+  const all = terminals(), f = focused(), w = window();
+  const old = shared(BACKGROUND_TURNS) ?? {}, next = {};
+  for (const t of all) {
+    if (t.state !== "live" || !backgroundOnly(t)) continue;
+    const turn = t.turn ?? null, rec = old[t.address];
+    const looking = w?.active !== false && (f?.terminal === t.address || f?.agent === t.address);
+    if (rec && rec.turn === turn) { next[t.address] = rec.seen || !looking ? rec : { turn, seen: true }; continue; }
+    next[t.address] = { turn, seen: looking };
+    if (looking) continue;
+    const name = t.labels?.where || t.name || t.program?.name || t.address;
+    if (settings()?.sounds?.enabled !== false) playSound("done");
+    notify({ title: L(`${name} finished`, `${name}: готово`), body: L("Background work is still running.", "Фоновые задачи ещё идут."),
+      level: "success", action: { name: "agent.focus", args: { terminal: t.address } } });
+  }
+  if (JSON.stringify(next) !== JSON.stringify(old)) setShared(BACKGROUND_TURNS, next);
+}
 
 // The agent's own color where the profile has one; otherwise the status color.
 export function accentOf(program, t, status = "working") {

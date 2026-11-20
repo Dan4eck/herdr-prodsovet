@@ -148,6 +148,16 @@
                           "role": "github"
                         }
                       }
+                    },
+                    {
+                      "id": "issues",
+                      "type": "block",
+                      "content": {
+                        "mod": "prodsovet",
+                        "props": {
+                          "role": "issues"
+                        }
+                      }
                     }
                   ],
                   "active": "files"

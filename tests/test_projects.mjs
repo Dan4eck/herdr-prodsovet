@@ -12,6 +12,7 @@ const state=new Map([['layout','PA-Advanced'],['ui.lang','ru']]);
 const storage=new Map(), calls=[], pending=[];
 let sp=[], ps=[], ts=[], ag=[], pr={role:'projects'}, width=341, order=[], machineList=[{name:null,layout:'ready'}], agentHosts=[], picker=async()=>null;
 let execFixture=null;
+let focusNow=()=>({space:'main',agent:'a1'});
 function element(type='div') {
  const node={type,_children:[],events:{},attrs:{}};
  const proxy=new Proxy(node,{get(target,key){
@@ -30,11 +31,11 @@ function element(type='div') {
 const theme=()=>new Proxy({}, {get:()=> '#777777'});
 const host={
  spaces:()=>sp,panes:()=>ps,terminals:()=>ts,agents:()=>ag.map(a=>({...a})),props:()=>pr,
- machines:()=>machineList,focused:()=>({space:'main',agent:'a1'}),
+ machines:()=>machineList,focused:()=>focusNow(),
  shared:k=>state.get(k),setShared:(k,v)=>state.set(k,v),home:()=>'/home/test',appHome:()=>root,
  settings:()=>({dark:true}),window:()=>({active:true,platform:process.platform==='win32'?'windows':'macos'}),theme,
  layout:()=>({id:'sidebar',size:{px:width}}),setAgentOrder:x=>order=x,
- run:(name,args)=>calls.push({name,args}),openOverlay:p=>calls.push({overlay:p}),closeOverlay:id=>calls.push({close:id}),
+ run:(name,args)=>calls.push({name,args}),notify:n=>calls.push({notify:n}),playSound:x=>calls.push({sound:x}),openOverlay:p=>calls.push({overlay:p}),closeOverlay:id=>calls.push({close:id}),
  knownAgents:async({on})=>{agentHosts.push(on);return [{key:'codex',name:'Codex',run:['codex'],installed:true}];},pickFolder:()=>picker(),keys:()=>[],
  exec:async(cmd,args,opts)=>{
    if(execFixture)return execFixture(cmd,args,opts);
@@ -57,6 +58,7 @@ const mod=await load(path.join(root,'mods/prodsovet/agents.js'));await mod.evalu
 const menu=await load(path.join(root,'mods/prodsovet/file-new-menu.js'));await menu.evaluate();
 const tabsModule=await load(path.join(root,'mods/prodsovet/file-tabs.js'));await tabsModule.evaluate();
 const openerModule=await load(path.join(root,'mods/prodsovet/open-project.js'));await openerModule.evaluate();
+const subMenuModule=await load(path.join(root,'mods/prodsovet/sub-menu.js'));await subMenuModule.evaluate();
 const contextModule=await load(path.join(root,'mods/prodsovet/project-context.js'));await contextModule.evaluate();
 const cx={notify(){},stop_propagation(){},timer:{every(){},after(){}},focus_handle:()=>({focus(){}}),spawn(fn){const p=fn(cx);pending.push(p);return p;}};
 async function flush(){while(pending.length)await Promise.all(pending.splice(0));}
@@ -143,6 +145,40 @@ try {
    assert.equal(nodes(tree).filter(n=>n.attrs.id==='sub-a3').length,1);assert.equal(nodes(tree).filter(n=>n.attrs.id==='ag-a3').length,0);
    assert.deepEqual(plain(order),['a1','a2','a3']);
  });
+ await test('a sub-agent row offers detach, send back and a guarded stop',()=>{
+   calls.length=0;byId(tree,'sub-a3').events.on_mouse_down({},cx);
+   assert.equal(calls[0].overlay.props.role,'sub-menu');assert.equal(calls[0].overlay.props.terminal,'a3');
+   byId(tree,'sub-a3').events.on_hover(true,cx);tree=owner.render(cx);
+   // a3 has a pane: the quick action sends it back instead of detaching.
+   assert.ok(byId(tree,'sub-park-a3'));assert.ok(!byId(tree,'sub-detach-a3'));
+   calls.length=0;byId(tree,'sub-park-a3').events.on_click({},cx);assert.deepEqual(plain(calls),[{name:'terminal.park',args:{terminal:'a3'}}]);
+   const kept=plain(subMenuModule.namespace.subAgentItems('a3').map(i=>i[0]));assert.deepEqual(kept,['show','park','kill']);
+   const savedPanes=ps;ps=ps.filter(p=>p.terminal!=='a3');
+   assert.deepEqual(plain(subMenuModule.namespace.subAgentItems('a3').map(i=>i[0])),['peek','tab','right','down','kill']);
+   tree=owner.render(cx);calls.length=0;byId(tree,'sub-detach-a3').events.on_click({},cx);assert.deepEqual(plain(calls),[{name:'terminal.keep',args:{terminal:'a3',place:'tab'}}]);
+   ps=savedPanes;
+   pr={role:'sub-menu',terminal:'a3',overlay:'o1'};const m=new subMenuModule.namespace.default();m.init({},cx);
+   calls.length=0;byId(m.render(),'sub-menu-kill').events.on_click({},cx);assert.equal(calls.length,0);assert.ok(m.arming);
+   byId(m.render(),'sub-menu-kill').events.on_click({},cx);assert.deepEqual(plain(calls),[{close:'o1'},{name:'terminal.kill',args:{terminal:'a3'}}]);
+   pr={role:'projects'};byId(tree,'sub-a3')?.events.on_hover(false,cx);owner.hoveredSub=null;tree=owner.render(cx);
+ });
+ await test('a finished turn with background shells is done and announced once, then idle once seen',async()=>{
+   const agency=await load(path.join(root,'mods/prodsovet/agency.js'));const {watchBackground}=agency.namespace;
+   const a1=ag.find(a=>a.address==='a1'),t1=ts.find(t=>t.address==='a1'),was=a1.status;
+   // A real turn keeps working.
+   a1.status='working';t1.turn=3;t1.report={app:'claude-code',state:'working',msg:'Running npm test'};
+   calls.length=0;watchBackground();owner.render(cx);assert.equal(owner.listed.get('a1'),'working');assert.equal(calls.length,0);
+   // The turn ends with shells left while the person looks elsewhere (focused agent is a1 in this harness, so blur it).
+   const saved=focusNow;focusNow=()=>({space:'main',agent:'a2',terminal:'a2'});
+   t1.report={app:'claude-code',state:'working',msg:'2 shells still running'};
+   watchBackground();watchBackground();owner.render(cx);assert.equal(owner.listed.get('a1'),'done');
+   assert.equal(calls.filter(c=>c.notify).length,1);assert.equal(calls.filter(c=>c.sound==='done').length,1);
+   assert.deepEqual(plain(calls.find(c=>c.notify).notify.action),{name:'agent.focus',args:{terminal:'a1'}});
+   // Looking at it settles it; a message count change in the same turn stays quiet.
+   focusNow=()=>({space:'main',agent:'a1',terminal:'a1'});watchBackground();owner.render(cx);assert.equal(owner.listed.get('a1'),'idle');
+   t1.report.msg='1 shell still running';calls.length=0;watchBackground();assert.equal(calls.length,0);
+   focusNow=saved;a1.status=was;delete t1.report;delete t1.turn;state.delete('prodsovet.backgroundTurns.v1');tree=owner.render(cx);
+ });
  await test('checkout fold is persistent and keeps project and other sessions visible',()=>{
    byId(tree,`${cid}-fold`).events.on_click({},cx);tree=owner.render(cx);
    assert.ok(!byId(tree,'ag-a2'));assert.ok(byId(tree,'ag-a1'));assert.ok(state.get('projects.folded.v1').includes(cid));
@@ -226,11 +262,12 @@ try {
    assert.equal(create.args.folder,fs.realpathSync(newFolder));assert.deepEqual(plain(create.args.argv),['codex']);
    assert.equal(create.args.tab,'Codex');pr={role:'projects'};
  });
- await test('terminal is the default before and after discovery, and Finder confirmation opens immediately',async()=>{
+ await test('terminal is the default, the home folder is prefilled, and Finder confirmation opens immediately',async()=>{
    const folder=path.join(temp,'finder-default');fs.mkdirSync(folder);
    pr={role:'open-project'};const dialog=new openerModule.namespace.default();dialog.init({},cx);
    assert.equal(dialog.choice,'terminal');await flush();assert.equal(dialog.choice,'terminal');
-   const ui=dialog.render();assert.ok(!byId(ui,'project-open'));
+   assert.equal(dialog.path,'/home/test');assert.equal(dialog.input.value(),'/home/test');
+   const ui=dialog.render();assert.ok(byId(ui,'project-open'));
    const ids=nodes(ui).map(n=>n.attrs.id);assert.ok(ids.indexOf('project-agent-terminal')<ids.indexOf('project-browse'));
    picker=async()=>folder;calls.length=0;dialog.chooseFolder(cx);await flush();
    const create=calls.find(c=>c.name==='space.new');assert.ok(create);assert.equal(create.args.argv,undefined);
@@ -268,14 +305,15 @@ try {
  });
  await test('blank or invalid project paths never inherit the focused folder',async()=>{
    pr={role:'open-project'};const dialog=new openerModule.namespace.default();dialog.init({},cx);await flush();calls.length=0;
-   dialog.submit(cx);await flush();assert.ok(dialog.error);assert.ok(!calls.some(c=>c.name==='space.new'));
+   dialog.path='';dialog.submit(cx);await flush();assert.ok(dialog.error);assert.ok(!calls.some(c=>c.name==='space.new'));
    dialog.path=path.join(temp,'missing');dialog.submit(cx);await flush();assert.ok(dialog.error);assert.ok(!calls.some(c=>c.name==='space.new'));pr={role:'projects'};
  });
- await test('remote selection loads remote agents, clears the local path and hides local folder chooser',async()=>{
+ await test('remote selection loads remote agents, prefills the remote home and hides local folder chooser',async()=>{
    pr={role:'open-project'};machineList.push({name:'server',layout:'ready'});
    const dialog=new openerModule.namespace.default();dialog.init({},cx);await flush();dialog.path='/local/folder';
-   dialog.choice='codex';dialog.machine('server',cx);await flush();assert.equal(dialog.choice,'terminal');assert.equal(dialog.path,'');assert.equal(agentHosts.at(-1),'server');
-   assert.ok(!byId(dialog.render(),'project-browse'));machineList.pop();pr={role:'projects'};
+   execFixture=async(cmd,args,opts)=>cmd==='pwd'&&opts?.on==='server'&&!opts.cwd?{code:0,stdout:'/home/remote\n',stderr:''}:{code:1,stdout:'',stderr:'unavailable'};
+   dialog.choice='codex';dialog.machine('server',cx);await flush();execFixture=null;assert.equal(dialog.choice,'terminal');assert.equal(dialog.path,'/home/remote');assert.equal(agentHosts.at(-1),'server');
+   const remote=dialog.render();assert.ok(!byId(remote,'project-browse'));assert.ok(byId(remote,'project-open'));machineList.pop();pr={role:'projects'};
  });
  await test('PA-Advanced cards offer no pinning and old pins do not reorder a checkout',()=>{
    ag.find(a=>a.address==='a2').pinned=true;tree=owner.render(cx);

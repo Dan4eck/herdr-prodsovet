@@ -4,7 +4,7 @@ import { div, svg } from "gpui-kit";
 import { h_flex, v_flex } from "gpui-base";
 import { spaces, machines, shared, setShared, exec, run, openOverlay, home, window, setAgentOrder } from "herdr";
 import { workspace, spaceLabel, join, within, native, thisComputer, shortcut } from "./filesystem.js";
-import { appearance, fontSize, labelFont, L } from "./appearance.js";
+import { appearance, fontSize, labelFont, L, radius } from "./appearance.js";
 import { px, current, hovered, glitchy, typed } from "./agency.js";
 import { mono, projectTile } from "./project-ui.js";
 import { openProjectDialog, openSessionMenu, preferredSpace } from "./project-context.js";
@@ -332,9 +332,6 @@ export class ProjectTree {
         .when(!on, el => el.cursor_pointer().hover(s => s.text_color(t.muted)).on_click((_e, cx) => { setShared(VIEW, id); cx.notify(); }))
         .child(on ? glitchy(label, text, t, { color: t.foreground, at: 40, length: 230 }) : label().text_color(t.dim).child(text));
     };
-    const button = (id, icon, hint, act) => div().id(id).size(22).flex_none().flex().items_center().justify_center()
-      .text_color(t.dim).hover(s => s.bg(t.hover).text_color(t.foreground)).tooltip(hint)
-      .on_click((_e, cx) => { cx.stop_propagation(); act(cx); }).child(svg(px(icon)).size(14));
     return v_flex().size_full().min_h(0).bg(t.chrome)
       .child(h_flex().h(36).px(collapsed ? 4 : 12).flex_none().items_center().gap(14)
         .when(!collapsed, el => el.child(tab("projects", L("PROJECTS", "ПРОЕКТЫ"))).child(tab("sessions", L("SESSIONS", "СЕССИИ"))))
@@ -351,11 +348,12 @@ export class ProjectTree {
               .on_click((_e, cx) => { cx.stop_propagation(); setShared(SESSIONS_MANUAL, hand); cx.notify(); }))
             .child(svg(px(icon)).size(14));
         }))))
-        .child(collapsed ? button("project-new", "folder-plus", L("Open project…", "Открыть проект…"), openProjectDialog)
-          : h_flex().id("project-new").h(24).px(7).gap(6).flex_none().items_center().border_1().border_color(t.border).text_color(t.muted)
-            .cursor_pointer().hover(s => s.bg(t.hover).text_color(t.foreground).border_color(t.input)).tooltip(L(`Open project… (${shortcut("⌘N", "Ctrl+Shift+N")})`, `Открыть проект… (${shortcut("⌘N", "Ctrl+Shift+N")})`))
-            .on_click((_e, cx) => { cx.stop_propagation(); openProjectDialog(); })
-            .child(svg(px("folder-plus")).size(14).flex_none()).child(div().text_size(11).child(L("Open", "Открыть")))))
+        // Open project: a bare Finder-style folder icon at its native 16px.
+        .child(div().id("project-new").size(26).flex_none().flex().items_center().justify_center().rounded(radius(5))
+          .text_color(t.muted).cursor_pointer().hover(s => s.bg(t.hover).text_color(t.foreground))
+          .tooltip(L(`Open project… (${shortcut("⌘N", "Ctrl+Shift+N")})`, `Открыть проект… (${shortcut("⌘N", "Ctrl+Shift+N")})`))
+          .on_click((_e, cx) => { cx.stop_propagation(); openProjectDialog(); })
+          .child(svg(px("project-open")).size(16).flex_none())))
       .child(v_flex().id("project-list").flex_1().min_h(0).px(collapsed ? 0 : 6).pb(12).overflow_y_scrollbar().mode("always")
         // A release or exit anywhere else ends a drag without moving anything.
         .on_mouse_up("left", (_e, cx) => { if (this.pressed) { this.pressed = null; this.over = null; cx.notify(); } })

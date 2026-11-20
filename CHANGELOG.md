@@ -6,13 +6,25 @@ committed; the release moves it under the new version.
 
 ## Unreleased
 
+- PA-Advanced: an Issues panel next to Files, Changes and GitHub (button "Issues" above the panel). It lists the
+  repository's issues (open/closed, mine, GitHub search), shows one with its comments, and creates, edits, comments,
+  closes (second click) or reopens issues, toggles labels, assigns you, and pastes an issue into the agent. Uses `gh`.
+- Open project fills in the chosen computer's home folder, so Open (or Enter) works right away; another folder
+  can still be typed in or picked in Finder.
+- Open project drops the footer that repeated the chosen session; the sidebar's Open button is now a single
+  frameless Finder-style folder icon.
+- Sub-agents in the sidebar tree can be managed: hover shows Detach to a tab (or Send back for a detached one)
+  and a menu; right-click opens the same menu with Peek/Show, Detach right or below, and Stop (asks with a second click).
+- The commit message is suggested only while the Changes panel is on screen and the window is in front, so a hidden
+  panel no longer spends model quota; showing it again catches up.
+- Claude Code no longer shows as working forever after its turn ends while background shells it started (a dev
+  server) keep running: a report of only "N shells still running" counts as done, with the done sound and a
+  notification, until you look at that agent; then it is idle. Sidebar, tabs, pane header and status bar agree.
 - A file tab reloads a file that another program changed on disk (when the tab has no unsaved edits), so a generated
   document no longer shows stale text or a stale preview.
 - Markdown preview in a file tab now draws pictures: `![alt](path)`, `<img>`, `<figure>` with a caption, and
   `<video>` as a still frame with a play badge. Paths may be relative to the file, absolute, `~/`, `file://`
   or `https://` (downloaded once into `data/md-preview`). macOS only; Windows and remote files keep the text preview.
-
-- Nothing yet.
 
 ## 0.5.0 (2026-11-17)
 

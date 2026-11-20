@@ -16,12 +16,14 @@ import { Picker } from "./picker.js";
 import { Changes } from "./changes.js";
 import { GitHub } from "./github.js";
 import { mini, word, artPath, ART_FRAMES } from "./creatures.js";
-import { agency, accentOf, railFrames, glitchy, icon } from "./agency.js";
+import { agency, accentOf, railFrames, glitchy, icon, settled, watchBackground } from "./agency.js";
 
 import { workspace, newTerminal, python, tilde, thisComputer } from "./filesystem.js";
 import Tabs from "./file-tabs.js";
 import NewMenu from "./file-new-menu.js";
 import TabMenu from "./file-tab-menu.js";
+import SubAgentMenu from "./sub-menu.js";
+import { Issues } from "./issues.js";
 
 
 function find(node, id) {
@@ -43,7 +45,8 @@ function folder(cwd) {
   return cwd ? tilde(cwd) : "";
 }
 const counts = () => {
-  const list = agents();
+  const all = terminals();
+  const list = agents().map(a => ({ ...a, status: settled(a.status, a.address, all) }));
   return {
     total: list.length,
     working: list.filter((a) => a.status === "working").length,
@@ -110,8 +113,8 @@ class PaneHead {
     const p = panes().find((x) => x.pane === props()?.pane);
     if (!p) return div();
     const name = ((p.program?.agent || p.program?.shell) && p.program.name) || p.title || p.program?.name || "shell";
-    const pt = agentTheme(t, withTerminal(p, terminals()), enabled(layout(), settings().dark));
-    const st = p.status;
+    const all = terminals(), st = settled(p.status, p.terminal, all);
+    const pt = agentTheme(t, withTerminal({ ...p, status: st }, all), enabled(layout(), settings().dark));
     const pane = p.pane;
     const m = st ? (agency() ? railFrames(st) : mini(st)) : null;
     // Agency: working is the agent's own color; blocked/done stay the shared status colors.
@@ -156,6 +159,9 @@ class Status {
     try { this.activity = JSON.parse(localStorage.getItem("activity") ?? "{}"); } catch { this.activity = {}; }
     this.sample(cx);
     cx.timer.every(20000, (cx) => this.sample(cx));
+    // The one copy that announces finished turns with background work left.
+    watchBackground();
+    cx.timer.every(1500, () => watchBackground());
   }
   sample(cx) {
     if (!agency()) return;
@@ -314,7 +320,7 @@ class Zoo {
   }
 }
 
-const ROLES = { tabs: Tabs, "new-menu": NewMenu, "tab-menu": TabMenu, toast: Toast, zoo: Zoo, brand: Brand, agents: Agents, projects: Agents, "open-project": OpenProject, spaces: Spaces, picker: Picker, changes: Changes, github: GitHub, pane: PaneHead, status: Status };
+const ROLES = { tabs: Tabs, "new-menu": NewMenu, "tab-menu": TabMenu, "sub-menu": SubAgentMenu, toast: Toast, zoo: Zoo, brand: Brand, agents: Agents, projects: Agents, "open-project": OpenProject, spaces: Spaces, picker: Picker, changes: Changes, github: GitHub, issues: Issues, pane: PaneHead, status: Status };
 
 export default class ProdSovet extends View {
   init(p, cx) {

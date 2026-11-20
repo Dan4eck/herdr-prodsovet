@@ -40,7 +40,7 @@ export function nextProjectTab(direction) {
 }
 
 export function openProjectDialog() {
-  openOverlay({ mod: "prodsovet", kind: "dialog", width: 640, height: 572, props: { role: "open-project" } });
+  openOverlay({ mod: "prodsovet", kind: "dialog", width: 640, height: 500, props: { role: "open-project" } });
 }
 
 export function openSessionMenu(space = spaces().find(s => s.active)) {
