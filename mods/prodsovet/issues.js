@@ -145,8 +145,8 @@ export class Issues {
       try {
         const out = await this.must(args);
         if (key() !== context) return;
-        await after?.(out, cx);
-        if (this.issue?.number && this.view === "issue") this.show(this.issue.number, cx);
+        const number = after?.(out) ?? (this.view === "issue" ? this.issue?.number : null);
+        if (number) this.show(number, cx);
         this.refresh(cx, true);
       } catch (e) {
         if (key() === context) this.note = explain(String(e.message ?? e));
@@ -186,7 +186,7 @@ export class Issues {
       if (this.draftAssign && !mine) args.push("--add-assignee", "@me");
       if (!this.draftAssign && mine) args.push("--remove-assignee", "@me");
       const number = this.editing;
-      this.act(args, cx, () => { this.view = "issue"; this.show(number, cx); });
+      this.act(args, cx, () => number);
       return;
     }
     const args = ["issue", "create", "--title", title, "--body", body];
@@ -194,14 +194,15 @@ export class Issues {
     if (this.draftAssign) args.push("--assignee", "@me");
     this.act(args, cx, (out) => {
       const number = numberFromUrl(out);
-      if (number) this.show(number, cx); else this.view = "list";
+      if (!number) this.view = "list";
+      return number;
     });
   }
 
   send(cx) {
     const text = this.comment.value();
     if (!text.trim() || !this.issue?.number) return;
-    this.act(["issue", "comment", String(this.issue.number), "--body", text], cx, () => this.comment.set_value(""));
+    this.act(["issue", "comment", String(this.issue.number), "--body", text], cx, () => { this.comment.set_value(""); });
   }
 
   open(url) { if (url) openExternal(url).catch((e) => notify({ title: L("Not opened", "Не открылось"), body: String(e.message ?? e), level: "error" })); }

@@ -59,7 +59,8 @@ await test('a new issue is created with labels and assignee, then shown',async()
  p.title.text='Add issues tab';p.body.text='So I can track work';p.draftLabels.add('idea');p.draftAssign=true;calls.length=0;p.save(cx);await flush();
  const create=calls.find(c=>c[1]==='issue'&&c[2]==='create');
  assert.deepEqual(create.slice(1),['issue','create','--title','Add issues tab','--body','So I can track work','--label','idea','--assignee','@me']);
- assert.equal(p.view,'issue');assert.equal(p.issue.number,7);
+ assert.equal(p.view,'issue');assert.equal(p.issue.title,issue.title);assert.equal(p.note,null);
+ assert.equal(calls.filter(c=>c[2]==='view'&&c[1]==='issue').length,1);
 });
 await test('comment, guarded close and label toggle run the right gh commands',async()=>{
  const {p,cx}=setup();await flush();p.show(7,cx);await flush();p.render(cx);
@@ -76,6 +77,8 @@ await test('editing sends only the label and assignee differences',async()=>{
  const {p,cx}=setup();await flush();p.show(7,cx);await flush();p.edit(cx);assert.equal(p.title.text,'Fix login');
  p.draftLabels.delete('bug');p.draftLabels.add('idea');p.draftAssign=true;calls.length=0;p.save(cx);await flush();
  const e=calls.find(c=>c[2]==='edit').slice(1);
+ assert.equal(p.issue.title,issue.title);assert.equal(p.note,null);
+ assert.equal(calls.filter(c=>c[2]==='view'&&c[1]==='issue').length,1);
  assert.deepEqual(e,['issue','edit','7','--title','Fix login','--body','Steps\n## Expected','--add-label','idea','--remove-label','bug','--add-assignee','@me']);
 });
 await test('a gh failure shows as a note and keeps the view',async()=>{
