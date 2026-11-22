@@ -4,10 +4,10 @@ import { appearance, fontSize, metric, radius, style, labelFont, L } from "./app
 // Agents in grouped or priority views; parents take their most urgent sub-agent's place.
 
 import { div, image, svg } from "gpui-kit";
-import { word, artPath, artKind, ART_FRAMES } from "./creatures.js";
+import { word, artFrame, artPath, artKind, ART_FRAMES } from "./creatures.js";
 import { spaceLabel } from "./filesystem.js";
 import { ProjectTree } from "./projects.js";
-import { agency, accentOf, current, onRail, hovered, glitchy, halftone, typed, px, icon as assetIcon, settled } from "./agency.js";
+import { agency, accentOf, activitySpinner, googleActivityColor, current, onRail, hovered, glitchy, halftone, typed, px, icon as assetIcon, settled } from "./agency.js";
 import { v_flex, h_flex } from "gpui-base";
 import { agents, terminals, panes, focused, spaces, run, theme, shared, setShared, setAgentOrder, openOverlay, closeOverlay, props, window, layout, appHome, exec } from "herdr";
 
@@ -116,6 +116,7 @@ export class Agents {
     cx.timer.every(60000, probe);
     // The sprite clock: 10 fps, only while characters are on screen.
     this.tick = 0;
+    this.flaskDoneSince = new Map();
     cx.timer.every(100, (cx) => {
       if (!this.hasArt || narrow() || !this.drawn) return;
       // All asleep: a third of the rate, the breathing is slow anyway.
@@ -129,13 +130,18 @@ export class Agents {
   // Stamps agents whose state changed. Done and idle count as one: looking at a
   // finished agent turns done into idle, and looking isn't the agent doing anything.
   track(list, now) {
+    const doneSince = new Map();
     let dirty = false;
     for (const a of list) {
+      if (a.status === "done" && artKind(a.program?.key) === "antigravity") {
+        doneSince.set(a.address, this.flaskDoneSince.get(a.address) ?? now);
+      }
       const s = a.status === "done" ? "idle" : a.status;
       if (this.changed[a.address]?.s === s) continue;
       this.changed[a.address] = { s, at: now };
       dirty = true;
     }
+    this.flaskDoneSince = doneSince;
     if (!dirty) return;
     // Gone and old: the list alone is empty right after a start.
     const listed = new Set(list.map((a) => a.address));
@@ -214,9 +220,10 @@ export class Agents {
     });
   }
 
-  subRow(t, s, shown, compact) {
+  subRow(t, s, shown, compact, live) {
     const k = s.t;
     const st = kidStatus(k, this.listed);
+    const google = st === "working" ? googleActivityColor(k, live) : null;
     const pic = icon(k.program, 14, t.foreground);
     const on = k.address === shown;
     return h_flex()
@@ -245,11 +252,11 @@ export class Agents {
         .when(l === "└" || l === "├", el => el.border_b(1.5).rounded_bl(radius(6))))))
       // Agency: the tree in box-drawing text; a working branch lights in the agent's color.
       .when(agency(), el => el.child(div().flex_none().mr(5).font_family(appearance().fonts.mono)
-        .text_color(st === "working" ? accentOf(k.program, t) : t.input)
+        .text_color(st === "working" ? google ?? accentOf(k.program, t) : t.input)
         .child(s.lines.map((l, i) => (i === s.lines.length - 1 ? `${l}─` : l ? `${l} ` : "  ")).join(""))))
       .child(div().flex_1().truncate().text_color(on ? t.foreground : t.muted).child(k.name || k.template || k.program?.name || k.address))
       .when(this.hoveredSub === k.address, el => el.child(this.subActions(t, k)))
-      .child(this.status(t, { ...k, status: st }, compact));
+      .child(this.status(t, { ...k, status: st }, compact, google));
   }
 
   // Hovered sub-agent: detach it into a tab (or send a detached one back under
@@ -273,9 +280,9 @@ export class Agents {
   }
 
   // compact: a ! for blocked where a header already says "Needs you".
-  status(t, a, compact = false) {
+  status(t, a, compact = false, google = null) {
     const color = t[a.status] ?? t.dim;
-    if (a.status === "working") return svg("mods/workspace-chrome/spinner.svg").size(12).mx(1).flex_none().text_color(agency() ? accentOf(a.program, t) : t.working).spin(900);
+    if (a.status === "working") return activitySpinner(google, agency() ? accentOf(a.program, t) : t.working).mx(1);
     if (a.status === "blocked" && compact) return div().size(14).flex_none().rounded(radius(4)).bg(t.blocked + "26").text_size(fontSize("agents.badge")).font_weight(appearance().weights.bold).text_color(t.blocked).flex().items_center().justify_center().child("!");
     if (a.status === "blocked") return div().flex_none().px(6).h(18).rounded(radius(5)).bg(t.blocked + "26").text_size(fontSize("agents.badge")).font_weight(appearance().weights.semibold).text_color(t.blocked).flex().items_center().child(L("Needs you", "Ждёт тебя"));
     // Idle: a ring; done: a dot.
@@ -346,7 +353,7 @@ export class Agents {
       const subs = collapsed ? [] : this.tree(all, a.address);
       const r = row(a, i, subs);
       if (this.folded.has(a.address)) return [r];
-      return [r, ...subs.map((s) => this.subRow(t, s, shown, byPriority))];
+      return [r, ...subs.map((s) => this.subRow(t, s, shown, byPriority, live))];
     };
 
     // The fold chevron; folded, the count too, colored by the most urgent one.
@@ -411,7 +418,7 @@ export class Agents {
           .hover((s) => s.bg(t.hover))
           .on_click(() => run("pane.focus", { pane: a.pane }))
           .child(div().flex_1().min_w(0).whitespace_nowrap().text_right().text_color(t.muted).child(String(i + 1)))
-          .child(h_flex().w(14).flex_none().items_center().justify_center().child(this.status(t, a, true)));
+          .child(h_flex().w(14).flex_none().items_center().justify_center().child(this.status(t, a, true, googleActivityColor(a, live))));
       }
       const when = this.since(a);
       // PA-Advanced: only the session that really has the window's focus is current.
@@ -475,7 +482,7 @@ export class Agents {
           .when(!art && Boolean(pic), el => el.child(pic))
           .when(art, el => el.child(div().size(44).flex_none().relative().overflow_hidden()
             .child(image(artPath(a.program?.key, a.status)).absolute().top(0)
-              .left(-44 * ((this.tick + i * 5) % ART_FRAMES)).w(44 * ART_FRAMES).h(44)))))
+              .left(-44 * artFrame(a.program?.key, a.status, this.tick + i * 5, now - (this.flaskDoneSince.get(a.address) ?? 0))).w(44 * ART_FRAMES).h(44)))))
         .child(v_flex().flex_1().min_w(0).gap(2)
           .child(h_flex().min_w(0).gap(5).items_center()
             .child(div().min_w(0).max_w(this.projects ? 1000 : full && more ? 100 : 180).truncate().text_size(fontSize("agents.body")).text_color(idle ? t.muted : t.foreground).when(Boolean(this.projects), el => el.tooltip(name)).child(name))
@@ -528,7 +535,7 @@ export class Agents {
         .when(byPriority || !open, (el) => el.child(div().text_color(t.dim).child(String(g.members.length))))
         .child(div().flex_1())
         .when(!open, (el) => el
-          .when(!byPriority && top && top !== "idle", (el) => el.child(this.status(t, { status: top }, true)))
+          .when(!byPriority && top && top !== "idle", (el) => el.child(this.status(t, { status: top }, true, googleActivityColor(g.members.find(a => a.status === top), live))))
           .child(svg(chrome("chevron-right")).size(11).flex_none().text_color(t.dim)));
     };
     const rows = collapsed

@@ -12,7 +12,7 @@ import { appearance, fontSize, labelFont, L } from "./appearance.js";
 // computer or on each connected machine).
 
 import { div, svg } from "gpui-kit";
-import { px } from "./agency.js";
+import { activitySpinner, googleActivityColor, px } from "./agency.js";
 import { spaceLabel } from "./filesystem.js";
 import { spaceColor } from "./space-colors.js";
 import { v_flex, h_flex, InputState, Input } from "gpui-base";
@@ -52,6 +52,7 @@ export class Picker {
     const f = this.filter.toLowerCase();
     const all = agents();
     const live = terminals().filter((x) => x.state === "live");
+    const byAddress = new Map(live.map(t => [t.address, t]));
     const teamOf = (addrs) => {
       let n = 0;
       const walk = (a) => live.filter((x) => x.parent === a).forEach((k) => (n++, walk(k.address)));
@@ -62,7 +63,8 @@ export class Picker {
       const ctxs = w.tabs
         .map((ctx) => {
           const mine = all.filter((a) => a.tab === ctx.id);
-          return { w, ctx, mine, team: teamOf(mine.map((a) => a.address)) };
+          const working = mine.find(a => a.status === "working" && a.focused) ?? mine.find(a => a.status === "working");
+          return { w, ctx, mine, google: googleActivityColor(working ?? mine[0], byAddress), team: teamOf(mine.map((a) => a.address)) };
         })
         .filter((c) => !f || [spaceLabel(w), c.ctx.name, ...c.mine.map((a) => a.program?.name ?? "")].join(" ").toLowerCase().includes(f));
       return { w, ctxs };
@@ -101,8 +103,8 @@ export class Picker {
     else if (r.kind === "space") run("space.new", { machine: r.machine ?? "" });
   }
 
-  glyph(t, st) {
-    if (st === "working") return svg("mods/workspace-chrome/spinner.svg").size(12).flex_none().text_color(t.working).spin(900);
+  glyph(t, st, google) {
+    if (st === "working") return activitySpinner(google, t.working);
     // Square status marks, as in the workshop's section labels.
     return h_flex().w(12).flex_none().justify_center().child(st && st !== "idle" ? div().size(6).bg(t[st] ?? t.dim) : div().size(6).border_1().border_color(t.dim));
   }
@@ -201,7 +203,7 @@ export class Picker {
         .when(on, (el) => el.bg(t.foreground + "1a"))
         .when(!on, (el) => el.hover((s) => s.bg(t.foreground + "0b")))
         .on_click(() => this.go(r))
-        .child(this.glyph(t, r.ctx.status))
+        .child(this.glyph(t, r.ctx.status, r.google))
         .child(div().flex_1().truncate().text_color(t.foreground).when(here, (d) => d.font_semibold()).child(r.ctx.name))
         .when(r.ctx.status === "blocked", (el) => el.child(div().text_size(11).text_color(t.blocked).child(L("needs you", "ждёт тебя"))))
         .when(r.ctx.status === "done", (el) => el.child(div().text_size(11).text_color(t.done).child(L("finished", "готово"))))

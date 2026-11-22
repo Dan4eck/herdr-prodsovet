@@ -142,6 +142,13 @@ export const allProfiles = {
         "border": "#2d2926",
         "accent": "#b3927b",
         "working": "#b3927b"
+      },
+      "google": {
+        "background": "#090d0a",
+        "border": "#809985",
+        "accent": "#aec8af",
+        "working": "#83bd93",
+        "dayWorking": "#417752"
       }
     },
     "darkThemeName": "PA-Light-Night",
@@ -390,6 +397,13 @@ export const allProfiles = {
         "border": "#33281c",
         "accent": "#ffad55",
         "working": "#ffad55"
+      },
+      "google": {
+        "background": "#060b08",
+        "border": "#849f88",
+        "accent": "#b2d4b8",
+        "working": "#82d49b",
+        "dayWorking": "#38754c"
       }
     },
     "darkThemeName": "PA-Advanced-Night",

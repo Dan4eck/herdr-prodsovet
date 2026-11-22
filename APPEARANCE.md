@@ -33,7 +33,7 @@ layout and each layout's geometry. Herdr hot-reloads the resulting files.
 | `metrics` | Main row, toolbar, input and menu heights |
 | `brandColors` | ProdAdvice subtitle color (or chip fill with `style.brandChip`) in dark/light modes |
 | `darkTheme` | Terminal ANSI and semantic interface palette |
-| `agentPalettes`, `agentTints` | Codex/Claude pane colors and whether to apply them |
+| `agentPalettes`, `agentTints` | Codex, Claude and Google terminal pane colors and whether to apply them |
 | `lightTheme` | Installed light theme name |
 | `lightPalette` | Optional owned light palette, generated under `lightTheme`; null uses an existing theme |
 | `style` | Optional drawing style (below); omitted means the PA-Light drawing |
@@ -70,7 +70,8 @@ Stock Herdr components retain their own sizing rules; `text` and `metrics`
 control the custom mods. Some small icon sizes and padding remain in mod code.
 Choosing a different theme in Herdr overrides that layout's palette until the
 next profile synchronization. Agent tinting applies only with the profile's
-own dark theme selected.
+own dark theme selected. The Google focus outline and working dot also apply in
+the profile's own light theme, using the normal light terminal background.
 
 Changing an open file editor's actual font, size or syntax palette rebuilds its
 native editor: unsaved text and conflict detection are retained, but undo history,

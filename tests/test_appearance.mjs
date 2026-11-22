@@ -71,6 +71,28 @@ test('disabling second-profile tints leaves classic enabled',()=>{
  active='PA-Advanced';a.appearance().agentTints=false;assert.equal(p.enabled({theme:'PA-Advanced-Night'},true),false);
  active='PA-Light';assert.equal(p.enabled({theme:'PA-Light-Night'},true),true);
 });
+test('Google pane colors follow focus and theme in both layouts',()=>{
+ for(const layout of ['PA-Light','PA-Advanced']){
+  active=layout;
+  const profile=a.appearance(), google=profile.agentPalettes.google;
+  const previous=profile.agentTints;profile.agentTints=true;
+  const tree={id:'main',theme:{dark:profile.darkThemeName,light:profile.lightTheme},content:{pane:{background:'background',focus:{width:1,color:'accent'}}}};
+  for(const agent of [{program:{key:'antigravity'}},{app:'gemini-cli'},{foreground:{name:'agy.exe'}},{program:{name:'Google Antigravity CLI'}}]){
+   assert.equal(p.paletteFor(agent),google);
+   const working={...agent,status:'working'};
+   const night=p.styledLayout(tree,working,true);
+   assert.equal(night.content.pane.focus.color,google.accent);assert.equal(night.content.pane.background,google.background);
+   assert.equal(p.styledLayout(night,working,true),null);
+   const day=p.styledLayout(night,working,false);
+   assert.equal(day.content.pane.focus.color,google.accent);assert.equal(day.content.pane.background,'background');
+   assert.equal(p.panePalette(day,working,false).working,google.dayWorking);
+   assert.equal(p.styledLayout(day,{...agent,status:'idle'},false).content.pane.focus.color,google.border);
+   assert.equal(p.styledLayout(day,{app:'bash'},false).content.pane.focus.color,'accent');
+   assert.equal(p.panePalette({theme:'custom'},working,false),null);
+  }
+  profile.agentTints=previous;
+ }
+});
 test('switching back removes the other profile tint without changing geometry',()=>{
  const tree={id:'root',theme:'PA-Light-Night',children:[{id:'main',content:{pane:{background:'#123456',radius:10,header:{height:30}}}}]};
  active='PA-Light';const result=p.styledLayout(tree,{app:'codex',status:'working'},true);

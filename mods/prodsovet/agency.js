@@ -7,7 +7,8 @@ import { style, agentAccent, appearance, L } from "./appearance.js";
 
 import { div, svg } from "gpui-kit";
 import { settings, terminals, shared, setShared, focused, window, notify, playSound } from "herdr";
-import { artKind } from "./creatures.js";
+import { accentKind } from "./creatures.js";
+import { paletteFor } from "./palette.js";
 
 const ART = "mods/prodsovet/art/agency";
 
@@ -56,8 +57,29 @@ export function watchBackground() {
 
 // The agent's own color where the profile has one; otherwise the status color.
 export function accentOf(program, t, status = "working") {
-  const own = program ? agentAccent(artKind(program.key)) : null;
+  const own = program ? agentAccent(accentKind(program.key)) : null;
   return own ?? t[status] ?? t.accent;
+}
+
+// Detached workers retain their core parent address, even across tabs.
+export function googleActivityColor(agent, byAddress) {
+  if (!agent) return null;
+  const google = appearance().agentPalettes.google;
+  const color = settings()?.dark === false ? google.dayWorking : google.working;
+  if (paletteFor(agent) === google) return color;
+  let term = byAddress.get(agent.terminal ?? agent.address) ?? agent;
+  const seen = new Set();
+  while (term && !seen.has(term)) {
+    if (paletteFor(term) === google || (term.report && paletteFor(term.report) === google)) return color;
+    seen.add(term);
+    term = byAddress.get(term.parent);
+  }
+  return null;
+}
+
+export function activitySpinner(googleColor, fallback) {
+  const path = googleColor ? "mods/prodsovet/art/agency/bubbles.svg" : "mods/workspace-chrome/spinner.svg";
+  return svg(path).size(12).flex_none().text_color(googleColor ?? fallback).spin(900);
 }
 
 // One neutral look everywhere, never an owner's color (agent colors stay on
@@ -90,7 +112,9 @@ const RAILS = {
   done: [rail(RAIL - 1)],
   idle: ["·".repeat(RAIL)],
 };
-export function railFrames(status) {
+const GOOGLE_SWEEP = [...RAILS.working, ...RAILS.working.slice(1, -1).reverse()];
+export function railFrames(status, google = false) {
+  if (google && status === "working") return { frames: GOOGLE_SWEEP, ms: 140 };
   const st = RAILS[status] ? status : "idle";
   return { frames: RAILS[st], ms: { working: 120, blocked: 420, done: 1000, idle: 1000 }[st] };
 }

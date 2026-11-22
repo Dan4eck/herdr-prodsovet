@@ -39,7 +39,7 @@ it is not native rendering evidence. The artwork files are the shipped sprites.
 Working agents animate; blocked agents request attention; done agents show a
 completed state; idle agents sleep. Each kind has four 16-frame horizontal PNG
 strips. Codex uses the original Codex companion; Claude uses Clawd from the
-Claude Code welcome screen. Gemini uses the custom astronaut, Hermes the
+Claude Code welcome screen. Antigravity uses a bubbling flask, Gemini the custom astronaut, Hermes the
 adapted Nous girl. Unknown kinds use the robot. All sprite strips match the
 installed personal mod.
 Pane/tab status scanners use the small animated bars defined in creatures.js.

@@ -1,5 +1,5 @@
 import { appearance, fontSize, metric, radius, L, advanced } from "./appearance.js";
-import { agency, accentOf, selected as selectedLook, hovered, icon, settled } from "./agency.js";
+import { agency, accentOf, activitySpinner, googleActivityColor, selected as selectedLook, hovered, icon, settled } from "./agency.js";
 // SPDX-License-Identifier: Apache-2.0
 // ProdAdvice for Herdr: customized interface and behavior, 2026. See NOTICE.
 import { checkoutContext, selectProjectTab, nextProjectTab, openSessionMenu } from "./project-context.js";
@@ -68,16 +68,18 @@ export default class Tabs extends View {
     const button = (id, label, action) => div().id(id).size(26).flex_none().flex().items_center().justify_center().rounded(radius(6)).text_color(t.dim).hover(s => s.bg(t.hover).text_color(t.foreground))
       .on_mouse_down("left", stop).on_click(action).child(label);
     const all = terminals();
+    const byAddress = new Map(all.map(t => [t.address, t]));
+    const allPanes = panes();
     // A tab works only while one of its agents is in a turn, not while a
     // finished agent's background shells run.
-    const tabStatus = c => {
-      if (c.status !== "working") return c.status;
-      const busy = panes().filter(p => p.tab === c.id && p.status === "working");
-      return busy.length && busy.every(p => settled(p.status, p.terminal, all) !== "working") ? "idle" : "working";
-    };
     const item = (c, i) => {
-      const status = tabStatus(c);
-      const program = panes().find(p => p.tab === c.id && p.program?.agent)?.program ?? panes().find(p => p.tab === c.id)?.program;
+      const tabPanes = allPanes.filter(p => p.tab === c.id);
+      const lead = tabPanes.find(p => p.program?.agent) ?? tabPanes[0];
+      const program = lead?.program;
+      const busy = c.status === "working" ? tabPanes.filter(p => p.status === "working") : [];
+      const working = busy.filter(p => settled(p.status, p.terminal, all) === "working");
+      const status = busy.length && !working.length ? "idle" : c.status;
+      const source = working.find(p => p.focused) ?? working[0] ?? lead;
       const automatic = !c.named && (/^\d+$/.test(c.name) || /^tb\d+$/.test(c.name));
       const name = unified && automatic ? (program?.agent ? program.name : L("Terminal", "Терминал")) + ` ${i + 1}` : /^tb\d+$/.test(c.name) ? program?.name ?? "Terminal" : c.name;
       // Agency: the active tab has the one neutral selected fill.
@@ -99,7 +101,7 @@ export default class Tabs extends View {
         .on_mouse_down("right", (_e, cx) => { cx.stop_propagation(); openOverlay({ mod: "prodsovet", kind: "popup", width: 200, props: { role: "tab-menu", tab: "tab", target: { id: c.id, space: c.owner } } }); })
         .when(Boolean(program?.icon), el => el.child(program.tint ? svg(program.icon).size(14).text_color(t.muted) : image(program.icon).size(14)))
         .child(div().max_w(170).truncate().child(c.zoomed ? `${name} Z` : name))
-        .when(status === "working", el => el.child(svg("mods/workspace-chrome/spinner.svg").size(12).flex_none().text_color(agency() ? accentOf(program, t) : t.working).spin(900)))
+        .when(status === "working", el => el.child(activitySpinner(googleActivityColor(source, byAddress), agency() ? accentOf(source?.program, t) : t.working)))
         .when(status === "blocked" || status === "done", el => el.child(div().size(6).rounded(radius(3)).bg(t[c.status])))
         .when(c.active, el => el.child(div().id(`close-${c.id}`).text_color(t.dim).on_mouse_down("left", stop).on_click((_e, cx) => { cx.stop_propagation(); run("tab.close", { id: c.id }); }).child(svg(icon("close", "mods/pane/close.svg")).size(agency() ? 15 : 12))));
     };

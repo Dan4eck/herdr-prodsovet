@@ -6,6 +6,11 @@ committed; the release moves it under the new version.
 
 ## Unreleased
 
+- Antigravity and Gemini terminals show a green dot moving back and forth while working, with a pale green outline around the focused terminal.
+- Working Google agents and their sub-agents share a green spinning bubble indicator in the tab bar, sidebar and tab picker. Detached workers keep their parent's indicator.
+
+- Antigravity's flask stands on both boots. It taps one toe as turquoise liquid bubbles, shows an amber exclamation mark when it needs input, and drains to a still green pool when a turn finishes. The resting flask has closed eyes and lavender liquid.
+
 ## 0.6.0 (2026-11-20)
 
 - PA-Advanced: an Issues panel next to Files, Changes and GitHub (button "Issues" above the panel). It lists the

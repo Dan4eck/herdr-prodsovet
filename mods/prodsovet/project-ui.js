@@ -6,7 +6,7 @@ import { div, svg, image } from "gpui-kit";
 import { h_flex } from "gpui-base";
 import { appearance, fontSize, labelFont, radius, agentAccent } from "./appearance.js";
 import { px } from "./agency.js";
-import { artKind, artPath, ART_KINDS } from "./creatures.js";
+import { accentKind, artFrame, artKind, artPath, ART_FRAMES, ART_KINDS } from "./creatures.js";
 import { spaceColor } from "./space-colors.js";
 
 export const mono = () => labelFont() ?? appearance().fonts.mono;
@@ -14,7 +14,7 @@ export const mono = () => labelFont() ?? appearance().fonts.mono;
 // The agent's own accent; Terminal and unknown programs use the foreground.
 export function tint(t, key) {
   if (!key || key === "terminal") return t.foreground;
-  return agentAccent(artKind(key)) ?? t.foreground;
+  return agentAccent(accentKind(key)) ?? t.foreground;
 }
 
 // "01  COMPUTER": a numbered mono section label, optionally with a right side.
@@ -44,13 +44,13 @@ export function glyphTile(t, program, size, color) {
     .bg(color + "1c").border_1().border_color(color + "38").child(glyph(program, inner, color));
 }
 
-// The agent's mascot, first frame of its strip, when one exists for its kind.
+// A still frame of the agent's mascot.
 export function hasMascot(key) {
   return Boolean(key) && key !== "terminal" && ART_KINDS.includes(artKind(key)) && artKind(key) !== "other";
 }
 export function mascot(key, size, status = "working") {
   return div().size(size).flex_none().relative().overflow_hidden()
-    .child(image(artPath(key, status)).absolute().top(0).left(0).w(size * 16).h(size));
+    .child(image(artPath(key, status)).absolute().top(0).left(-size * artFrame(key, status, 0)).w(size * ART_FRAMES).h(size));
 }
 
 // The square letter tile of a project (its Space color, as in the Spaces list).

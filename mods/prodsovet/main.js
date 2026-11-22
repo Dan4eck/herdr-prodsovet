@@ -7,7 +7,7 @@ import { appearance, fontSize, metric, radius, style, labelFont, brandFont, L, l
 import { View, div, svg, image } from "gpui-kit";
 import { h_flex, v_flex } from "gpui-base";
 import { agents, panes, props, run, theme, home, layout, window, shared, setShared, spaces, keys, focused, exec, appHome, closeOverlay, settings, terminals, nextCommand, openOverlay } from "herdr";
-import { agentTheme, enabled, styledLayout, withTerminal } from "./palette.js";
+import { panePalette, styledLayout, withTerminal } from "./palette.js";
 import OpenProject from "./open-project.js";
 import { openProjectDialog, nextProjectTab, openSessionMenu } from "./project-context.js";
 import { Agents } from "./agents.js";
@@ -15,7 +15,7 @@ import { Spaces } from "./spaces.js";
 import { Picker } from "./picker.js";
 import { Changes } from "./changes.js";
 import { GitHub } from "./github.js";
-import { mini, word, artPath, ART_FRAMES } from "./creatures.js";
+import { mini, word, artFrame, artPath, ART_FRAMES, ART_KINDS } from "./creatures.js";
 import { agency, accentOf, railFrames, glitchy, icon, settled, watchBackground } from "./agency.js";
 
 import { workspace, newTerminal, python, tilde, thisComputer } from "./filesystem.js";
@@ -114,13 +114,14 @@ class PaneHead {
     if (!p) return div();
     const name = ((p.program?.agent || p.program?.shell) && p.program.name) || p.title || p.program?.name || "shell";
     const all = terminals(), st = settled(p.status, p.terminal, all);
-    const pt = agentTheme(t, withTerminal({ ...p, status: st }, all), enabled(layout(), settings().dark));
+    const palette = panePalette(layout(), withTerminal(p, all), settings().dark);
+    const pt = palette ? { ...t, ...palette } : t;
     const pane = p.pane;
-    const m = st ? (agency() ? railFrames(st) : mini(st)) : null;
+    const m = st ? (agency() || palette?.google ? railFrames(st, palette?.google) : mini(st)) : null;
     // Agency: working is the agent's own color; blocked/done stay the shared status colors.
-    const tone = (s) => (agency() && s === "working" ? accentOf(p.program, t) : pt[s] ?? t.dim);
+    const tone = (s) => (agency() && !palette?.google && s === "working" ? accentOf(p.program, t) : pt[s] ?? t.dim);
     return h_flex().id(`ps-head-${pane}`).size_full().px(10).gap(8).items_center().text_size(fontSize("pane.body"))
-      .bg(pt.background).border_b(1).border_color(st === "working" ? pt.border : t.border)
+      .bg(pt.background).border_b(1).border_color(st === "working" || palette?.google ? pt.border : t.border)
       .on_hover((h, cx) => { this.hovered = h; cx.notify(); })
       .on_click(() => run("pane.focus", { pane }))
       .when(Boolean(m), (el) => el.child(div().flex_none().font_family(appearance().fonts.mono).text_size(fontSize("pane.status")).text_color(tone(st)).frames(m.frames, m.ms)))
@@ -310,13 +311,12 @@ class Zoo {
   init(_p, cx) { this.tick = 0; cx.timer.every(100, (cx) => { this.tick++; cx.notify(); }); }
   render() {
     const t = theme();
-    const kinds = ["claude", "codex", "gemini", "hermes", "other"];
     const sts = ["working", "blocked", "done", "idle"];
     return v_flex().p(16).gap(10).bg(t.chrome)
-      .children(kinds.map((k) => h_flex().gap(18).items_center()
-      .child(div().w(60).text_size(fontSize("zoo.label")).text_color(t.dim).child(k.toUpperCase()))
+      .children(ART_KINDS.map((k) => h_flex().gap(18).items_center()
+      .child(div().w(90).text_size(fontSize("zoo.label")).text_color(t.dim).child(k.toUpperCase()))
       .children(sts.map((st) => div().size(64).flex_none().relative().overflow_hidden()
-        .child(image(artPath(k, st)).absolute().top(0).left(-64 * (this.tick % ART_FRAMES)).w(64 * ART_FRAMES).h(64))))));
+        .child(image(artPath(k, st)).absolute().top(0).left(-64 * artFrame(k, st, this.tick, this.tick * 100)).w(64 * ART_FRAMES).h(64))))));
   }
 }
 

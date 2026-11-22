@@ -145,6 +145,58 @@ try {
    assert.equal(nodes(tree).filter(n=>n.attrs.id==='sub-a3').length,1);assert.equal(nodes(tree).filter(n=>n.attrs.id==='ag-a3').length,0);
    assert.deepEqual(plain(order),['a1','a2','a3']);
  });
+ await test('a Google worker keeps the same green spinner in the tree, a detached tab and a split tab',()=>{
+   const saved=[sp,ps,ts,ag];
+   const spinner=row=>nodes(row).find(n=>n.attrs.spin===900);
+   const check=row=>{
+     const icon=spinner(row);
+     assert.equal(icon?.attrs.path,'mods/prodsovet/art/agency/bubbles.svg');
+     assert.equal(icon.attrs.text_color,'#82d49b');
+   };
+   try {
+     sp=plain(sp);ps=plain(ps);ts=plain(ts);ag=plain(ag);
+     sp[0].active=false;sp[1].active=true;
+     sp[1].tabs.forEach(tab=>tab.status='working');
+     ts.find(t=>t.address==='a2').program={key:'agy',agent:true};
+     ts.push({address:'worker',state:'live',parent:'a2',program:{key:'shell'}});
+     ts.find(t=>t.address==='a3').parent='worker';
+     const child=ag.find(a=>a.address==='a3');child.status='working';
+     const pane=ps.find(p=>p.terminal==='a3');pane.status='working';
+     check(byId(owner.render(cx),'sub-a3'));
+     const tabs=new tabsModule.namespace.default();tabs.init();
+     check(byId(tabs.render(),'tab-child'));
+     // A Codex pane is first in the split, but only the Google worker is busy.
+     ps.unshift({...ps.find(p=>p.terminal==='a1'),tab:'child',status:'idle'});
+     check(byId(tabs.render(),'tab-child'));
+     ts.find(t=>t.address==='a3').parent=null;
+     assert.equal(spinner(byId(tabs.render(),'tab-child')).attrs.path,'mods/workspace-chrome/spinner.svg');
+   } finally {
+     [sp,ps,ts,ag]=saved;tree=owner.render(cx);
+   }
+ });
+ await test('a finished Antigravity flask drains once, holds its last frame and resets next turn',()=>{
+   const agent=ag.find(a=>a.address==='a1');
+   const {program,status}=agent;
+   let now=Date.now();
+   const frame=()=>{
+     const row=byId(owner.render(cx),'ag-a1');
+     const sprite=nodes(row).find(n=>n.attrs.path?.endsWith('antigravity-done.png'));
+     return Math.abs(sprite.attrs.left)/44;
+   };
+   try {
+     ctx.Date=class extends Date { static now(){return now;} };
+     agent.program={...program,key:'agy'};
+     agent.status='done';
+     assert.equal(frame(),0);
+     now+=500;assert.equal(frame(),5);
+     now+=1100;assert.equal(frame(),15);
+     now+=4800;assert.equal(frame(),15);
+     agent.status='working';owner.render(cx);
+     agent.status='done';assert.equal(frame(),0);
+   } finally {
+     ctx.Date=Date;Object.assign(agent,{program,status});tree=owner.render(cx);
+   }
+ });
  await test('a sub-agent row offers detach, send back and a guarded stop',()=>{
    calls.length=0;byId(tree,'sub-a3').events.on_mouse_down({},cx);
    assert.equal(calls[0].overlay.props.role,'sub-menu');assert.equal(calls[0].overlay.props.terminal,'a3');
