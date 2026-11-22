@@ -102,8 +102,11 @@ class InstallTests(unittest.TestCase):
 
     def test_opt_in_metrics(self):
         installer.install(self.home, apply=True, with_limits=True)
-        # Windows offers only the local Codex source (no Keychain token reading).
-        self.assertEqual(json.loads((self.home / 'mods/prodsovet/limits.local.json').read_text()), {'claude': not installer.WINDOWS, 'codex': True})
+        # Windows offers only the local Codex and Antigravity CLI sources (no Keychain token reading).
+        self.assertEqual(
+            json.loads((self.home / 'mods/prodsovet/limits.local.json').read_text()),
+            {'claude': not installer.WINDOWS, 'codex': True, 'antigravity': True},
+        )
 
     def test_no_prior_keys_removed_on_uninstall(self):
         installer.install(self.home, apply=True)
@@ -230,12 +233,143 @@ class InstallTests(unittest.TestCase):
 
 
 class LimitsTests(unittest.TestCase):
-    def test_disabled_never_reads_credentials_or_sessions(self):
+    def load_limits(self):
         spec = importlib.util.spec_from_file_location('limits', ROOT / 'mods/prodsovet/limits.py')
-        limits = importlib.util.module_from_spec(spec); spec.loader.exec_module(limits)
-        with patch.object(limits, 'claude', side_effect=AssertionError('credentials accessed')), patch.object(limits, 'codex', side_effect=AssertionError('sessions accessed')), contextlib.redirect_stdout(io.StringIO()) as output:
+        limits = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(limits)
+        return limits
+
+    def test_disabled_never_reads_credentials_or_sessions(self):
+        limits = self.load_limits()
+        with patch.object(limits, 'claude', side_effect=AssertionError('credentials accessed')), \
+             patch.object(limits, 'codex', side_effect=AssertionError('sessions accessed')), \
+             patch.object(limits, 'antigravity', side_effect=AssertionError('agy accessed')), \
+             contextlib.redirect_stdout(io.StringIO()) as output:
             limits.main()
         self.assertEqual(set(json.loads(output.getvalue())), {'at'})
+
+    def test_antigravity_usage_parsing_windows_rollover_and_fallbacks(self):
+        limits = self.load_limits()
+        now = limits.parse_iso_timestamp('2026-11-22T12:00:00Z')
+        payload = {
+            'status': 'SUCCESS',
+            'command': {
+                'name': 'usage',
+                'data': {
+                    'groups': [
+                        {
+                            'name': 'Gemini Models',
+                            'buckets': [
+                                {'id': 'gemini-weekly', 'window': 'weekly', 'remaining_fraction': 0.945, 'reset_time': '2026-11-29T11:42:43Z'},
+                                {'id': 'gemini-5h', 'window': '5h', 'remaining_fraction': 0.807, 'reset_time': '2026-11-22T16:42:43Z'},
+                            ],
+                        },
+                        {
+                            'name': 'Claude and GPT models',
+                            'buckets': [
+                                {'id': '3p-weekly', 'window': 'weekly', 'remaining_fraction': 0.5, 'reset_time': '2026-11-29T12:00:00Z'},
+                                {'id': '3p-5h', 'window': '5h', 'remaining_fraction': 0.25, 'reset_time': '2026-11-22T17:00:00Z'},
+                            ],
+                        },
+                    ],
+                },
+            },
+        }
+        parsed = limits.parse_antigravity_usage(payload, now=now)
+        self.assertEqual(set(parsed), {'5h', '7d'})
+        self.assertAlmostEqual(parsed['5h']['used'], 19.3, places=2)
+        self.assertEqual(parsed['5h']['minutes'], 300)
+        self.assertEqual(parsed['5h']['resets'], limits.parse_iso_timestamp('2026-11-22T16:42:43Z'))
+        self.assertAlmostEqual(parsed['7d']['used'], 5.5, places=2)
+        self.assertEqual(parsed['7d']['minutes'], 10080)
+
+        # Exhausted (0 remaining), rolled-over past reset_time, and disabled 5h bucket (free tier).
+        free_payload = {
+            'status': 'SUCCESS',
+            'command': {
+                'data': {
+                    'groups': [
+                        {
+                            'name': 'Gemini Models',
+                            'buckets': [
+                                {'id': 'gemini-5h', 'window': '5h', 'disabled': True, 'remaining_fraction': 0.2, 'reset_time': '2026-11-22T16:00:00Z'},
+                                {'id': 'gemini-weekly', 'window': 'weekly', 'remaining_fraction': 0, 'reset_time': '2026-11-29T12:00:00Z'},
+                            ],
+                        }
+                    ]
+                }
+            },
+        }
+        free = limits.parse_antigravity_usage(free_payload, now=now)
+        self.assertEqual(set(free), {'7d'})
+        self.assertEqual(free['7d']['used'], 100.0)
+
+        rolled = limits.parse_antigravity_usage({
+            'status': 'SUCCESS',
+            'command': {
+                'data': {
+                    'groups': [
+                        {'name': 'Gemini Models', 'buckets': [{'id': 'gemini-5h', 'remaining_fraction': 0.1, 'reset_time': '2026-11-22T11:00:00Z'}]}
+                    ]
+                }
+            },
+        }, now=now)
+        self.assertEqual(rolled['5h']['used'], 0.0)
+
+        # Fallback by group/window name when IDs differ.
+        fallback = limits.parse_antigravity_usage({
+            'status': 'SUCCESS',
+            'command': {
+                'data': {
+                    'groups': [
+                        {'name': 'Gemini 4 Argon', 'buckets': [{'id': 'argon-w', 'window': 'weekly', 'remaining_fraction': 0.1}]},
+                        {'name': 'Gemini Core', 'buckets': [{'id': 'custom-5h', 'window': '5h', 'remaining_fraction': 0.75}]},
+                    ]
+                }
+            },
+        }, now=now)
+        self.assertEqual(set(fallback), {'5h'})
+        self.assertAlmostEqual(fallback['5h']['used'], 25.0, places=2)
+
+        with self.assertRaises(ValueError):
+            limits.parse_antigravity_usage({'status': 'ERROR', 'command': {'data': {'groups': []}}}, now=now)
+        with self.assertRaises(ValueError):
+            limits.parse_antigravity_usage({'status': 'SUCCESS', 'command': {'data': {'groups': []}}}, now=now)
+
+    def test_antigravity_cli_parses_json_and_handles_errors(self):
+        limits = self.load_limits()
+        sample = json.dumps({
+            'status': 'SUCCESS',
+            'command': {'name': 'usage', 'data': {'groups': [{'name': 'Gemini Models', 'buckets': [{'id': 'gemini-5h', 'remaining_fraction': 0.8, 'reset_time': '2099-01-01T00:00:00Z'}]}]}},
+        })
+        fake_ok = type('Result', (), {'returncode': 0, 'stdout': 'log line\n' + sample + '\n', 'stderr': ''})()
+        with patch.object(limits, 'agy_command', return_value='/usr/local/bin/agy'), \
+             patch.object(limits.subprocess, 'run', return_value=fake_ok) as run_mock:
+            out = limits.antigravity()
+        self.assertAlmostEqual(out['5h']['used'], 20.0, places=2)
+        self.assertEqual(run_mock.call_args.args[0], ['/usr/local/bin/agy', '-p', '/usage', '--output-format', 'json'])
+
+        fake_fail = type('Result', (), {'returncode': 1, 'stdout': '', 'stderr': 'not logged in'})()
+        with patch.object(limits, 'agy_command', return_value='/usr/local/bin/agy'), \
+             patch.object(limits.subprocess, 'run', return_value=fake_fail):
+            with self.assertRaises(RuntimeError):
+                limits.antigravity()
+
+    def test_enabled_limits_run_and_isolate_errors(self):
+        limits = self.load_limits()
+        with tempfile.TemporaryDirectory() as folder:
+            script = Path(folder) / 'limits.py'
+            (Path(folder) / 'limits.local.json').write_text('{"claude": true, "codex": true, "antigravity": true}\n', encoding='utf-8')
+            with patch.object(limits, '__file__', str(script)), \
+                 patch.object(limits, 'claude', side_effect=RuntimeError('boom')), \
+                 patch.object(limits, 'codex', return_value={'5h': {'used': 10, 'minutes': 300, 'resets': None}}), \
+                 patch.object(limits, 'antigravity', return_value={'5h': {'used': 19, 'minutes': 300, 'resets': None}}), \
+                 contextlib.redirect_stdout(io.StringIO()) as output:
+                limits.main()
+        data = json.loads(output.getvalue())
+        self.assertEqual(data['claude'], {'error': 'RuntimeError'})
+        self.assertEqual(data['codex']['5h']['used'], 10)
+        self.assertEqual(data['antigravity']['5h']['used'], 19)
 
 
     def test_style_block_is_optional_and_strictly_validated(self):

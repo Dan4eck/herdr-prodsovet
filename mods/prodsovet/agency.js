@@ -78,8 +78,7 @@ export function googleActivityColor(agent, byAddress) {
 }
 
 export function activitySpinner(googleColor, fallback) {
-  const path = googleColor ? "mods/prodsovet/art/agency/bubbles.svg" : "mods/workspace-chrome/spinner.svg";
-  return svg(path).size(12).flex_none().text_color(googleColor ?? fallback).spin(900);
+  return svg("mods/workspace-chrome/spinner.svg").size(12).flex_none().text_color(googleColor ?? fallback).spin(900);
 }
 
 // One neutral look everywhere, never an owner's color (agent colors stay on

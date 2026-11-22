@@ -6,8 +6,9 @@ committed; the release moves it under the new version.
 
 ## Unreleased
 
+- Status bar now supports Antigravity subscription limits (`AGY` 5h/7d windows) alongside Claude and Codex, opt-in via `"antigravity": true` in `limits.local.json` (or `--with-limits` on macOS and Windows) using `agy -p /usage --output-format json`.
 - Antigravity and Gemini terminals show a green dot moving back and forth while working, with a pale green outline around the focused terminal.
-- Working Google agents and their sub-agents share a green spinning bubble indicator in the tab bar, sidebar and tab picker. Detached workers keep their parent's indicator.
+- Working Google agents and their sub-agents share a green spinning ring indicator in the tab bar, sidebar and tab picker. Detached workers keep their parent's indicator.
 
 - Antigravity's flask stands on both boots. It taps one toe as turquoise liquid bubbles, shows an amber exclamation mark when it needs input, and drains to a still green pool when a turn finishes. The resting flask has closed eyes and lavender liquid.
 

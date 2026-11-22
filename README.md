@@ -23,9 +23,9 @@ herdr-app do layout.switch '{"name":"PA-Advanced"}'
 Готово. Переключать оформления можно и через Cmd+Shift+L.
 
 - `python3 install.py` без `--apply` только показывает план и ничего не пишет.
-- `--with-limits` включает лимиты Claude и Codex в статус-баре. Для Claude
-  читается токен Claude Code из связки ключей macOS, подробнее в
-  [ACCESS.md](ACCESS.md).
+- `--with-limits` включает лимиты Claude, Codex и Antigravity в статус-баре. Для
+  Claude читается токен Claude Code из связки ключей macOS, для Antigravity
+  вызывается установленный `agy`, подробнее в [ACCESS.md](ACCESS.md).
 - Если ваше сочетание клавиш уже занято, установщик остановится; добавьте
   `--skip-conflicting-keys`, чтобы оставить свои.
 
@@ -40,7 +40,7 @@ winget install BurntSushi.ripgrep.MSVC   # если rg ещё нет; затем
 git clone https://github.com/Dan4eck/herdr-prodsovet
 cd herdr-prodsovet
 git checkout v0.6.0                      # последний релиз
-py install.py --apply                    # или --apply --with-limits (только Codex)
+py install.py --apply                    # или --apply --with-limits (Codex и Antigravity)
 herdr-app do layout.switch --name PA-Advanced
 ```
 
@@ -51,7 +51,7 @@ herdr-app do layout.switch --name PA-Advanced
 - «Открыть в» запускает VS Code и Obsidian по их ссылкам `vscode://` и
   `obsidian://`; программы и скрипты (`.exe`, `.bat`, `.ps1`…) отсюда не
   запускаются, для них есть «Показать в Проводнике»;
-- `--with-limits` включает только лимиты Codex: лимиты Claude на Windows не
+- `--with-limits` включает лимиты Codex и Antigravity: лимиты Claude на Windows не
   переносились, подробнее в [ACCESS.md](ACCESS.md);
 - в PA-Advanced маковские шрифты Avenir Next и Bodoni 72 заменяются системными;
   PA-Light выглядит так же, как на Mac (его шрифты встроены в Herdr).

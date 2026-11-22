@@ -139,7 +139,7 @@ class PaneHead {
   }
 }
 
-// Status bar: machine, branch, crew counts, and Claude/Codex limits.
+// Status bar: machine, branch, crew counts, and Claude/Codex/Antigravity limits.
 const DAYS = () => (lang() === "ru" ? ["ВС", "ПН", "ВТ", "СР", "ЧТ", "ПТ", "СБ"] : ["SU", "MO", "TU", "WE", "TH", "FR", "SA"]);
 function resetIn(sec) {
   if (!sec) return "";
@@ -201,9 +201,9 @@ class Status {
       } catch (_e) { /* keep the last numbers */ }
     });
   }
-  limit(t, label, src) {
+  limit(t, label, src, tip = null) {
     const parts = [];
-    if (!src || src.error) return div().flex_none().text_color(t.dim).child(`${label} -`);
+    if (!src || src.error) return div().flex_none().text_color(t.dim).when(Boolean(tip), el => el.tooltip(tip)).child(`${label} -`);
     for (const key of ["5h", "7d"]) {
       const w = src[key];
       if (!w) continue;
@@ -218,7 +218,8 @@ class Status {
       }
       parts.push(div().flex_none().text_color(color).child(`${key === "5h" ? L("5H", "5Ч") : L("7D", "7Д")} ${used}% ${resetIn(w.resets)}`.trim()));
     }
-    return h_flex().flex_none().gap(5).items_center().child(div().text_color(t.dim).child(label)).children(parts);
+    if (!parts.length) return div().flex_none().text_color(t.dim).when(Boolean(tip), el => el.tooltip(tip)).child(`${label} -`);
+    return h_flex().flex_none().gap(5).items_center().child(div().text_color(t.dim).when(Boolean(tip), el => el.tooltip(tip)).child(label)).children(parts);
   }
   // EN / RU: the whole ProdAdvice interface follows shared("ui.lang").
   language(t) {
@@ -268,6 +269,7 @@ class Status {
       .when(c.done > 0, (el) => el.child(cell(`✓ ${L("DONE", "ГОТОВО")} ${c.done}`, t.done)))
       .when(Boolean(this.limits?.claude), el => el.child(this.limit(t, "CLAUDE", this.limits.claude)))
       .when(Boolean(this.limits?.codex), el => el.child(this.limit(t, "CODEX", this.limits.codex)))
+      .when(Boolean(this.limits?.antigravity), el => el.child(this.limit(t, "AGY", this.limits.antigravity, "Antigravity")))
       .child(div().flex_1().min_w(0))
       .child(this.language(t))
       .child(div().id("palette").flex_none().text_color(t.dim).hover((s) => s.text_color(t.foreground))

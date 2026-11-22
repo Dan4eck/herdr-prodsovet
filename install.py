@@ -96,7 +96,11 @@ def install(home, apply=False, skip_conflicts=False, with_limits=False):
     if with_limits:
         # The Claude source reads a subscription token from the macOS Keychain
         # and is not offered on Windows (see ACCESS.md).
-        files['mods/prodsovet/limits.local.json'] = b'{"claude": false, "codex": true}\n' if WINDOWS else b'{"claude": true, "codex": true}\n'
+        files['mods/prodsovet/limits.local.json'] = (
+            b'{"claude": false, "codex": true, "antigravity": true}\n'
+            if WINDOWS
+            else b'{"claude": true, "codex": true, "antigravity": true}\n'
+        )
     for name in files:
         if safe(home, name).exists():
             raise ValueError(f'Name collision: {name}')
@@ -340,7 +344,7 @@ def main():
     parser.add_argument('--uninstall', action='store_true')
     parser.add_argument('--update', action='store_true', help='Update an earlier install; refuses if you changed its files')
     parser.add_argument('--skip-conflicting-keys', action='store_true')
-    parser.add_argument('--with-limits', action='store_true', help='Enable Keychain/Anthropic usage and local Codex session reading')
+    parser.add_argument('--with-limits', action='store_true', help='Enable Keychain/Anthropic usage, local Codex session reading, and Antigravity CLI usage')
     args = parser.parse_args()
     if args.uninstall:
         uninstall(args.home, args.apply)

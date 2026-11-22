@@ -150,7 +150,7 @@ try {
    const spinner=row=>nodes(row).find(n=>n.attrs.spin===900);
    const check=row=>{
      const icon=spinner(row);
-     assert.equal(icon?.attrs.path,'mods/prodsovet/art/agency/bubbles.svg');
+     assert.equal(icon?.attrs.path,'mods/workspace-chrome/spinner.svg');
      assert.equal(icon.attrs.text_color,'#82d49b');
    };
    try {
@@ -169,7 +169,9 @@ try {
      ps.unshift({...ps.find(p=>p.terminal==='a1'),tab:'child',status:'idle'});
      check(byId(tabs.render(),'tab-child'));
      ts.find(t=>t.address==='a3').parent=null;
-     assert.equal(spinner(byId(tabs.render(),'tab-child')).attrs.path,'mods/workspace-chrome/spinner.svg');
+     const plainSpinner=spinner(byId(tabs.render(),'tab-child'));
+     assert.equal(plainSpinner.attrs.path,'mods/workspace-chrome/spinner.svg');
+     assert.notEqual(plainSpinner.attrs.text_color,'#82d49b');
    } finally {
      [sp,ps,ts,ag]=saved;tree=owner.render(cx);
    }

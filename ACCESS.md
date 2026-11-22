@@ -15,6 +15,7 @@ contact GitHub, change your active layout, install agent hooks or upload data.
 | Commit suggestions | Reads local Git status and diffs, including untracked text files. Sends bounded excerpts through the user's Codex CLI/account for an automatic suggested subject, only while the Changes panel is on screen and the window is in front. Uses an ephemeral read-only session without user configuration or hooks. The result fills the message input automatically; only Enter/Commit stages all changes and commits. Remote repositories use manual messages. |
 | Claude limits (opt-in) | Runs macOS `security` to read Claude Code's OAuth token from Keychain. Sends that token as an Authorization header only to Anthropic's HTTPS usage endpoint. Prints only limit values or error class names, not tokens. |
 | Codex limits (opt-in) | Reads up to 15 recent local session JSONL files for `rate_limits`. No network request. Supports `CODEX_HOME`. |
+| Antigravity limits (opt-in) | Runs the installed Antigravity CLI (`agy -p /usage --output-format json`) in an empty temporary folder to read Gemini 5-hour and weekly quota windows. Does not read Antigravity credentials directly. |
 
 ### On Windows
 
@@ -27,7 +28,7 @@ contact GitHub, change your active layout, install agent hooks or upload data.
 | Search | Runs `rg` directly (no `sh`/`head`); the first 400 result lines are kept. |
 | Session fork | Finds Herdr's core as `hc` or `herdr-core` (PATH, then `%LOCALAPPDATA%\Programs\herdr-core`). npm installs of Claude Code and Codex are accepted when they run as `node.exe`, with Herdr's agent status as the deciding check. |
 | Commit suggestions | Same as macOS; the helper reads the diff itself instead of receiving it in argv (Windows limits a command line to 32,767 characters). `codex` is found through PATH (`codex.cmd` for npm installs). |
-| Limits | Codex only. The Claude source is not ported to Windows (below). |
+| Limits | Codex and Antigravity. The Claude source is not ported to Windows (below). |
 
 ### Why Claude limits are macOS-only
 
@@ -38,8 +39,8 @@ describes subscription OAuth as meant for Claude Code and Anthropic's own apps,
 and says other developers may not collect or intermediate Claude.ai credentials
 or session tokens. Running the unmodified Claude Code inside Herdr is ordinary
 use; reading its token from another program is not. The Windows port therefore
-leaves this source out, and `--with-limits` enables only the local Codex source
-there. On macOS it stays opt-in, as before.
+leaves this source out, and `--with-limits` enables only the local Codex and
+Antigravity CLI sources there. On macOS it stays opt-in, as before.
 
 There is no project telemetry, external upload endpoint or bundled credential.
 Agents launched by the user retain their own normal network behavior. Herdr
@@ -53,14 +54,16 @@ for reviewing files before publication.
 
 ## Limits (opt-in)
 
-Limits are **off by default**. To enable both at install time, add `--with-limits`
+Limits are **off by default**. To enable them at install time, add `--with-limits`
 to the planned and applied install commands. After installation, alternatively
 copy `mods/prodsovet/limits.example.json` to `limits.local.json` in the **installed**
-mod folder and set `claude` and/or `codex` to `true`.
+mod folder and set `claude`, `codex`, and/or `antigravity` to `true`.
 
 Claude reads your own `Claude Code-credentials` Keychain item and uses its OAuth
 token only against `https://api.anthropic.com/api/oauth/usage`. Codex reads recent
-local session logs under `CODEX_HOME` (default `~/.codex`). This is best-effort,
+local session logs under `CODEX_HOME` (default `~/.codex`). Antigravity runs
+`agy -p /usage --output-format json` using your installed, signed-in Antigravity CLI.
+This is best-effort,
 not a billing source: log values may be stale and provider endpoints/formats may
 change. Refresh runs about every three minutes. No account data is shipped.
 Remove or disable the local config to stop collection on the next refresh.
