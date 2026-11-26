@@ -1,3 +1,4 @@
+import { stored } from "./storage.js";
 import { appearance, fontSize, metric, radius, style, labelFont, brandFont, L, lang, advanced } from "./appearance.js";
 // SPDX-License-Identifier: Apache-2.0
 // ProdAdvice for Herdr: customized interface and behavior, 2026. See NOTICE.
@@ -7,6 +8,7 @@ import { appearance, fontSize, metric, radius, style, labelFont, brandFont, L, l
 import { View, div, svg, image } from "gpui-kit";
 import { h_flex, v_flex } from "gpui-base";
 import { agents, panes, props, run, theme, home, layout, window, shared, setShared, spaces, keys, focused, exec, appHome, closeOverlay, settings, terminals, nextCommand, openOverlay } from "herdr";
+import { conversationTitle, watchConversationTitles } from "./antigravity-titles.js";
 import { panePalette, styledLayout, withTerminal } from "./palette.js";
 import OpenProject from "./open-project.js";
 import { openProjectDialog, nextProjectTab, openSessionMenu } from "./project-context.js";
@@ -112,8 +114,9 @@ class PaneHead {
     const t = theme();
     const p = panes().find((x) => x.pane === props()?.pane);
     if (!p) return div();
-    const name = ((p.program?.agent || p.program?.shell) && p.program.name) || p.title || p.program?.name || "shell";
-    const all = terminals(), st = settled(p.status, p.terminal, all);
+    const all = terminals();
+    const name = conversationTitle(p, all.find(t => t.address === p.terminal)) || ((p.program?.agent || p.program?.shell) && p.program.name) || p.title || p.program?.name || "shell";
+    const st = settled(p.status, p.terminal, all);
     const palette = panePalette(layout(), withTerminal(p, all), settings().dark);
     const pt = palette ? { ...t, ...palette } : t;
     const pane = p.pane;
@@ -154,10 +157,11 @@ const BUCKET = 120000, BUCKETS = 30;
 const WINDOW_SEC = { "5h": 5 * 3600, "7d": 7 * 86400 };
 class Status {
   init(_p, cx) {
+    watchConversationTitles(cx);
     this.limits = null;
     this.refresh(cx);
     cx.timer.every(180000, (cx) => this.refresh(cx));
-    try { this.activity = JSON.parse(localStorage.getItem("activity") ?? "{}"); } catch { this.activity = {}; }
+    this.activity = stored("activity", {});
     this.sample(cx);
     cx.timer.every(20000, (cx) => this.sample(cx));
     // The one copy that announces finished turns with background work left.

@@ -1,3 +1,4 @@
+import { stored, isRecord } from "./storage.js";
 import { appearance, fontSize, radius, labelFont, L } from "./appearance.js";
 // SPDX-License-Identifier: Apache-2.0
 // ProdAdvice for Herdr: customized interface and behavior, 2026. See NOTICE.
@@ -73,9 +74,12 @@ export class Spaces {
     this.pressed = null;
     this.over = null;
     this.machines = [];
-    this.reconnecting = JSON.parse(localStorage.getItem("machines.reconnecting") ?? "{}");
-    for (const state of Object.values(this.reconnecting)) state.busy = false;
-    this.folded = new Set(JSON.parse(localStorage.getItem("machines.folded") ?? "[]"));
+    this.reconnecting = stored("machines.reconnecting", {});
+    for (const [name, state] of Object.entries(this.reconnecting)) {
+      if (isRecord(state)) state.busy = false;
+      else delete this.reconnecting[name];
+    }
+    this.folded = new Set(stored("machines.folded", []));
     this.refreshMachines(cx);
     cx.timer.every(15000, cx => this.refreshMachines(cx));
     // Refresh only when the refs could have changed (see `due`).

@@ -2,6 +2,7 @@
 // One project tree for PA-Advanced. Spaces remain independent native workspaces.
 import { div, svg } from "gpui-kit";
 import { h_flex, v_flex } from "gpui-base";
+import { isRecord, listOr } from "./storage.js";
 import { spaces, machines, shared, setShared, exec, run, openOverlay, home, window, setAgentOrder } from "herdr";
 import { workspace, spaceLabel, join, within, native, thisComputer, shortcut } from "./filesystem.js";
 import { appearance, fontSize, labelFont, L, radius } from "./appearance.js";
@@ -40,9 +41,12 @@ const SECTION_STATUS = { 4: "blocked", 3: "done", 2: "working" };
 
 export class ProjectTree {
   init(cx) {
-    this.cache = shared(CACHE) ?? {};
-    this.folded = new Set(shared(FOLDS) ?? []);
+    const cache = shared(CACHE);
+    this.cache = isRecord(cache) ? cache : {};
+    this.folded = new Set(listOr(shared(FOLDS)));
     this.pending = new Set();
+    this.queue = new Map();
+    this.workers = 0;
     this.checked = new Map();
     this.pressed = null; // { kind, id, scope, moved } while a row is being dragged
     this.over = null;
@@ -61,16 +65,28 @@ export class ProjectTree {
     for (const e of this.entries()) {
       const on = e.space.machine ?? null, key = pathKey(on, e.cwd);
       if (!e.cwd || this.pending.has(key) || Date.now() - (this.checked.get(key) ?? 0) < 60000) continue;
-      this.pending.add(key);
-      this.checked.set(key, Date.now());
+      this.queue.set(key, { cwd: e.cwd, on });
+    }
+    while (this.queue.size && this.workers < 6) {
+      this.workers++;
       cx.spawn(async cx => {
         try {
-          const next = await inspectCheckout(exec, e.cwd, on, this.cache[key]);
-          this.cache[key] = next;
-          // Keep identities when a checkout's space closes or its machine goes away.
-          const saved = shared(CACHE) ?? {};
-          if (JSON.stringify(saved[key]) !== JSON.stringify(next)) setShared(CACHE, { ...saved, [key]: next });
-        } finally { this.pending.delete(key); cx.notify(); }
+          while (this.queue.size) {
+            const [key, { cwd, on }] = this.queue.entries().next().value;
+            this.queue.delete(key);
+            this.pending.add(key);
+            try {
+              const next = await inspectCheckout(exec, cwd, on, this.cache[key]);
+              this.cache[key] = next;
+              const saved = shared(CACHE) ?? {};
+              if (JSON.stringify(saved[key]) !== JSON.stringify(next)) setShared(CACHE, { ...saved, [key]: next });
+            } finally {
+              this.checked.set(key, Date.now());
+              this.pending.delete(key);
+              cx.notify();
+            }
+          }
+        } finally { this.workers--; }
       });
     }
   }
@@ -136,8 +152,8 @@ export class ProjectTree {
         setShared(CACHE, { ...(shared(CACHE) ?? {}), [key]: e.meta });
       }
     }
-    const projects = byOrder(projectGroups(entries), p => p.key, shared(PROJECT_ORDER) ?? []);
-    const sessionOrder = shared(SESSION_ORDER) ?? [];
+    const projects = byOrder(projectGroups(entries), p => p.key, listOr(shared(PROJECT_ORDER)));
+    const sessionOrder = listOr(shared(SESSION_ORDER));
     for (const p of projects) for (const c of p.checkouts) c.members = byOrder(c.members, a => a.address, sessionOrder);
     // Agents that are on screen, in their shown order, with the drag applied.
     this.reorderAgents = (shown, from, to) => {
@@ -272,7 +288,7 @@ export class ProjectTree {
     }
     const cwdOf = new Map(entries.map(e => [e.space.id, e.cwd]));
     const urgency = a => Math.max(ranks[a.status] ?? 0, ...owner.tree(all, a.address).map(s => ranks[owner.listed?.get(s.t.address) ?? s.t.status] ?? 0));
-    const manual = shared(SESSIONS_MANUAL) === true, order = shared(SESSION_ORDER) ?? [];
+    const manual = shared(SESSIONS_MANUAL) === true, order = listOr(shared(SESSION_ORDER));
     const all2 = projects.flatMap(p => p.checkouts.flatMap(c => c.members));
     const byUrgency = list => [...list].sort((x, y) => urgency(y) - urgency(x) || owner.since(y) - owner.since(x));
     // By hand: new sessions (not placed yet) come first, by urgency, then the placed ones.

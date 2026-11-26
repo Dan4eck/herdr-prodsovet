@@ -39,7 +39,8 @@ function element(){const state={};let proxy;proxy=new Proxy(state,{get:(o,k)=>k=
  if(k==='when'&&a[0])a[1](proxy);return proxy;
  }});return proxy;}
 const input=()=>({text:'',events:{},value(){return this.text},set_value(v){this.text=v},on(k,fn){this.events[k]=fn},focus(){},set_loading(){}});
-const host={spaces:()=>[{active:true,folder:'/repo',machine:null}],panes:()=>[],focused:()=>({cwd:'/repo'}),exec:async()=>{throw Error('Unexpected exec')},readTextFile:noop,watchFolder:noop,theme:()=>({}),settings:()=>({}),appHome:()=>'/app',layout:()=>shownLayout,window:()=>({active:true})};
+let activeDir='/repo', git=async()=>{throw Error('Unexpected exec')};
+const host={spaces:()=>[{active:true,folder:'/repo',machine:null}],panes:()=>[],focused:()=>({cwd:activeDir}),exec:(...args)=>git(...args),readTextFile:noop,watchFolder:noop,theme:()=>({}),settings:()=>({}),appHome:()=>'/app',layout:()=>shownLayout,window:()=>({active:true})};
 let shownLayout={id:'root',children:[{id:'panel',children:[{id:'panel-body',type:'stack',active:'changes',children:[{id:'files'},{id:'changes'}]}]}]};
 function shim(exports){return new vm.SyntheticModule(Object.keys(exports),function(){for(const[k,v]of Object.entries(exports))this.setExport(k,v)},{context});}
 const modules={
@@ -52,7 +53,7 @@ const panel=new vm.SourceTextModule(fs.readFileSync(new URL('../mods/prodsovet/c
 await panel.link(s=>modules[s]);await panel.evaluate();const {Changes}=panel.namespace;
 function setup(){
  const tasks=[];const cx={focus_handle:()=>({focus(){}}),notify:noop,stop_propagation:noop,timer:{every:noop,after:noop},spawn(fn){tasks.push(fn(cx))}};
- const p=new Changes();p.refresh=noop;p.init({},cx);p.root='/repo';p.context=JSON.stringify({cwd:'/repo',on:null});
+ const p=new Changes();p.refresh=noop;p.init({},cx);p.root='/repo';p.context={key:JSON.stringify({cwd:'/repo',on:null})};
  p.suggestion.value='Fix root discovery';p.suggestion.fingerprint='one';p.suggestion.call=async()=>snap();
  return {p,cx,tasks};
 }
@@ -79,7 +80,7 @@ await test('commit refuses an autofilled subject when the diff changed',async()=
  const {p,cx,tasks}=setup();p.syncSuggestion(cx);p.suggestion.call=async()=>snap('changed');p.commit(cx);await Promise.all(tasks);
  assert.equal(p.message,'');assert.match(p.note,/Changes updated/);assert.equal(p.busy,false);
 });
-console.log(`${n} commit suggestion tests passed`);
+
 await test('suggestions run only while the Changes panel is on screen',()=>{
  const tree=(hidden,active)=>({id:'root',children:[{id:'panel',hidden,children:[{id:'panel-body',type:'stack',active,children:[{id:'files'},{id:'changes'}]}]}]});
  assert.equal(changesShown(tree(false,'changes'),{active:true}),true);
@@ -94,3 +95,19 @@ await test('a hidden Changes panel schedules no generation and catches up when s
  p.render(cx);assert.equal(timers,0);
  shownLayout.children[0].children[0].active='changes';p.render(cx);assert.equal(timers,1);
 });
+
+await test('slow Git reads cannot block a new visit or overwrite it after returning to the original folder',async()=>{
+ const {p,cx,tasks}=setup(), pending=[];
+ delete p.refresh;
+ git=(_cmd,_args,{cwd})=>new Promise(resolve=>pending.push({cwd,resolve}));
+ activeDir='/a';p.refresh(cx);const first=p.context;
+ activeDir='/b';p.refresh(cx);
+ activeDir='/a';p.refresh(cx);
+ assert.deepEqual(pending.map(request=>request.cwd),['/a','/b','/a']);
+ assert.equal(p.current(first),false);
+ pending[0].resolve({code:1});pending[1].resolve({code:1});await Promise.all(tasks.slice(0,2));
+ assert.equal(p.loading,true);assert.equal(p.error,null);
+ pending[2].resolve({code:1});await tasks[2];assert.equal(p.loading,false);assert.match(p.error,/Not a git/);
+ activeDir='/repo';
+});
+console.log(`${n} commit suggestion tests passed`);

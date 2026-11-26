@@ -111,11 +111,21 @@ export default class Files extends View {
     else return;
     cx.stop_propagation(); cx.notify();
   }
+  close() {
+    this.context = null;
+    this.watcher?.cancel();
+  }
   watch(root, cx) {
     if (this.on || this.watched === root) return;
     this.watched = root; const c = this.context;
     cx.spawn(async cx => {
-      try { while (this.current(c)) { await watchFolder(root); if (this.current(c)) this.refresh(cx); } }
+      try {
+        while (this.current(c)) {
+          this.watcher = watchFolder(root);
+          const paths = await this.watcher;
+          if (paths.length && this.current(c)) this.refresh(cx);
+        }
+      }
       catch { if (this.context === c) this.watched = null; }
     });
   }
@@ -129,6 +139,7 @@ export default class Files extends View {
   refresh(cx) {
     const loc = location(), key = JSON.stringify(loc);
     if (this.context?.key !== key) {
+      this.watcher?.cancel();
       if (this.context) this.saved.set(this.context.key, { folders: this.folders, sel: this.sel });
       const saved = this.saved.get(key);
       this.context = { ...loc, key }; this.root = loc.cwd; this.on = loc.on;
@@ -206,7 +217,7 @@ export default class Files extends View {
         .on_mouse_down("right", (_e, cx) => { cx.stop_propagation(); this.sel = null; this.menu(); })
         .children(this.flat.map(e => {
           const selected = this.sel === e.path, open = this.folders.has(e.path), mark = this.marks[join(this.root, e.path)];
-          return h_flex().id(`file-${e.path}`).h(metric("files.row")).flex_none().pl(6 + (this.query ? 0 : e.depth * 16)).pr(5).gap(6).items_center().rounded(radius(6)).cursor_pointer()
+          return h_flex().id(`file-${e.path}`).drag_paths([join(this.root, e.path)], { on: this.on }).h(metric("files.row")).flex_none().pl(6 + (this.query ? 0 : e.depth * 16)).pr(5).gap(6).items_center().rounded(radius(6)).cursor_pointer()
             .when(selected && !style("agency"), el => el.bg(t.selected).when(style("selectionBar"), sel => sel.border_l(2).border_color(t.accent).pl(4 + (this.query ? 0 : e.depth * 16))))
             .when(selected && Boolean(style("agency")), el => selectedRow(el, t, kindColor(t, fileKind(e.name, e.dir))))
             .hover(s => s.bg(t.hover))
@@ -215,8 +226,7 @@ export default class Files extends View {
             .child(e.dir ? svg(`mods/my-files/chevron-${open ? "down" : "right"}.svg`).size(10).text_color(t.dim) : div().w(10))
             .child((() => { const g = fileGlyph(t, e.name, e.dir); return svg(g.path).size(g.size).mx(g.size < 14 ? 1 : 0).flex_none().text_color(g.color); })())
             .child(div().flex_1().min_w(0).truncate().tooltip(e.path).child(this.query ? e.path : e.name))
-            .when(Boolean(mark), el => el.child(div().text_size(fontSize("files.badge")).text_color(mark === "A" ? t.ansi2 : t.blocked).child(mark)))
-            .when(selected, el => el.child(button(`insert-${e.path}`, "@", (_ev, cx) => { cx.stop_propagation(); cx.spawn(cx => this.insert(e.path, cx)); })));
+            .when(Boolean(mark), el => el.child(div().text_size(fontSize("files.badge")).text_color(mark === "A" ? t.ansi2 : t.blocked).child(mark)));
         }))
         .when(Boolean(this.error) || !this.flat.length, el => el.child(div().p(8).text_size(fontSize("files.hint")).text_color(t.dim).child(this.error || (this.loading ? L("Loading…", "Загрузка…") : this.query ? L("No matches in the expanded tree", "Нет совпадений в раскрытом дереве") : L("Empty folder", "Папка пуста"))))))
       .when(this.limited, el => el.child(div().p(6).text_size(fontSize("files.badge")).text_color(t.dim).child(L(`Limit: 500 per folder / 5000 total. Search: ${shortcut("⌘⇧O", "Ctrl+Shift+S")}`, `Лимит: 500 в папке / 5000 всего. Поиск: ${shortcut("⌘⇧O", "Ctrl+Shift+S")}`))))

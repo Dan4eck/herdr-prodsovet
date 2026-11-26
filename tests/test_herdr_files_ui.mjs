@@ -8,18 +8,35 @@ import {spawnSync} from 'node:child_process';
 const app=fileURLToPath(new URL('..',import.meta.url)).replace(/\/$/,''), root=fs.mkdtempSync(path.join(os.tmpdir(),'herdr-files-ui-test-'));
 const shared=new Map([['ui.lang','ru']]), storage=new Map(), calls=[]; // assertions read the Russian strings
 let props={}, focus={space:'test',tab:'terminal',terminal:'t1'}, space={id:'test',active:true,folder:root,machine:null,tabs:[{id:'terminal',name:'Terminal'},{id:'file',name:'sample.md'}]};
-const extraSpaces=[];
+const extraSpaces=[], watches=[], reads=[];
 let appIconCode=3; // no app found unless a test says otherwise
 const allPanes=[{tab:'terminal',terminal:'t1',cwd:root},{tab:'file',mod:'file-tab',cwd:null}];
 const input=({value='' }={})=>({text:value, value(){return this.text},set_value(v){this.text=v},on(){},focus(){},release(){},set_selected_range(){}});
-const element=()=>new Proxy({}, {get:(_,key)=>key==='then'?undefined:(...args)=>key==='when'?(args[0]?args[1](element()):element()):element()});
+const uiIds=[], drags=[];
+function element(){
+  const proxy=new Proxy({}, {get:(_,key)=>key==='then'?undefined:(...args)=>{
+    if(key==='when' && args[0]) args[1](proxy);
+    if(key==='id') uiIds.push(args[0]);
+    if(key==='drag_paths') drags.push({paths:[...args[0]],on:args[1].on});
+    return proxy;
+  }});
+  return proxy;
+}
 const theme=()=>({background:'#111111',selection:'#222222',foreground:'#eeeeee',hover:'#333333'});
 const host={
   spaces:()=>[space,...extraSpaces],panes:()=>allPanes,focused:()=>focus,home:()=>os.homedir(),
   shared:k=>shared.get(k),setShared:(k,v)=>shared.set(k,v),props:()=>props,theme,settings:()=>({font_family:'mono'}),
   run:(name,args)=>calls.push({name,args}),openOverlay:p=>calls.push({overlay:p}),closeOverlay:id=>calls.push({close:id}),notify:n=>calls.push({notify:n}),
   appHome:()=>app,window:()=>({platform:process.platform==='win32'?'windows':'macos'}),nextCommand:()=>new Promise(()=>{}),
-  readTextFile:async p=>fs.existsSync(p)?fs.readFileSync(p,'utf8'):null,
+  watchFolder:dir=>{
+    let deliver, fail;
+    const watch=new Promise((resolve,reject)=>{deliver=resolve;fail=reject});
+    const entry={dir,deliver,fail,cancelled:false};
+    watch.cancel=()=>{entry.cancelled=true;deliver([])};
+    watches.push(entry);
+    return watch;
+  },
+  readTextFile:async p=>{reads.push(p);return fs.existsSync(p)?fs.readFileSync(p,'utf8'):null},
   writeTextFile:async(p,text,expected)=>{assert.equal(fs.existsSync(p)?fs.readFileSync(p,'utf8'):null,expected);fs.writeFileSync(p,text)},
   exec:async(command,args)=>{if(args?.[2]==='app-icon'){calls.push({appIcon:args[3],out:args[5]});return {code:appIconCode,stdout:'',stderr:''};}const r=spawnSync(command,args,{encoding:'utf8'});return {code:r.status,stdout:r.stdout??'',stderr:r.stderr??''}},
 };
@@ -28,10 +45,11 @@ const cache=new Map();
 function synthetic(name,exports){const m=new vm.SyntheticModule(Object.keys(exports),function(){for(const[k,v]of Object.entries(exports))this.setExport(k,v)},{context:ctx,identifier:name});cache.set(name,m);return m;}
 synthetic('herdr',host);
 synthetic('gpui-kit',{View:class {},div:element,svg:element,image:element});
-synthetic('gpui-base',{v_flex:element,h_flex:element,InputState:{new:input},Input:{new:element},EditorState:{new:input},Editor:{new:element},TextView:{markdown:element},set_theme(){}});
+synthetic('gpui-base',{v_flex:element,h_flex:element,ScrollHandle:{new:()=>({})},InputState:{new:input},Input:{new:element},EditorState:{new:input},Editor:{new:element},TextView:{markdown:element},set_theme(){}});
 async function load(name){if(path.isAbsolute(name))name=path.resolve(name); /* one identity per file on Windows too */ if(cache.has(name))return cache.get(name);const m=new vm.SourceTextModule(fs.readFileSync(name,'utf8'),{context:ctx,identifier:name});cache.set(name,m);await m.link((specifier,ref)=>load(specifier.startsWith('.')?path.resolve(path.dirname(ref.identifier),specifier):specifier));return m;}
 const ui=await load(app+'/mods/my-files/dialogs.js');await ui.evaluate();
 const ft=await load(app+'/mods/file-tab/main.js');await ft.evaluate();
+const treeModule=await load(app+'/mods/my-files/main.js');await treeModule.evaluate();
 const api=(await load(app+'/mods/my-files/filesystem.js')).namespace;
 const newCx=()=>({theme:()=>({appearance:"dark",colors:{accent:"#000000"},spacing:{},radius:{}}),tasks:[],focus_handle:()=>({focus(){}}),notify(){},stop_propagation(){},timer:{after(){},every(){}},spawn(fn){const p=fn(this);this.tasks.push(p);return p;}});
 let n=0;
@@ -78,6 +96,50 @@ try {
     assert.equal(JSON.parse(editor.editorStyle).font_size,17);
     shared.set('layout','PA-Light');const restore=newCx();editor.refreshEditorStyle(restore);await Promise.all(restore.tasks);
     assert.equal(editor.code.value(),'profile-safe draft');assert.equal(JSON.parse(editor.editorStyle).font_size,13);
+  });
+  const settle=()=>new Promise(resolve=>setImmediate(resolve));
+  await test('file rows and the editor title drag absolute paths with their source machine',()=>{
+    const tree=new treeModule.namespace.default();
+    tree.context={key:tree.where()};tree.revision=shared.get('files.revision');
+    tree.root='/project';tree.on='builder';tree.folders=new Set();tree.marks={};tree.sel='a b.md';
+    tree.entries=new Map([['',[{name:'a b.md',dir:false},{name:'assets',dir:true}]]]);
+    uiIds.length=0;drags.length=0;
+    tree.render(newCx());
+    assert.deepEqual(drags,[{paths:['/project/a b.md'],on:'builder'},{paths:['/project/assets'],on:'builder'}]);
+    assert.ok(!uiIds.some(id=>id.startsWith('insert-')));
+    editor.render(newCx());
+    assert.deepEqual(drags.at(-1),{paths:[editor.file],on:null});
+    assert.ok(!uiIds.includes('ft-agent'));
+  });
+  await test('local editor reads on file events, preserves drafts and cancels its old watch on move',async()=>{
+    const file=path.join(root,'watch.md');fs.writeFileSync(file,'before');
+    const local=new ft.namespace.default(), cx=newCx();
+    Object.assign(local,{file,on:null,editable:true,original:'before',code:input({value:'before'})});
+    local.watchDisk(cx);await settle();const baseline=reads.length;
+    watches.at(-1).deliver([path.join(root,'else.md')]);await settle();
+    assert.equal(reads.length,baseline);
+    fs.writeFileSync(file,'external');watches.at(-1).deliver([file]);await settle();
+    assert.equal(local.code.value(),'external');assert.equal(reads.length,baseline+1);
+    local.code.set_value('draft');fs.writeFileSync(file,'newer');
+    watches.at(-1).deliver([file]);await settle();assert.equal(local.code.value(),'draft');
+    local.code.set_value('external');local.watchDisk(cx);await settle();assert.equal(local.code.value(),'newer');
+    const old=watches.at(-1);local.file=path.join(root,'folder','moved.md');local.watchDisk(cx);await settle();
+    assert.ok(old.cancelled);assert.equal(watches.at(-1).dir,path.dirname(local.file));
+    const last=watches.at(-1);await local.close();assert.ok(last.cancelled);
+  });
+  await test('failed local watches retry and remote documents poll without local watches',async()=>{
+    const file=path.join(root,'fallback.md'), timers=[], cx=newCx();
+    cx.timer.after=(ms,fn)=>timers.push({ms,fn});
+    for(const on of [null,'builder']){
+      fs.writeFileSync(file,'before');const local=new ft.namespace.default();
+      Object.assign(local,{file,on,editable:!on,original:'before',code:input({value:'before'})});
+      const before=watches.length;local.watchDisk(cx);await settle();
+      if(on) assert.equal(watches.length,before);
+      else {watches.at(-1).fail(Error('watch limit'));await settle();}
+      const timer=timers.shift();assert.equal(timer.ms,5000);
+      fs.writeFileSync(file,'after');timer.fn(cx);await settle();assert.equal(local.code.value(),'after');
+      await local.close();timers.length=0;
+    }
   });
   await test('hot reload retains unsaved recovery state',async()=>{editor.syncDocument();editor.code.set_value('close recovery');await editor.close();assert.equal(JSON.parse(storage.get('draft')).text,'close recovery');});
   await test('closing a tab removes its document registration',async()=>{const index=allPanes.findIndex(p=>p.tab===editor.tab);allPanes.splice(index,1);await editor.close();assert.ok(!shared.get('files.documents')[editor.tab]);});

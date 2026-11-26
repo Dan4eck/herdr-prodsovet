@@ -1,3 +1,4 @@
+import { stored, isRecord } from "./storage.js";
 import { appearance, fontSize, metric, radius, style, labelFont, L } from "./appearance.js";
 // SPDX-License-Identifier: Apache-2.0
 // ProdAdvice for Herdr: customized interface and behavior, 2026. See NOTICE.
@@ -5,6 +6,7 @@ import { appearance, fontSize, metric, radius, style, labelFont, L } from "./app
 
 import { div, image, svg } from "gpui-kit";
 import { word, artFrame, artPath, artKind, ART_FRAMES } from "./creatures.js";
+import { conversationTitle } from "./antigravity-titles.js";
 import { spaceLabel } from "./filesystem.js";
 import { ProjectTree } from "./projects.js";
 import { agency, accentOf, activitySpinner, googleActivityColor, current, onRail, hovered, glitchy, halftone, typed, px, icon as assetIcon, settled } from "./agency.js";
@@ -32,7 +34,10 @@ function toggleSidebar() {
   run("layout.resize", { id: "sidebar", px: narrow() ? (shared("sidebar.width") ?? 268) : window()?.platform === "macos" ? 76 : 44 });
 }
 
-const clean = (s) => (s ?? "").replace(/^[^\p{L}\p{N}]+/u, "").trim();
+// Drops what an agent puts before its title: a status glyph or spinner and the separator
+// after it ("✦  Working", "⠋ - Thinking"), and Codex's blinking "[ ! ] " / "[ . ] " mark.
+// Stops at an opening bracket or quote, so a title that starts with one ("[web] login") keeps it.
+const clean = (s) => (s ?? "").replace(/^[^\p{L}\p{N}\p{Ps}\p{Pi}]+/u, "").replace(/^\[ [!.] \] /, "").trim();
 
 function leadPanes(all) {
   const leads = new Map();
@@ -56,12 +61,21 @@ function codexName(raw) {
   return parts.join(" | ");
 }
 
-function title(tab, l) {
+function sameId(live, l) {
+  const id = l?.terminal ?? l?.address;
+  if (!id) return false;
+  const bare = id.includes("/") ? id.split("/").pop() : id;
+  return live === id || live === bare;
+}
+
+function title(tab, l, terminal) {
+  const conversation = conversationTitle(l, terminal);
+  if (conversation && (!tab.named || tab.name === l.program.name)) return conversation;
   const prog = l?.program?.name;
   const live = clean(codexName(l?.title));
   // clean() would strip a path's leading ~ or /: test the title with only its status glyph gone.
   const path = /^[~/]|^[A-Za-z]:\\/.test((l?.title ?? "").replace(/^[^\p{L}\p{N}~/]+/u, ""));
-  const telling = live && live !== prog && !path && !live.includes("@") && live.toLowerCase() !== l?.program?.key;
+  const telling = live && !sameId(live, l) && live !== prog && !path && !live.includes("@") && live.toLowerCase() !== l?.program?.key;
   return (tab.name === prog || !tab.named) && telling ? live : tab.name;
 }
 const RANK = { blocked: 4, done: 3, working: 2, idle: 1 };
@@ -71,6 +85,7 @@ const kidStatus = (k, listed) => {
   const s = listed.get(k.address) ?? settled(k.status, k.address);
   return s === "error" ? "blocked" : s === "done" ? "idle" : s;
 };
+const showChildStatus = status => status === "working" || status === "blocked";
 const SORTS = [
   { id: "priority", label: () => L("By urgency", "По срочности"), icon: "clock" },
   { id: "grouped", label: () => L("By space", "По пространствам"), icon: "layers" },
@@ -100,8 +115,11 @@ export class Agents {
     this.folded = new Set();
     if (props()?.role === "projects") { this.projects = new ProjectTree(); this.projects.init(cx); }
     // Each agent's last state and when it changed (ms), kept across restarts.
-    this.changed = JSON.parse(localStorage.getItem("changed") ?? "{}");
-    this.pendingPins = JSON.parse(localStorage.getItem("pins") ?? "[]");
+    this.changed = stored("changed", {});
+    for (const [address, change] of Object.entries(this.changed)) {
+      if (!isRecord(change)) delete this.changed[address];
+    }
+    this.pendingPins = stored("pins", []).filter(address => typeof address === "string");
     if (!this.pendingPins.length) localStorage.removeItem("pins");
     this.migratingPins = new Set();
     cx.timer.every(30000, (cx) => cx.notify());
@@ -254,29 +272,21 @@ export class Agents {
       .when(agency(), el => el.child(div().flex_none().mr(5).font_family(appearance().fonts.mono)
         .text_color(st === "working" ? google ?? accentOf(k.program, t) : t.input)
         .child(s.lines.map((l, i) => (i === s.lines.length - 1 ? `${l}─` : l ? `${l} ` : "  ")).join(""))))
-      .child(div().flex_1().truncate().text_color(on ? t.foreground : t.muted).child(k.name || k.template || k.program?.name || k.address))
-      .when(this.hoveredSub === k.address, el => el.child(this.subActions(t, k)))
-      .child(this.status(t, { ...k, status: st }, compact, google));
+      .child(div().flex_1().truncate().text_color(on ? t.foreground : t.muted).child(k.name || conversationTitle(k, k) || k.template || k.program?.name || k.address))
+      .when(this.hoveredSub === k.address, el => el.child(this.subMenuButton(t, k)))
+      .when(showChildStatus(st), el => el.child(this.status(t, { ...k, status: st }, compact, google)));
   }
 
-  // Hovered sub-agent: detach it into a tab (or send a detached one back under
-  // its parent), and the menu with everything else, stopping included.
-  subActions(t, k) {
-    const kept = panes().some(p => p.terminal === k.address);
-    const action = (id, glyph, hint, act) => div().id(`${id}-${k.address}`).size(20).flex_none().flex().items_center().justify_center()
-      .rounded(radius(4)).text_color(t.dim).cursor_pointer().hover(s => s.bg(t.hover).text_color(t.foreground)).tooltip(hint)
+  subMenuButton(t, k) {
+    return div().id(`sub-more-${k.address}`).size(20).mr(4).flex_none().flex().items_center().justify_center()
+      .rounded(radius(4)).text_color(t.dim).cursor_pointer().hover(s => s.bg(t.hover).text_color(t.foreground)).tooltip(L("More…", "Ещё…"))
       .on_mouse_down("left", (_e, cx) => cx.stop_propagation())
-      .on_click((_e, cx) => { cx.stop_propagation(); act(); })
-      .child(svg(px(glyph)).size(15));
-    return h_flex().flex_none().gap(1).mr(4).items_center()
-      .child(kept
-        ? action("sub-park", "fold-down", L("Send back under its parent", "Вернуть под родителя"), () => run("terminal.park", { terminal: k.address }))
-        : action("sub-detach", "layers", L("Detach to a tab", "Открепить во вкладку"), () => run("terminal.keep", { terminal: k.address, place: "tab" })))
-      .child(action("sub-more", "more", L("More…", "Ещё…"), () => this.subMenu(k.address)));
+      .on_click((_e, cx) => { cx.stop_propagation(); this.subMenu(k.address, true); })
+      .child(svg(px("more")).size(15));
   }
 
-  subMenu(address) {
-    openOverlay({ mod: "prodsovet", kind: "popup", width: 270, props: { role: "sub-menu", terminal: address } });
+  subMenu(address, allowDetach = false) {
+    openOverlay({ mod: "prodsovet", kind: "popup", width: 270, props: { role: "sub-menu", terminal: address, allowDetach } });
   }
 
   // compact: a ! for blocked where a header already says "Needs you".
@@ -389,10 +399,15 @@ export class Agents {
     // Read the pane snapshot once: every host read copies the whole list into JS.
     const leads = leadPanes(panes());
     const tabs = new Map(spaces().flatMap(s => s.tabs).map(tab => [tab.id, tab]));
+    const fallback = (a) => {
+      const live = clean(codexName(a.title));
+      return (live && !sameId(live, a) ? live : "") || a.program?.name || "";
+    };
     const labels = new Map(list.map(a => {
       const tab = tabs.get(a.tab);
       const many = tabCounts.get(a.tab) > 1;
-      return [a.address, tab ? title(many ? { ...tab, named: false } : tab, many ? a : leads.get(a.tab)) : (codexName(a.title) || a.program?.name || "")];
+      const lead = many ? a : leads.get(a.tab);
+      return [a.address, tab ? title(many ? { ...tab, named: false } : tab, lead, live.get(lead?.terminal ?? a.address)) : conversationTitle(a, live.get(a.address)) || fallback(a)];
     }));
     const label = (a) => labels.get(a.address);
     const detail = new Map(list.map(a => [a.address, /^\d+$/.test(label(a)) ? null : label(a)]));
@@ -407,6 +422,8 @@ export class Agents {
       const more = detail.get(a.address);
       // An agent on another machine (`vps/t7`) says which.
       const machine = a.address.includes("/") ? a.address.split("/")[0] : null;
+      const isChild = Boolean(live.get(a.address)?.parent);
+      const childMenu = el => el.on_mouse_down("right", (_e, cx) => { cx.stop_propagation(); this.subMenu(a.address); });
       if (collapsed) {
         return h_flex()
           .id(`ag-${a.address}`)
@@ -417,8 +434,9 @@ export class Agents {
           .gap(4)
           .hover((s) => s.bg(t.hover))
           .on_click(() => run("pane.focus", { pane: a.pane }))
+          .when(isChild, childMenu)
           .child(div().flex_1().min_w(0).whitespace_nowrap().text_right().text_color(t.muted).child(String(i + 1)))
-          .child(h_flex().w(14).flex_none().items_center().justify_center().child(this.status(t, a, true, googleActivityColor(a, live))));
+          .when(!isChild || showChildStatus(a.status), el => el.child(h_flex().w(14).flex_none().items_center().justify_center().child(this.status(t, a, true, googleActivityColor(a, live)))));
       }
       const when = this.since(a);
       // PA-Advanced: only the session that really has the window's focus is current.
@@ -446,7 +464,8 @@ export class Agents {
       // Under a space header the space goes without saying; an automatic tab number says nothing.
       // Without a space header above (priority, pinned) the row names its space.
       const full = byPriority || (isPinned && !this.projects);
-      const name = full ? a.space_name || label(a) : more ?? (/^\d+$/.test(label(a)) ? a.program?.name || label(a) : label(a));
+      const raw = more ?? label(a);
+      const name = full ? a.space_name || label(a) : /^\d+$/.test(raw) ? (a.program?.name ? (more ? `${a.program.name} ${more}` : a.program.name) : raw) : raw;
       const art = this.hasArt && (!this.projects || artKind(a.program?.key) !== "other");
       const tint = t[a.status] ?? t.dim;
       const own = agency() ? accentOf(a.program, t) : t.accent;
@@ -470,6 +489,7 @@ export class Agents {
           cx.notify();
         })
         .on_click(() => run("pane.focus", { pane: a.pane }))
+        .when(isChild, childMenu)
         // PA-Advanced: the project tree makes cards draggable (reorder).
         .when(Boolean(this.dragCard), el => this.dragCard(el, a))
         .child(div().id(`agent-fold-${a.address}`).flex_none().w(52).flex().items_center().justify_center()

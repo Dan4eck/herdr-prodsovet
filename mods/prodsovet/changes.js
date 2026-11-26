@@ -15,7 +15,7 @@ function location() {
   const space = spaces().find((s) => s.active), f = focused();
   const pane = f?.pane ? panes().find(p => p.pane === f.pane) : null;
   const on = f?.pane === null ? (f.terminal?.includes("/") ? f.terminal.split("/")[0] : null) : space?.machine ?? null;
-  return { cwd: pane?.cwd || f?.cwd || space?.folder, on };
+  return { cwd: pane?.cwd || f?.cwd || space?.folder, on, space: space?.id };
 }
 const key = () => JSON.stringify(location());
 const changesShown = () => shownIn(layout(), window());
@@ -63,33 +63,51 @@ export class Changes {
     cx.timer.every(10000, (cx) => this.refresh(cx));
   }
 
+  current(context) {
+    return this.context === context && context?.key === key();
+  }
+
+  close() {
+    this.context = null;
+    this.watcher?.cancel();
+  }
+
   watch(root, cx) {
     if (this.on || this.watched === root) return;
+    this.watcher?.cancel();
     this.watched = root;
-    cx.spawn(async (cx) => {
+    const context = this.context;
+    cx.spawn(async cx => {
       try {
-        while (this.watched === root) {
-          await watchFolder(root);
-          if (this.watched === root) this.refresh(cx);
+        while (this.current(context) && this.watched === root) {
+          this.watcher = watchFolder(root);
+          const paths = await this.watcher;
+          if (paths.length && this.current(context)) this.refresh(cx);
         }
-      } catch { this.watched = null; }
+      } catch { /* The periodic refresh retries unavailable watches. */ } finally {
+        if (this.context === context && this.watched === root) this.watched = null;
+      }
     });
   }
 
   refresh(cx) {
-    if (this.loading || this.busy) return;
-    const { cwd, on } = location(), context = key();
-    if (context !== this.context) {
+    const place = location(), { cwd, on } = place, next = JSON.stringify(place);
+    if (next !== this.context?.key) {
+      this.watcher?.cancel();
+      this.watched = null;
       this.suggestion.reset(); this.suggestSeq = (this.suggestSeq ?? 0) + 1;
-      this.context = context; this.root = null; this.files = []; this.open = null;
-      this.setLines([]); this.setMessage("", "empty"); this.error = null; this.note = null; this.watched = null; this.closed = false; this.limited = false;
+      this.context = { key: next }; this.root = null; this.files = []; this.open = null;
+      this.loading = false;
+      this.input.set_loading(false);
+      this.setLines([]); this.setMessage("", "empty"); this.error = null; this.note = null; this.closed = false; this.limited = false;
     }
-    if (!cwd) return;
+    if (!cwd || this.loading || this.busy) return;
+    const context = this.context;
     this.loading = true;
     cx.spawn(async (cx) => {
       try {
         const top = await exec("git", ["rev-parse", "--show-toplevel"], { cwd, on });
-        if (key() !== context) return;
+        if (!this.current(context)) return;
         if (top.code !== 0) { this.root = null; this.files = []; this.setLines([]); this.open = null; this.error = L("Not a git repository", "Не git-репозиторий"); return; }
         const root = top.stdout.trim(), git = (args) => exec("git", [...READ, ...args], { cwd: root, on });
         const status = await git(["status", "--porcelain=v1", "-z", "--no-renames", "--untracked-files=all"]);
@@ -115,7 +133,7 @@ export class Changes {
           const stat = stats[path] ?? { add: 0, del: 0 };
           files.push({ path, status: s, fresh, ...stat });
         }
-        if (key() !== context) return;
+        if (!this.current(context)) return;
         this.root = root; this.on = on; this.hasHead = head.code === 0; this.files = files; this.limited = entries.length > 1000; this.error = null;
         this.watch(root, cx);
         if (this.open && !files.some((f) => f.path === this.open)) { this.open = null; this.setLines([]); }
@@ -123,11 +141,11 @@ export class Changes {
         if (!this.open && !this.closed && files.length) this.open = files[0].path;
         if (this.open) {
           try { await this.load(this.open, context); }
-          catch { if (key() === context) this.setLines([L("Cannot preview this diff (too large or unreadable)", "Diff не показать (слишком большой или нечитаемый)")]); }
+          catch { if (this.current(context)) this.setLines([L("Cannot preview this diff (too large or unreadable)", "Diff не показать (слишком большой или нечитаемый)")]); }
         }
-        if (key() === context) this.suggest(cx);
-      } catch (e) { if (key() === context) this.error = String(e); }
-      finally { this.loading = false; cx.notify(); }
+        if (this.current(context)) this.suggest(cx);
+      } catch (e) { if (this.current(context)) this.error = String(e); }
+      finally { if (this.context === context) this.loading = false; cx.notify(); }
     });
   }
 
@@ -141,9 +159,9 @@ export class Changes {
     const seq = this.suggestSeq = (this.suggestSeq ?? 0) + 1;
     const context = this.context, root = this.root;
     cx.timer.after(1500, cx => {
-      if (seq !== this.suggestSeq || this.context !== context || key() !== context || this.messageOrigin === "manual" || this.busy || !changesShown()) return;
+      if (seq !== this.suggestSeq || !this.current(context) || this.messageOrigin === "manual" || this.busy || !changesShown()) return;
       cx.spawn(async cx => this.suggestion.update(root, L("en", "ru"),
-        () => this.context === context && key() === context && !this.busy,
+        () => this.current(context) && !this.busy,
         () => this.syncSuggestion(cx)));
     });
   }
@@ -154,7 +172,7 @@ export class Changes {
   }
 
   syncSuggestion(cx) {
-    if (this.context !== key()) return;
+    if (!this.current(this.context)) return;
     if (this.messageOrigin !== "manual" && !this.busy) {
       if (!this.suggestion.busy && this.suggestion.value) this.setMessage(this.suggestion.value, "auto");
       else if (!this.suggestion.value && this.messageOrigin === "auto") this.setMessage("", "empty");
@@ -181,7 +199,7 @@ export class Changes {
       const all = r.stdout.replace(/\n$/, "").split("\n"), first = all.findIndex((l) => l.startsWith("@@"));
       lines = first < 0 ? [file.binary ? L("Binary file changed", "Бинарный файл изменён") : L("No text diff available", "Текстового diff нет")] : all.slice(first);
     }
-    if (key() === context && this.open === path) this.setLines(lines.slice(0, 1500).map(line => line.length > 4000 ? line.slice(0, 4000) + "… (line truncated)" : line));
+    if (this.current(context) && this.open === path) this.setLines(lines.slice(0, 1500).map(line => line.length > 4000 ? line.slice(0, 4000) + "… (line truncated)" : line));
   }
 
   setLines(lines) {
@@ -195,14 +213,14 @@ export class Changes {
     const context = this.context;
     if (this.open) cx.spawn(async (cx) => {
       try { await this.load(path, context); }
-      catch (e) { if (key() === context && this.open === path) this.note = `${L("Cannot preview this diff", "Diff не показать")}: ${e}`; }
+      catch (e) { if (this.current(context) && this.open === path) this.note = `${L("Cannot preview this diff", "Diff не показать")}: ${e}`; }
       cx.notify();
     });
     cx.notify();
   }
 
   commit(cx) {
-    if (!this.message.trim() || !this.root || this.busy || this.loading || this.context !== key()) return;
+    if (!this.message.trim() || !this.root || this.busy || this.loading || !this.current(this.context)) return;
     const root = this.root, on = this.on, context = this.context, message = this.message.trim();
     const automatic = this.messageOrigin === "auto", fingerprint = this.suggestion.fingerprint;
     if (automatic && this.suggestion.busy) return;
@@ -211,7 +229,7 @@ export class Changes {
       try {
         if (automatic) {
           const latest = await this.suggestion.call("snapshot", root);
-          if (key() !== context) return;
+          if (!this.current(context)) return;
           if (latest.fingerprint !== fingerprint || latest.empty || latest.conflict) {
             this.setMessage("", "empty"); this.suggestion.reset();
             this.note = L("Changes updated; refreshing the message", "Изменения обновились; составляю новое сообщение");
@@ -222,8 +240,8 @@ export class Changes {
           const r = await exec("git", args, { cwd: root, on });
           if (r.code !== 0) throw new Error((r.stderr || r.stdout).trim());
         }
-        if (key() === context) { this.setMessage("", "empty"); this.suggestion.reset(); }
-      } catch (e) { if (key() === context) this.note = `${L("Commit failed", "Коммит не прошёл")}: ${e}`; }
+        if (this.current(context)) { this.setMessage("", "empty"); this.suggestion.reset(); }
+      } catch (e) { if (this.current(context)) this.note = `${L("Commit failed", "Коммит не прошёл")}: ${e}`; }
       finally { this.busy = false; this.refresh(cx); cx.notify(); }
     });
     cx.notify();
@@ -237,7 +255,7 @@ export class Changes {
   }
 
   render(cx) {
-    if (key() !== this.context) this.refresh(cx);
+    if (!this.current(this.context)) this.refresh(cx);
     // Back on screen: catch up on the diff that changed while hidden.
     const shown = changesShown();
     if (shown && this.shown === false && !this.loading) this.suggest(cx);

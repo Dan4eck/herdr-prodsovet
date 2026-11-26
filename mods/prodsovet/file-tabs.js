@@ -1,7 +1,9 @@
+import { stored, listOr } from "./storage.js";
 import { appearance, fontSize, metric, radius, L, advanced } from "./appearance.js";
 import { agency, accentOf, activitySpinner, googleActivityColor, selected as selectedLook, hovered, icon, settled } from "./agency.js";
 // SPDX-License-Identifier: Apache-2.0
 // ProdAdvice for Herdr: customized interface and behavior, 2026. See NOTICE.
+import { conversationTitle } from "./antigravity-titles.js";
 import { checkoutContext, selectProjectTab, nextProjectTab, openSessionMenu } from "./project-context.js";
 import { View, div, svg, image } from "gpui-kit";
 import { h_flex, ScrollHandle } from "gpui-base";
@@ -20,7 +22,7 @@ export default class Tabs extends View {
   init() {
     this.pressed = null;
     this.scroll = ScrollHandle.new();
-    this.panels = JSON.parse(localStorage.getItem("panels") ?? "{}");
+    this.panels = stored("panels", {});
   }
 
   // The side panel is remembered per space: switching shows that space's choice
@@ -81,7 +83,8 @@ export default class Tabs extends View {
       const status = busy.length && !working.length ? "idle" : c.status;
       const source = working.find(p => p.focused) ?? working[0] ?? lead;
       const automatic = !c.named && (/^\d+$/.test(c.name) || /^tb\d+$/.test(c.name));
-      const name = unified && automatic ? (program?.agent ? program.name : L("Terminal", "Терминал")) + ` ${i + 1}` : /^tb\d+$/.test(c.name) ? program?.name ?? "Terminal" : c.name;
+      const conversation = (!c.named || c.name === program?.name) && conversationTitle(lead, byAddress.get(lead?.terminal));
+      const name = conversation || (unified && automatic ? (program?.agent ? program.name : L("Terminal", "Терминал")) + ` ${i + 1}` : /^tb\d+$/.test(c.name) ? program?.name ?? "Terminal" : c.name);
       // Agency: the active tab has the one neutral selected fill.
       const deco = agency() && c.active;
       return h_flex().id(`tab-${c.id}`).h(metric("tabs.row")).px(10).gap(7).rounded(radius(7)).items_center().flex_none().text_size(fontSize("tabs.body"))
@@ -98,7 +101,11 @@ export default class Tabs extends View {
             run("tab.move", { id: shown[from].id, index: owner.tabs.findIndex(x => x.id === c.id) + 1 });
           } else selectProjectTab(c);
         })
-        .on_mouse_down("right", (_e, cx) => { cx.stop_propagation(); openOverlay({ mod: "prodsovet", kind: "popup", width: 200, props: { role: "tab-menu", tab: "tab", target: { id: c.id, space: c.owner } } }); })
+        .on_mouse_down("right", (_e, cx) => {
+          cx.stop_propagation();
+          const hasChild = tabPanes.some(p => byAddress.get(p.terminal)?.parent);
+          openOverlay({ mod: "prodsovet", kind: "popup", width: hasChild ? 320 : 200, props: { role: "tab-menu", tab: "tab", target: { id: c.id, space: c.owner } } });
+        })
         .when(Boolean(program?.icon), el => el.child(program.tint ? svg(program.icon).size(14).text_color(t.muted) : image(program.icon).size(14)))
         .child(div().max_w(170).truncate().child(c.zoomed ? `${name} Z` : name))
         .when(status === "working", el => el.child(activitySpinner(googleActivityColor(source, byAddress), agency() ? accentOf(source?.program, t) : t.working)))
@@ -115,14 +122,14 @@ export default class Tabs extends View {
     // Agency profiles enable Changes and GitHub once, then Issues once (shared
     // "workspace.panels"; "prodsovet.panels" counts which of these already ran).
     if (agency() && (shared("prodsovet.panels") ?? 0) < 1 && find(root, "github")) {
-      setShared("workspace.panels", [...new Set([...(shared("workspace.panels") ?? ["files"]), "changes", "github"])]);
+      setShared("workspace.panels", [...new Set([...listOr(shared("workspace.panels"), ["files"]), "changes", "github"])]);
       setShared("prodsovet.panels", 1);
     }
     if (agency() && (shared("prodsovet.panels") ?? 0) < 2 && find(root, "issues")) {
-      setShared("workspace.panels", [...new Set([...(shared("workspace.panels") ?? ["files"]), "issues"])]);
+      setShared("workspace.panels", [...new Set([...listOr(shared("workspace.panels"), ["files"]), "issues"])]);
       setShared("prodsovet.panels", 2);
     }
-    const enabled = (shared("workspace.panels") ?? ["files", "changes"]).filter((id) => find(root, id));
+    const enabled = listOr(shared("workspace.panels"), ["files", "changes"]).filter((id) => find(root, id));
     this.syncPanel(unified && space ? { ...space, id: context.key } : space, panel, body, enabled);
     const panelButton = (id, label, glyph) => {
       const on = panel && !panel.hidden && body?.active === id;

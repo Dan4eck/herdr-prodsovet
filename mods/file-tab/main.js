@@ -6,9 +6,9 @@ import { appearance, fontSize, metric, radius, L, style } from "./appearance.js"
 // Edit and Cmd+S to save; double-click the name to rename the file; "Открыть в" sends it to Obsidian or VS Code.
 import { View, div, svg, image } from "gpui-kit";
 import { v_flex, h_flex, Editor, EditorState, InputState, Input, TextView, set_theme } from "gpui-base";
-import { props, exec, appHome, readTextFile, writeTextFile, theme, settings, focused, spaces, panes, run, notify, shared, setShared, nextCommand } from "herdr";
+import { props, exec, appHome, watchFolder, readTextFile, writeTextFile, theme, settings, focused, spaces, panes, run, notify, shared, setShared, nextCommand } from "herdr";
 
-import { operation, isLocked, activeDocuments, workspace, fileGlyph, basename, parent, native, isWindowsPath, tilde, onMac, openExternal, pasteInto, shortcut } from "./filesystem.js";
+import { operation, isLocked, activeDocuments, workspace, fileGlyph, basename, parent, samePath, native, isWindowsPath, tilde, onMac, openExternal, shortcut } from "./filesystem.js";
 import { MdPreview } from "./md-preview.js";
 
 const LANG = { ts: "js", tsx: "js", mjs: "js", cjs: "js", jsx: "js", js: "js", json: "json", jsonc: "json", md: "markdown", markdown: "markdown", py: "python", sh: "bash", zsh: "bash", yml: "yaml", yaml: "yaml", toml: "yaml", html: "html", css: "css", rs: "rust", go: "go", vue: "html", svelte: "html" };
@@ -75,7 +75,6 @@ export default class FileTab extends View {
     if (!this.tab) this.retryTab(cx);
     if (!this.file) { this.error = L("No file path", "Нет пути к файлу"); return; }
     this.load(cx);
-    this.watchDisk(cx);
     cx.spawn(async (cx) => {
       for (;;) {
         const c = await nextCommand();
@@ -171,26 +170,64 @@ export default class FileTab extends View {
           if (draft?.file === this.file) this.original = draft.original;
           this.code = this.makeEditor(draft?.file === this.file ? draft.text : text);
           this.publish();
+          this.watchDisk(cx);
         }
       } catch (e) { this.error = L(`Could not open: ${e}`, `Не открылся: ${e}`); }
       cx.notify();
     });
   }
 
-  // A file changed on disk by another program (an agent, a generator) shows up here too, as long as
-  // the tab holds no unsaved edits: Text and Preview reload within a couple of seconds.
+  // One monitor per open document. Replacing it invalidates pending reads and timers.
   watchDisk(cx) {
-    const tick = (cx) => {
-      if (this.closed) return;
-      if (this.code && !this.dirty() && !this.saving && !this.removed) {
-        readTextFile(this.file, { on: this.on }).then((text) => {
-          if (this.closed || text === null || text.includes("\0") || !this.code || this.dirty() || this.saving) return;
-          if (text !== this.original) { this.original = text; this.code = this.makeEditor(text); this.publish(); cx.notify(); }
-        }).catch(() => {});
+    const file = this.removed || !this.code ? null : this.file;
+    if (this.closed) return;
+    if (this.disk?.file === file && !(this.disk.missed && !this.saving && !this.dirty())) return;
+    this.disk?.watch?.cancel();
+    this.disk = null;
+    if (!file) return;
+    const disk = this.disk = { file };
+    const dir = parent(file);
+    const current = () => this.disk === disk && !this.closed && !this.removed && this.file === file;
+    const reload = async cx => {
+      if (!current()) return;
+      if (this.dirty() || this.saving) { disk.missed = true; return; }
+      const editor = this.code, original = this.original;
+      const text = await readTextFile(file, { on: this.on }).catch(() => null);
+      if (!current()) return;
+      if (editor !== this.code || this.original !== original || this.dirty() || this.saving) {
+        disk.missed = true;
+        cx.notify();
+        return;
       }
-      cx.timer.after(this.on ? 5000 : 1500, tick);
+      if (text === null || text === original || text.includes("\0")) return;
+      this.original = text;
+      this.code = this.makeEditor(text);
+      editor.release();
+      this.publish();
+      cx.notify();
     };
-    cx.timer.after(1500, tick);
+    const monitor = async cx => {
+      // Arm the next watch before reading, so edits during a slow read are delivered.
+      let refresh = true;
+      while (current()) {
+        let batch;
+        if (!this.on) {
+          try {
+            disk.watch = watchFolder(dir);
+            batch = disk.watch.catch(() => null);
+          } catch { /* Retry after the fallback interval. */ }
+        }
+        if (refresh) await reload(cx);
+        const paths = batch && await batch;
+        if (!current()) return;
+        if (!paths?.length) {
+          cx.timer.after(5000, cx => { if (current()) cx.spawn(monitor); });
+          return;
+        }
+        refresh = paths.some(path => samePath(path, file) || samePath(path, dir));
+      }
+    };
+    cx.spawn(monitor);
   }
 
   editorOptions() {
@@ -289,15 +326,9 @@ export default class FileTab extends View {
     if (r.code !== 0) notify({ title: L(`Could not open in ${a.label}`, `Не открылось в ${a.label}`), body: r.stderr.trim(), level: "error" });
   }
 
-  async agent() {
-    const target = (shared("files.agents") ?? {})[this.space];
-    if (!target) return notify({ title: L("No agent", "Нет агента"), body: L("Click the agent terminal once and try again", "Кликни в терминал агента один раз и попробуй снова"), level: "warning" });
-    const text = (/\s/.test(this.file) ? `"${this.file}"` : `@${this.file}`) + " ";
-    await pasteInto(target, text).catch((e) => notify({ title: L("Not sent", "Не отправлено"), body: String(e.message ?? e), level: "error" }));
-  }
-
   async close() {
     this.closed = true;
+    this.disk?.watch?.cancel();
     this.syncDocument();
     if (panes().some(p => p.tab === this.tab && p.mod === "file-tab")) {
       // Hot reload or application quit: retain the path and unsaved buffer.
@@ -320,18 +351,13 @@ export default class FileTab extends View {
 
   render(cx) {
     this.syncDocument();
+    this.watchDisk(cx);
     this.refreshEditorStyle(cx);
     const t = theme(), md = ["md", "markdown"].includes(this.ext);
     // theme switched (light/dark, another theme): re-derive the selection color
     if (this.code && this.selKey !== `${t.background}/${t.selection}`) {
       this.selKey = `${t.background}/${t.selection}`;
       cx.spawn(async (cx) => { await exec("true", []); this.applySelection(cx); cx.notify(); });
-    }
-    // remember the last terminal with focus, for "@ agent"
-    const f = focused();
-    if (f?.terminal) {
-      const agents = shared("files.agents") ?? {};
-      if (agents[f.space] !== f.terminal) setShared("files.agents", { ...agents, [f.space]: f.terminal });
     }
     const btn = (id, label, on, active) => div().id(id).px(8).py(3).rounded(radius(6)).text_size(fontSize("fileTab.action")).cursor_pointer()
       .text_color(active ? t.foreground : t.muted).when(active, (el) => el.bg(t.selected))
@@ -349,7 +375,7 @@ export default class FileTab extends View {
         .child(this.renaming
           ? h_flex().w(320).h(metric("fileTab.input")).px(8).rounded(radius(6)).border_1().border_color(t.accent).bg(t.background).items_center()
               .child(Input.new(this.renaming).flex_1().h_full().text_size(fontSize("fileTab.body")).text_color(t.foreground))
-          : div().id("ft-name").flex_none().max_w(360).truncate().font_weight(appearance().weights.semibold).cursor_pointer().rounded(radius(5)).px(4)
+          : div().id("ft-name").when(Boolean(this.file) && !this.removed, el => el.drag_paths([this.file], { on: this.on })).flex_none().max_w(360).truncate().font_weight(appearance().weights.semibold).cursor_pointer().rounded(radius(5)).px(4)
               .hover((s) => s.bg(t.hover)).on_click((e, cx) => { if (e.click_count >= 2) this.startRename(cx); })
               .child((this.dirty() ? "● " : "") + (this.file ? base(this.file) : "")))
         .child(div().flex_1().min_w(0).truncate().text_size(fontSize("fileTab.meta")).text_color(t.dim).child((this.on ? `${this.on}:` : "") + dir))
@@ -357,7 +383,6 @@ export default class FileTab extends View {
         .when(md && Boolean(this.code), (el) => el
           .child(btn("ft-edit", L("Text", "Текст"), (_e, cx) => { this.preview = false; cx.notify(); }, !this.preview))
           .child(btn("ft-prev", L("Preview", "Превью"), (_e, cx) => { this.preview = true; cx.notify(); }, this.preview)))
-        .child(btn("ft-agent", L("@ to agent", "@ агенту"), () => this.agent()))
         .when(Boolean(this.code) && this.editable && !this.removed, (el) => el.child(btn("ft-save", this.saving ? L("Saving…", "Сохраняю…") : this.dirty() ? L(`Save ${shortcut("⌘S", "Ctrl+S")}`, `Сохранить ${shortcut("⌘S", "Ctrl+S")}`) : L("Saved", "Сохранено"), (_e, cx) => this.save(cx), this.dirty())))
         .when(Boolean(this.code) && !this.editable, (el) => el.child(div().text_size(fontSize("fileTab.hint")).text_color(t.dim).child(L("read only", "только чтение"))))
         .when(!this.on, (el) => el.child(btn("ft-open", L("Open in ▾", "Открыть в ▾"), (_e, cx) => { this.openMenu = !this.openMenu; cx.notify(); }, this.openMenu))))

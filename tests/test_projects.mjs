@@ -22,7 +22,10 @@ function element(type='div') {
      if(key==='when'){if(args[0])args[1](proxy);}
      else if(key==='child')node._children.push(args[0]);
      else if(key==='children')node._children.push(...args[0]);
-     else if(String(key).startsWith('on_'))node.events[key]=args.at(-1);
+     else if(String(key).startsWith('on_')){
+       node.events[key]=args.at(-1);
+       if(key==='on_mouse_down')node.events[key+'_'+args[0]]=args.at(-1);
+     }
      else node.attrs[key]=args.length===1?args[0]:args;
      return proxy;
    };
@@ -59,6 +62,7 @@ const menu=await load(path.join(root,'mods/prodsovet/file-new-menu.js'));await m
 const tabsModule=await load(path.join(root,'mods/prodsovet/file-tabs.js'));await tabsModule.evaluate();
 const openerModule=await load(path.join(root,'mods/prodsovet/open-project.js'));await openerModule.evaluate();
 const subMenuModule=await load(path.join(root,'mods/prodsovet/sub-menu.js'));await subMenuModule.evaluate();
+const tabMenuModule=await load(path.join(root,'mods/prodsovet/file-tab-menu.js'));await tabMenuModule.evaluate();
 const contextModule=await load(path.join(root,'mods/prodsovet/project-context.js'));await contextModule.evaluate();
 const cx={notify(){},stop_propagation(){},timer:{every(){},after(){}},focus_handle:()=>({focus(){}}),spawn(fn){const p=fn(cx);pending.push(p);return p;}};
 async function flush(){while(pending.length)await Promise.all(pending.splice(0));}
@@ -145,6 +149,18 @@ try {
    assert.equal(nodes(tree).filter(n=>n.attrs.id==='sub-a3').length,1);assert.equal(nodes(tree).filter(n=>n.attrs.id==='ag-a3').length,0);
    assert.deepEqual(plain(order),['a1','a2','a3']);
  });
+ await test('an idle or finished sub-agent has no status marker beside its name',()=>{
+   const child=ag.find(a=>a.address==='a3'),saved=child.status;
+   try {
+     for(const status of ['idle','done']){
+       child.status=status;
+       const row=byId(owner.render(cx),'sub-a3');
+       assert.equal(text(row._children.at(-1)),'Claude');
+     }
+     child.status='blocked';
+     assert.match(text(byId(owner.render(cx),'sub-a3')),/Ждёт тебя/);
+   } finally {child.status=saved;tree=owner.render(cx);}
+ });
  await test('a Google worker keeps the same green spinner in the tree, a detached tab and a split tab',()=>{
    const saved=[sp,ps,ts,ag];
    const spinner=row=>nodes(row).find(n=>n.attrs.spin===900);
@@ -176,6 +192,60 @@ try {
      [sp,ps,ts,ag]=saved;tree=owner.render(cx);
    }
  });
+ await test('a bare core terminal id in title falls back to the program name instead of showing t119',()=>{
+   const saved=[sp,ps,ts,ag];
+   try {
+     sp=plain(sp);ps=plain(ps);ts=plain(ts);ag=plain(ag);
+     const agy={agent:true,name:'Antigravity',key:'antigravity'};
+     sp[1].tabs=[{id:'feature',name:'1',named:false},{id:'extra',name:'2',named:false}];
+     ps=ps.filter(p=>p.tab!=='feature'&&p.tab!=='child');
+     ps.push({pane:'p2',tab:'feature',terminal:'t119',cwd:wt,program:agy,title:'t119'});
+     ts=ts.filter(t=>t.address!=='a2'&&t.address!=='a3');
+     ts.push({address:'t119',state:'live',program:agy,parent:null});
+     ag=ag.filter(a=>a.address!=='a2'&&a.address!=='a3');
+     ag.push({address:'t119',pane:'p2',tab:'feature',space:'wt',space_name:'feature',status:'idle',program:agy,title:'t119',pinned:false});
+     let row=byId(owner.render(cx),'ag-t119');
+     assert.ok(text(row).includes('Antigravity'));assert.ok(!text(row).includes('t119'));
+     // Two unnamed tabs in one space show program + number, never bare digits or terminal ids.
+     ps.push({pane:'p4',tab:'extra',terminal:'t120',cwd:wt,program:agy,title:'t120'});
+     ts.push({address:'t120',state:'live',program:agy,parent:null});
+     ag.push({address:'t120',pane:'p4',tab:'extra',space:'wt',space_name:'feature',status:'idle',program:agy,title:'t120',pinned:false});
+     const r1=byId(owner.render(cx),'ag-t119'),r2=byId(owner.render(cx),'ag-t120');
+     assert.ok(text(r1).includes('Antigravity 1'));assert.ok(text(r2).includes('Antigravity 2'));
+     // Once the agent sets a real OSC title, the card shows it.
+     ps.find(p=>p.terminal==='t119').title='Фикс заголовков';
+     ag.find(a=>a.address==='t119').title='Фикс заголовков';
+     assert.ok(text(byId(owner.render(cx),'ag-t119')).includes('Фикс заголовков'));
+   } finally {
+     [sp,ps,ts,ag]=saved;tree=owner.render(cx);
+   }
+ });
+ await test('new Antigravity sessions pick up their own assigned title in both the sidebar and tab',()=>{
+   const saved=[sp,ps,ts,ag];
+   const key='prodsovet.antigravityTitles';
+   try {
+     sp=plain(sp);ps=plain(ps);ts=plain(ts);ag=plain(ag);
+     const terminal=ts.find(t=>t.address==='a1'), pane=ps.find(p=>p.terminal==='a1'), agent=ag.find(a=>a.address==='a1');
+     const tab=sp[0].tabs.find(t=>t.id===pane.tab);
+     terminal.foreground={pid:123};
+     terminal.program=pane.program=agent.program={agent:true,key:'antigravity',name:'Antigravity'};
+     pane.title=agent.title='Antigravity';
+     const tabs=new tabsModule.namespace.default();tabs.init();
+     const check=name=>{
+       assert.ok(text(byId(owner.render(cx),'ag-a1')).includes(name));
+       assert.ok(text(byId(tabs.render(),'tab-agent')).includes(name));
+     };
+     check('Antigravity');
+     state.set(key,{123:'Обновить ссылку',456:'Другой диалог'});
+     check('Обновить ссылку');
+     tab.named=true;tab.name='Мой диалог';check('Мой диалог');
+     tab.named=false;tab.name='2';
+     terminal.foreground.pid=789;check('Antigravity');
+     pane.title=agent.title='Заголовок из терминала';check('Заголовок из терминала');
+   } finally {
+     state.delete(key);[sp,ps,ts,ag]=saved;tree=owner.render(cx);
+   }
+ });
  await test('a finished Antigravity flask drains once, holds its last frame and resets next turn',()=>{
    const agent=ag.find(a=>a.address==='a1');
    const {program,status}=agent;
@@ -203,14 +273,27 @@ try {
    calls.length=0;byId(tree,'sub-a3').events.on_mouse_down({},cx);
    assert.equal(calls[0].overlay.props.role,'sub-menu');assert.equal(calls[0].overlay.props.terminal,'a3');
    byId(tree,'sub-a3').events.on_hover(true,cx);tree=owner.render(cx);
-   // a3 has a pane: the quick action sends it back instead of detaching.
-   assert.ok(byId(tree,'sub-park-a3'));assert.ok(!byId(tree,'sub-detach-a3'));
-   calls.length=0;byId(tree,'sub-park-a3').events.on_click({},cx);assert.deepEqual(plain(calls),[{name:'terminal.park',args:{terminal:'a3'}}]);
-   const kept=plain(subMenuModule.namespace.subAgentItems('a3').map(i=>i[0]));assert.deepEqual(kept,['show','park','kill']);
-   const savedPanes=ps;ps=ps.filter(p=>p.terminal!=='a3');
-   assert.deepEqual(plain(subMenuModule.namespace.subAgentItems('a3').map(i=>i[0])),['peek','tab','right','down','kill']);
-   tree=owner.render(cx);calls.length=0;byId(tree,'sub-detach-a3').events.on_click({},cx);assert.deepEqual(plain(calls),[{name:'terminal.keep',args:{terminal:'a3',place:'tab'}}]);
-   ps=savedPanes;
+   assert.ok(!byId(tree,'sub-park-a3'));assert.ok(!byId(tree,'sub-detach-a3'));
+   calls.length=0;byId(tree,'sub-a3').events.on_click();assert.deepEqual(plain(calls),[{name:'pane.focus',args:{terminal:'a3'}}]);
+   calls.length=0;byId(tree,'sub-more-a3').events.on_click({},cx);
+   pr={...calls[0].overlay.props,overlay:'o1'};
+   const keptMenu=new subMenuModule.namespace.default();keptMenu.init({},cx);
+   assert.ok(!byId(keptMenu.render(),'sub-menu-show'));
+   calls.length=0;byId(keptMenu.render(),'sub-menu-park').events.on_click({},cx);
+   assert.deepEqual(plain(calls),[{close:'o1'},{name:'terminal.park',args:{terminal:'a3'}}]);
+   pr={role:'projects'};
+   const savedPanes=ps,savedAgents=ag;ps=ps.filter(p=>p.terminal!=='a3');ag=ag.filter(a=>a.address!=='a3');
+   tree=owner.render(cx);assert.ok(!byId(tree,'sub-detach-a3'));calls.length=0;
+   byId(tree,'sub-a3').events.on_click();assert.deepEqual(plain(calls),[{name:'terminal.peek',args:{terminal:'a3'}}]);calls.length=0;
+   byId(tree,'sub-more-a3').events.on_click({},cx);
+   pr={...calls[0].overlay.props,overlay:'o1'};
+   const more=new subMenuModule.namespace.default();more.init({},cx);
+   assert.ok(!byId(more.render(),'sub-menu-peek'));
+   for(const place of ['tab','right','down']){
+     calls.length=0;byId(more.render(),'sub-menu-'+place).events.on_click({},cx);
+     assert.deepEqual(plain(calls),[{close:'o1'},{name:'pane.focus',args:{pane:'p2'}},{name:'terminal.keep',args:{terminal:'a3',place}}]);
+   }
+   ps=savedPanes;ag=savedAgents;
    pr={role:'sub-menu',terminal:'a3',overlay:'o1'};const m=new subMenuModule.namespace.default();m.init({},cx);
    calls.length=0;byId(m.render(),'sub-menu-kill').events.on_click({},cx);assert.equal(calls.length,0);assert.ok(m.arming);
    byId(m.render(),'sub-menu-kill').events.on_click({},cx);assert.deepEqual(plain(calls),[{close:'o1'},{name:'terminal.kill',args:{terminal:'a3'}}]);
@@ -250,6 +333,22 @@ try {
  });
  await test('cross-checkout adopted child remains under its own worktree',()=>{
    ts.find(t=>t.address==='a2').parent='a1';tree=owner.render(cx);assert.ok(byId(tree,'ag-a2'));assert.ok(!byId(tree,'sub-a2'));ts.find(t=>t.address==='a2').parent=null;
+ });
+ await test('a detached worker in another space can return from its card or tab menu',()=>{
+   const worker=ts.find(t=>t.address==='a2');worker.parent='a1';
+   try {
+     calls.length=0;byId(owner.render(cx),'ag-a2').events.on_mouse_down_right({},cx);
+     pr={...calls[0].overlay.props,overlay:'menu'};
+     const menu=new subMenuModule.namespace.default();menu.init({},cx);
+     const park=byId(menu.render(),'sub-menu-park');assert.match(text(park),/Codex a1/);
+     calls.length=0;park.events.on_click({},cx);
+     assert.deepEqual(plain(calls),[{close:'menu'},{name:'terminal.park',args:{terminal:'a2'}}]);
+     pr={role:'tab-menu',target:{id:'feature',space:'wt'},overlay:'menu'};
+     const tabMenu=new tabMenuModule.namespace.default();tabMenu.init({},cx);
+     calls.length=0;byId(tabMenu.render(),'item-park-a2').events.on_click({},cx);
+     assert.deepEqual(plain(calls),[{close:'menu'},{name:'terminal.park',args:{terminal:'a2'}}]);
+     worker.parent='missing';assert.ok(!byId(tabMenu.render(),'item-park-a2'));
+   } finally {worker.parent=null;pr={role:'projects'};tree=owner.render(cx);}
  });
  await test('pinning an adopted sub-agent never duplicates it in the project tree',()=>{
    ag.find(a=>a.address==='a3').pinned=true;tree=owner.render(cx);
@@ -449,6 +548,35 @@ try {
  await test('classic workshop retains its grouping and does not list shell-only sessions',async()=>{
    pr={role:'agents'};state.set('layout','PA-Light');const old=new mod.namespace.Agents();old.init({},cx);await flush();tree=old.render(cx);
    assert.equal(old.projects,undefined);assert.ok(text(tree).includes('МАСТЕРСКАЯ'));assert.ok(!byId(tree,'project-list'));assert.ok(!byId(tree,'ag-shell'));
+ });
+ await test('project scans cap concurrent checkouts at six and deduplicate overlapping refreshes',async()=>{
+   const tree=new (await load(path.join(root,'mods/prodsovet/projects.js'))).namespace.ProjectTree();
+   const entries=Array.from({length:14},(_,i)=>({space:{},cwd:'/project/'+i}));
+   tree.entries=()=>entries;
+   const starts=[], releases=[];
+   execFixture=async (_cmd,args,opts)=>{
+     if(args.includes('--show-toplevel')){
+       starts.push(opts.cwd);
+       await new Promise(resolve=>releases.push(resolve));
+     }
+     return {code:1,stdout:'',stderr:'not a git repository'};
+   };
+   try {
+     tree.init(cx);tree.sync(cx);assert.equal(starts.length,6);
+     while(starts.length<entries.length){
+       releases.shift()();await new Promise(resolve=>setImmediate(resolve));tree.sync(cx);
+       assert.ok(releases.length<=6);
+     }
+     releases.splice(0).forEach(resolve=>resolve());await flush();
+     assert.equal(new Set(starts).size,14);assert.equal(starts.length,14);
+   } finally {execFixture=null;}
+ });
+ await test('invalid saved values recover independently while valid panel preferences survive',async()=>{
+   storage.set('panels','{"keep":"files"}');storage.set('changed','{');storage.set('pins','null');
+   const agents=new mod.namespace.Agents();agents.init({},cx);await flush();
+   assert.deepEqual(plain(agents.changed),{});assert.deepEqual(plain(agents.pendingPins),[]);
+   const tabs=new tabsModule.namespace.default();tabs.init();assert.equal(tabs.panels.keep,'files');
+   storage.set('panels','[]');tabs.init();assert.deepEqual(plain(tabs.panels),{});
  });
  console.log(`${n} project tree tests passed`);
 } finally {fs.rmSync(temp,{recursive:true,force:true});}

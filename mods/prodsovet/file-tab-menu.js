@@ -4,17 +4,27 @@ import { agency, px } from "./agency.js";
 // ProdAdvice for Herdr: customized interface and behavior, 2026. See NOTICE.
 import { View, div, svg } from "gpui-kit";
 import { v_flex } from "gpui-base";
-import { props, theme, run, closeOverlay } from "herdr";
+import { props, theme, run, closeOverlay, terminals, panes } from "herdr";
 import { newTerminal } from "./filesystem.js";
+import { returnToParentItem } from "./sub-menu.js";
 export default class TabMenu extends View {
   init(_p, cx) { this.h = cx.focus_handle(); this.h.focus(); }
   render() {
     const p = props(), t = theme();
-    const list = [[L("Rename", "Переименовать"), () => run("tab.rename", { id: p.target.id }), "pencil"], [L("New terminal", "Новый терминал"), () => newTerminal("tab", p.target.space), "terminal"], [L("Close", "Закрыть"), () => run("tab.close", { id: p.target.id }), "close"]];
+    const all = terminals(), tabPanes = panes().filter(pane => pane.tab === p.target.id);
+    const list = [
+      ["rename", L("Rename", "Переименовать"), "pencil", () => run("tab.rename", { id: p.target.id })],
+      ["new", L("New terminal", "Новый терминал"), "terminal", () => newTerminal("tab", p.target.space)],
+    ];
+    for (const pane of tabPanes) {
+      const item = returnToParentItem(all.find(term => term.address === pane.terminal), all, tabPanes.length > 1);
+      if (item) list.push([`park-${pane.terminal}`, ...item.slice(1)]);
+    }
+    list.push(["close", L("Close", "Закрыть"), "close", () => run("tab.close", { id: p.target.id })]);
     return v_flex().id("file-tab-menu").track_focus(this.h).w_full().p(5).bg(t.popover).text_size(fontSize("tabMenu.body"))
-      .children(list.map(([label, action, glyph], i) => div().id(`item-${i}`).h(metric("tabMenu.row")).px(9).gap(9).flex().items_center().rounded(radius(6)).text_color(t.foreground).hover(s => s.bg(t.hover))
+      .children(list.map(([id, label, glyph, action]) => div().id(`item-${id}`).h(metric("tabMenu.row")).px(9).gap(9).flex().items_center().rounded(radius(6)).text_color(t.foreground).hover(s => s.bg(t.hover))
         .on_click(() => { closeOverlay(p.overlay); action(); })
         .when(agency(), el => el.child(svg(px(glyph)).size(15).flex_none().text_color(t.muted)))
-        .child(label)));
+        .child(div().min_w(0).truncate().tooltip(label).child(label))));
   }
 }

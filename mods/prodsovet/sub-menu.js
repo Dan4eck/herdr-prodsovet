@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// What a sub-agent row in the sidebar tree can do: show, give it a pane of its
+// Actions in the sidebar tree's sub-agent menu: give it a pane of its
 // own, send it back under its parent, or stop it. Opened as a popup with
 // props { role: "sub-menu", terminal }.
 import { View, div, svg } from "gpui-kit";
@@ -8,24 +8,45 @@ import { props, theme, run, closeOverlay, terminals, panes } from "herdr";
 import { fontSize, metric, radius, L } from "./appearance.js";
 import { px } from "./agency.js";
 
+export function returnToParentItem(term, all, includeChild = false) {
+  const parent = term?.state === "live" && term.parent && all.find(t => t.address === term.parent && t.state === "live");
+  if (!parent) return null;
+  const name = parent.name || [parent.program?.name, parent.address].filter(Boolean).join(" ");
+  const child = includeChild ? (term.name || term.address) + ": " : "";
+  return ["park", child + L(`Return to ${name}`, `Вернуть к ${name}`), "fold-down", () => run("terminal.park", { terminal: term.address })];
+}
+
+// terminal.keep uses the focused pane as its destination. Nested workers can
+// have several pane-less ancestors before reaching the owning tab.
+function detach(term, place) {
+  const all = terminals(), views = panes(), seen = new Set();
+  let addr = term.parent;
+  while (addr && !seen.has(addr)) {
+    const pane = views.find(p => p.terminal === addr);
+    if (pane) {
+      run("pane.focus", { pane: pane.pane });
+      break;
+    }
+    seen.add(addr);
+    addr = all.find(t => t.address === addr)?.parent;
+  }
+  run("terminal.keep", { terminal: term.address, place });
+}
+
 // The menu's items for a live terminal, as [id, label, icon, action, danger].
-export function subAgentItems(address) {
-  const all = terminals(), term = all.find(t => t.address === address);
+export function subAgentItems(address, allowDetach) {
+  const all = terminals(), term = all.find(t => t.address === address && t.state === "live");
   if (!term) return [];
-  const parent = term.parent && all.find(t => t.address === term.parent);
   const kept = panes().some(p => p.terminal === address);
-  const keep = place => () => run("terminal.keep", { terminal: address, place });
+  const park = kept && returnToParentItem(term, all);
+  const keep = place => () => detach(term, place);
   return [
-    kept
-      ? ["show", L("Show", "Показать"), "go", () => run("pane.focus", { terminal: address })]
-      : ["peek", L("Peek", "Подсмотреть"), "zoom", () => run("terminal.peek", { terminal: address })],
-    ...(kept
-      ? (parent ? [["park", L(`Send back to ${parent.name || "parent"}`, `Вернуть под ${parent.name || "родителя"}`), "fold-down", () => run("terminal.park", { terminal: address })]] : [])
-      : [
+    ...(park ? [park] : []),
+    ...(!kept && allowDetach ? [
         ["tab", L("Detach to a tab", "Открепить во вкладку"), "layers", keep("tab")],
         ["right", L("Detach to the right", "Открепить справа"), "split-right", keep("right")],
         ["down", L("Detach below", "Открепить снизу"), "split-down", keep("down")],
-      ]),
+      ] : []),
     ["kill", L("Stop agent", "Остановить агента"), "trash", () => run("terminal.kill", { terminal: address }), true],
   ];
 }
@@ -34,7 +55,7 @@ export default class SubAgentMenu extends View {
   init(_p, cx) { this.h = cx.focus_handle(); this.h.focus(); this.arming = false; }
   render() {
     const p = props(), t = theme();
-    const list = subAgentItems(p.terminal);
+    const list = subAgentItems(p.terminal, p.allowDetach);
     const close = () => closeOverlay(p.overlay);
     return v_flex().id("sub-menu").track_focus(this.h).w_full().p(5).bg(t.popover).text_size(fontSize("tabMenu.body"))
       .on_key_down((e, cx) => { if (e.key === "escape") { close(); cx.stop_propagation(); } })
