@@ -1,0 +1,155 @@
+# ProdAdvice Advanced (PA-Advanced) для Herdr
+
+[English](README.md) · Русский
+
+**Every agent, under its project.** Каждый агент - при своём проекте.
+
+Оформление для [Herdr](https://github.com/herdrdev/herdr-app) на macOS и
+Windows: проекты и сессии агентов в одной боковой панели, анимированные агенты,
+вкладки с файлами, файловый менеджер, Git, GitHub и поиск по проекту. Интерфейс
+на русском и английском.
+
+![Иллюстрация PA-Advanced с вымышленными данными, не снимок экрана](preview.png)
+
+## Быстрый старт
+
+Нужны macOS, [Herdr](https://github.com/herdrdev/herdr-app) 0.1.18 (откройте его
+хотя бы раз; v0.7.0 проверен с App 0.1.18 и Core 0.1.22), `python3` и `rg` (`brew install ripgrep`).
+
+```sh
+git clone https://github.com/Dan4eck/herdr-prodsovet
+cd herdr-prodsovet
+git checkout v0.7.0                  # последний релиз, см. Releases
+python3 install.py --apply           # или --apply --with-limits, см. ниже
+herdr-app do layout.switch --name PA-Advanced
+```
+
+Готово. Переключать оформления можно и через Cmd+Shift+L.
+
+Строку **Copy** из Gallery лучше не использовать: она ведёт на `main`, а при
+копировании layouts и mods теряются темы, миниатюры, клавиши и квитанция обновления.
+
+- `python3 install.py` без `--apply` только показывает план и ничего не пишет.
+- `--with-limits` включает лимиты Claude, Codex и Antigravity в статус-баре. Для
+  Claude читается токен Claude Code из связки ключей macOS, для Antigravity
+  вызывается установленный `agy`, подробнее в [ACCESS.md](ACCESS.md).
+- Если ваше сочетание клавиш уже занято, установщик остановится; добавьте
+  `--skip-conflicting-keys`, чтобы оставить свои.
+
+### Windows
+
+Порт под Windows есть с v0.5.0, но релиз v0.7.0 на Windows нативно не
+проверялся: проверен на macOS.
+
+Нужны Windows 10/11 x64, [Herdr](https://herdr.dev/download/) 0.1.18 (откройте
+его хотя бы раз), [Python 3](https://www.python.org/downloads/) и `rg`. В
+PowerShell:
+
+```powershell
+winget install BurntSushi.ripgrep.MSVC   # если rg ещё нет; затем перезапустите Herdr
+git clone https://github.com/Dan4eck/herdr-prodsovet
+cd herdr-prodsovet
+git checkout v0.7.0                      # последний релиз
+py install.py --apply                    # или --apply --with-limits (Codex и Antigravity)
+herdr-app do layout.switch --name PA-Advanced
+```
+
+Обновление и удаление те же, только `py` вместо `python3`. На Windows:
+
+- клавиши свои: Cmd заменяется на Ctrl+Shift, как в самом Herdr (таблица ниже);
+- удаление идёт в Корзину Windows, «Показать в Проводнике» вместо Finder;
+- «Открыть в» запускает VS Code и Obsidian по их ссылкам `vscode://` и
+  `obsidian://`; программы и скрипты (`.exe`, `.bat`, `.ps1`…) отсюда не
+  запускаются, для них есть «Показать в Проводнике»;
+- `--with-limits` включает лимиты Codex и Antigravity: лимиты Claude на Windows не
+  переносились, подробнее в [ACCESS.md](ACCESS.md);
+- в PA-Advanced маковские шрифты Avenir Next и Bodoni 72 заменяются системными;
+  PA-Light выглядит так же, как на Mac (его шрифты встроены в Herdr).
+
+### Обновление
+
+Из той же папки:
+
+```sh
+git fetch --tags
+git checkout v0.7.0                  # номер нового релиза
+python3 install.py --update --apply
+```
+
+Если вы правили файлы пакета, обновление остановится до записи и назовёт их.
+Исключение - файлы оформлений, потому что Herdr хранит в них размеры панелей: если
+релиз меняет оформление, ставится новое, а ваше остаётся рядом как
+`….json.before-update`. `limits.local.json` сохраняется. Что изменилось - в
+[CHANGELOG.md](CHANGELOG.md).
+
+### Удаление
+
+```sh
+python3 install.py --uninstall --apply
+```
+
+Перед этим переключитесь на другое оформление.
+
+## Два оформления
+
+| | **PA-Advanced** (рекомендуем) | **PA-Light** |
+|---|---|---|
+| Боковая панель | ПРОЕКТЫ / СЕССИИ | Spaces + Мастерская |
+| Открыть проект | Cmd+N: компьютер → сессия → папка | как в Herdr |
+| Справа | Файлы, Changes, GitHub | Файлы, Changes |
+| Вид | чёрно-белый, квадратные рамки, пиксельные иконки | исходный тёмный, скруглённый |
+
+В обоих есть файлы, редактор, поиск, Changes с подсказкой текста коммита,
+анимированные агенты, статус-бар и форк разговора. У каждого есть тёмная и
+дневная тема (`…-Night`, `…-Day`). Новое появляется в PA-Advanced.
+
+**Проекты в PA-Advanced.** На вкладке ПРОЕКТЫ сессии сгруппированы по проектам,
+worktree висят на линии своего проекта, текущая сессия подсвечена на ней.
+Вкладка СЕССИИ — общий список, по статусу или в своём порядке (перетаскиванием).
+`+` у проекта запускает сессию, терминал или worktree.
+
+Перетащите файл или папку из дерева в нужный терминал, чтобы вставить путь.
+Открытый файл можно перетащить за имя в редакторе. При переносе локального
+файла в удалённый терминал Herdr скопирует файл на ту машину.
+
+## Клавиши
+
+| Где | macOS | Windows | Что делает |
+|---|---|---|---|
+| Везде | Cmd+T, Cmd+D / Cmd+Shift+D | Ctrl+Shift+T, Ctrl+Shift+O / Ctrl+Shift+E | терминал, сплит вправо / вниз в корне проекта |
+| Везде | Cmd+N | Ctrl+Shift+N | открыть проект (PA-Advanced) |
+| Везде | Cmd+P | Ctrl+Shift+K | выбор сессии (PA-Advanced) |
+| Везде | Cmd+Shift+O | Ctrl+Shift+S | поиск по проекту |
+| Терминал | Cmd+Shift+F | Ctrl+Shift+Y | форк текущего разговора Claude Code / Codex |
+| Дерево файлов | F2, Cmd+N / Cmd+Shift+N | F2, Ctrl+N / Ctrl+Shift+N | переименовать, новый файл / папка |
+| Дерево файлов | Cmd+C / X / V, Cmd+Backspace | Ctrl+C / X / V, Delete | копировать / вырезать / вставить, в Корзину |
+| Дерево файлов | Enter | Enter | отправить путь агенту |
+| Поиск | Cmd+Enter, Option+Enter | Ctrl+Enter, Alt+Enter | путь агенту, открыть в приложении |
+| Редактор | Cmd+S | Ctrl+S | сохранить |
+
+На Windows клавиши взяты из `keys.windows.json`, на Mac из `keys.json`.
+
+## Что внутри
+
+Пять модов, которые работают вместе: **prodsovet** (панели, агенты, вкладки,
+GitHub, статус-бар), **my-files** (файловый менеджер), **file-tab** (редактор и
+Markdown), **find** (поиск через ripgrep), **session_fork** (форк разговора).
+
+macOS и Windows: буфер обмена, Корзина, Finder/Проводник и открытие файлов
+системные. На Mac это `pbcopy`, `trash` и `open`, на Windows — Windows API через
+`mods/my-files/system.py` и `file-ops.py`. Моды запускают программы и работают с
+вашими файлами; что именно и куда — в [ACCESS.md](ACCESS.md).
+
+## Подробнее
+
+- [RECIPE.md](RECIPE.md) — как всё устроено: форк разговоров, подсказки
+  коммитов, ограничения, установщик в деталях.
+- [APPEARANCE.md](APPEARANCE.md) — шрифты, цвета, размеры.
+- [VALIDATION.md](VALIDATION.md) — что и как проверено.
+- [PUBLISHING.md](PUBLISHING.md) — разработка (`python3 dev.py`) и релизы.
+
+Код под Apache-2.0; сторонние материалы и маскоты — в [NOTICE](NOTICE) и
+`licenses/`. Неофициальный проект сообщества.
+
+Если пакет экономит вам время, звезда на GitHub помогает другим найти его в Herdr
+Gallery.

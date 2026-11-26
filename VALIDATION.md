@@ -1,5 +1,32 @@
 # Validation record
 
+## Release v0.7.0 (2026-11-26)
+
+Verified on macOS 26.5.2 (arm64), Herdr App 0.1.18, Core 0.1.22,
+Python 3.15.2 and Node.js 22.14.0.
+
+- `python3 -B verify.py` passed. Of 50 Python tests, 45 passed and five
+  Windows-only tests were skipped. All eight Node suites passed.
+- The clean install and upgrade used isolated Herdr homes seeded with seven stock
+  mods and the 0.1.18 macOS key bindings. Both dry runs preserved the files.
+  The clean install added both layouts, four themes and the packaged bindings.
+  Optional usage limits remained off.
+- `herdr-app check` loaded prodsovet, my-files, file-tab, find and session_fork
+  from the clean install. These checks cover initial rendering. Physical drag
+  gestures, a real cross-machine file transfer and an interactive window were
+  outside this run.
+- Upgrading the published v0.6.0 tag to v0.7.0 wrote 32 files and removed none.
+  The upgraded receipt and all 144 payload files matched the clean install.
+- Uninstall removed the receipt and payload and restored the stock bindings.
+  Native checks left jsconfig.json and gpui-kit.d.ts in each of the five mod
+  directories. Reinstall reported a name collision. Inspecting and moving those
+  directories to a temporary backup allowed a clean reinstall.
+- A synthetic macOS Antigravity resolver check used a temporary SQLite title
+  store and simulated open lock records. A unique conversation matched its
+  process. Ambiguous locks, an invalid identifier and an unrelated PID were ignored.
+- Windows was not run natively for v0.7.0. Platform-independent and mocked Windows
+  tests ran on macOS. The Gallery image is an illustration using fictional projects.
+
 ## Release v0.6.0 (2026-11-20)
 
 Maintainer validation on macOS 26.5, Herdr App 0.1.16, Python 3.15.2,

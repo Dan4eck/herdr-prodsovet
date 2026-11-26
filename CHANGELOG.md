@@ -6,11 +6,30 @@ committed; the release moves it under the new version.
 
 ## Unreleased
 
+## 0.7.0 (2026-11-26)
+
+- Drag a file or folder from the file tree, or an open file by its name in the editor, onto a terminal to paste its
+  path. A local file dropped onto a terminal on another machine is copied there by Herdr. The "@" button on a
+  selected tree row and "@ to agent" in the editor are gone; Enter in the tree still sends the path to the agent.
+- A file tab reloads on file events from its folder; drafts are kept, an old watch is cancelled
+  when the file moves, a failed watch retries and remote files keep polling.
+- Changes ignores diff previews, commit results and commit suggestions that arrive for another space or checkout.
+  The file tree cancels its previous folder watch when switching locations or closing the panel.
+- macOS: Antigravity sessions are named after their conversation in the sidebar, tabs and pane headers (read from
+  the local conversation locks and store with `lsof` and SQLite). Names you gave a tab are kept.
+- Sub-agents: a detached worker in another space can return to its parent from its card or tab menu; an idle or
+  finished sub-agent shows no status marker. The return action names the parent.
+- Tab and session names drop the status glyph or spinner an agent puts before its title, and a bare core id
+  (`t119`) falls back to the program name.
+- Project scans run at most six checkouts at a time and merge overlapping refreshes.
+- A malformed saved preference is reset on its own; the other panel preferences survive.
+- Issues opened from the saved list use the active context.
 - Status bar now supports Antigravity subscription limits (`AGY` 5h/7d windows) alongside Claude and Codex, opt-in via `"antigravity": true` in `limits.local.json` (or `--with-limits` on macOS and Windows) using `agy -p /usage --output-format json`.
 - Antigravity and Gemini terminals show a green dot moving back and forth while working, with a pale green outline around the focused terminal.
 - Working Google agents and their sub-agents share a green spinning ring indicator in the tab bar, sidebar and tab picker. Detached workers keep their parent's indicator.
-
 - Antigravity's flask stands on both boots. It taps one toe as turquoise liquid bubbles, shows an amber exclamation mark when it needs input, and drains to a still green pool when a turn finishes. The resting flask has closed eyes and lavender liquid.
+- Docs: English README (Russian in README.ru.md), the Gallery card is now "ProdAdvice Advanced (PA-Advanced)" with
+  a new description and preview, and the install steps pin the release tag and explain how the package installer adds the themes and key bindings.
 
 ## 0.6.0 (2026-11-20)
 

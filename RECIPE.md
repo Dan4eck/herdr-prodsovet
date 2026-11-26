@@ -1,38 +1,48 @@
-# ProdAdvice
+# ProdAdvice Advanced (PA-Advanced)
 
-A dark Herdr workspace with spaces and animated agents at the left, terminal or
-file tabs in the center, a file tree at the right and a compact bottom status
-strip. Russian labels, workspace-aware navigation and optional account limits.
+Every agent, under its project. Projects, worktrees and agent sessions share one sidebar tree, and each agent has an animated pixel mascot that works, waits for you or rests. Beside the terminal: file tabs with an editor and Markdown preview, project search, Git Changes, GitHub and Issues. Drag a file into a terminal to paste its path. Fork a Claude Code or Codex conversation with one key. English interface, Russian one click away. macOS, plus a Windows port. The layout is PA-Advanced.
 
-![Illustrated layout with fictional data](preview.png)
+![Illustration of PA-Advanced with fictional data](preview.png)
+
+**Adding it:** the package needs more than `layouts/` and `mods/`. PA-Advanced uses
+the themes `PA-Advanced-Night` and `PA-Advanced-Day` and key bindings, which a plain
+copy of those two folders leaves out. Install the stable tag `v0.7.0` with its own
+installer: read ACCESS.md, run `python3 install.py` (a dry run that writes nothing;
+`py install.py` on Windows), show the plan to the person, then repeat with `--apply`.
+Leave `--with-limits` off unless they ask for it. The installer stops on a name or
+key that is taken and does not switch the layout; the last step is
+`herdr-app do layout.switch --name PA-Advanced`, on both systems. Details under
+[Installer](#installer).
 
 ## What you see
 
-In Settings > Look the layouts are named ProdAdvice and PA-Advanced. Each has a custom dark thumbnail
-with its name, Codex/Claude mascots, terminal and file tree. The root preview
-points to layouts/prodadvice.png; layouts/prodadvice.svg is the editable source.
+Two layouts come in the package: PA-Advanced, described here, and PA-Light (below).
+Each has its own thumbnail in Settings > Look (`layouts/pa-advanced.png`,
+`layouts/pa-light.png`; the `.svg` files are the editable sources).
 
-The root is a row. Left sidebar: 241 px, min 44 / max 480; 46 px brand header,
-a weighted spaces/agents column and 69 px stock workspace footer. The brand
-header keeps the Herdr icon/name, with ProdAdvice underneath in 9.5 px
-semibold using the same inherited UI font. Its muted green is #7d9a72 in dark
-mode and #527148 in light mode; line heights are 17/12 px. Main work
-column: 42 px tabs, flexible body, 20 px status strip. Body has 8 px padding/gap;
-right panel 294 px, min 280 / max 900, a files/changes stack. Pane headers are
-30 px with radius 10, gap 8 and a one-pixel border. Terminal padding is 14/12.
-Status type is 10 px with 10 px horizontal spacing. Mod type sizes and main row heights come from appearance_profiles.json. Each
-profile owns a full independent set of values; see APPEARANCE.md.
+The root is a row. Left sidebar: 241 px (min 44 / max 480), with a 42 px brand
+header, the PROJECTS / SESSIONS tree (min 90) and the 69 px stock workspace footer.
+The work column has 42 px tabs, a flexible body and a 20 px status strip. The body
+has 8 px padding and gap. Right panel: 294 px (min 280 / max 900), a stack of Files,
+Changes, GitHub and Issues. Pane headers are 30 px with radius 0, gap 8 and a
+one-pixel border; the focused pane's border uses the accent color. Terminal padding
+is 14/12. Mod type sizes and main row heights come from appearance_profiles.json.
+Each profile owns a full independent set of values; see APPEARANCE.md.
 
-PA-Light dark palette: canvas/chrome #030303, background #090909, foreground #f3f4ef,
-border #262626, accent #39ff14. Focused Codex panes use #090b0e / #7797ba;
-Claude panes use #0b0a09 / #b3927b. ProdAdvice light mode uses the custom PA-Light-Day sage/green palette.
 PA-Advanced uses the agency-page look: canvas #000000, chrome #030403, terminal
-#050705, rules #292a29, square frames (pane radius 0, style.radiusScale 0),
-Avenir Next UI, Bodoni 72 brand title, JetBrains Mono labels and its own
-PA-Advanced-Day paper palette. Geometry matches ProdAdvice. See APPEARANCE.md.
+#050705, rules #292a29, square frames (style.radiusScale 0), Avenir Next UI,
+Bodoni 72 brand title, JetBrains Mono labels and its own PA-Advanced-Day paper
+palette. On Windows the Mac fonts fall back to system ones.
+
+PA-Light keeps the original look: separate Spaces and Workshop panels, rounded panes
+(radius 10), Files and Changes at the right. Its dark palette is canvas/chrome
+#030303, background #090909, foreground #f3f4ef, border #262626, accent #39ff14.
+Focused Codex panes use #090b0e / #7797ba; Claude panes use #0b0a09 / #b3927b.
+Its light mode uses the PA-Light-Day sage/green palette.
 
 The illustration in preview.png is made from preview.html and fictional data;
-it is not native rendering evidence. The artwork files are the shipped sprites.
+it is not a screenshot or native rendering evidence. Its artwork is the shipped
+mascot sprites.
 
 ## How it behaves
 
@@ -107,20 +117,21 @@ are macOS-only (ACCESS.md says why). filesystem.js is also copied into
 session_fork, which needs python().
 
 Programs: Python 3, hc, rg, Git, shell utilities, macOS open/pbcopy/pbpaste/trash;
-security only for opted-in Claude limits. See ACCESS.md for data flow. Uses
+security only for opted-in Claude limits and `agy` only for opted-in Antigravity limits; on macOS `lsof` and SQLite for
+Antigravity conversation titles. See ACCESS.md for data flow. Uses
 macOS renamex_np(RENAME_EXCL) to prevent destination clobbering. Python standard
 library only. Runtime state is supplied by each user's Herdr, never by a package.
 
 ## Watch out
 
-Pin compatible Herdr APIs; tested on 0.1.15, not all future releases. Do not copy
+Pin compatible Herdr APIs; v0.7.0 was tested with Herdr App 0.1.18 and Core 0.1.22, not all future releases. Do not copy
 personal settings/state or replace a user's keys wholesale. Keep exact mod names
 unless rewriting every reference and key scope together. Native check does not
 exercise async callbacks, all roles or real interactions. A terminal PID is not
 a conversation ID. Codex title format and Claude session metadata are external
 prerequisites. Limit collection relies on provider-specific formats, not stable
 billing APIs. The file tree has 500-per-directory / 5,000-total caps; text reads
-are limited by Herdr to 1 MiB in the tested version. No multi-select/drag-drop or
+are limited by Herdr to 1 MiB in the tested version. No multi-select, drag-and-drop between folders or
 remote file mutations. Cross-volume move fails; source must survive.
 
 The public mascot artwork matches the personal build; retain NOTICE and all
@@ -272,7 +283,8 @@ committing; generating or prefilling a message does not stage or commit files.
 
 ### Limits of this release
 
-File tree: one selected item at a time, no drag-and-drop. Directory listing is capped at
+File tree: one selected item at a time. Rows drag their path onto a terminal (local
+files are copied to a remote one by Herdr); there is no drag-and-drop between folders. Directory listing is capped at
 500 entries per folder and 5,000 total. File loading uses Herdr's text-file API
 (1 MiB limit in the tested version). Saves detect changes on disk; open dirty
 files block rename/move/Trash. Cross-volume cut/move fails without deleting the
@@ -312,8 +324,10 @@ Save your documents and switch to another layout before uninstalling. Uninstall
 refuses to delete modified package files; your own files, runtime state, an
 edited `limits.local.json` and bindings you changed stay. Files Herdr's own
 checks create in a mod folder (`jsconfig.json`, `gpui-kit.d.ts`) keep that
-folder. The receipt `.herdr-prodsovet-install.json` tracks ownership; do not
-publish it.
+folder. A later install then stops at the existing folder names. Look inside each
+leftover folder first; if only those two generated files are left, move the folders
+to a backup outside `mods/` and install again. The receipt
+`.herdr-prodsovet-install.json` tracks ownership; do not publish it.
 
 ### Development checks
 

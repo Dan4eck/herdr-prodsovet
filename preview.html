@@ -1,6 +1,6 @@
 <!doctype html><html lang="en"><meta charset="utf-8"><title>PA-Advanced - illustrated preview</title><style>
 *{box-sizing:border-box}
-body{margin:0;width:1280px;height:800px;background:#0b0d0b;color:#f3f4ef;font:14px "Avenir Next",-apple-system,sans-serif;padding:34px 38px}
+body{margin:0;width:1600px;height:1000px;background:#0b0d0b;color:#f3f4ef;font:14px "Avenir Next",-apple-system,sans-serif;padding:30px 40px}
 .mono{font-family:"JetBrains Mono",Menlo,monospace}
 h1{font:400 34px "Bodoni 72",Didot,serif;margin:0 0 6px}h1 span{font:13px "JetBrains Mono",Menlo,monospace;color:#969b92;margin-left:10px;letter-spacing:1px}
 .lead{color:#969b92;margin:0 0 22px;font-size:14px}
@@ -41,42 +41,52 @@ h1{font:400 34px "Bodoni 72",Didot,serif;margin:0 0 6px}h1 span{font:13px "JetBr
 .flow{display:flex;gap:8px;align-items:center;margin:9px 0}.flow i{width:8px;height:8px;background:#7ee7ad}.flow.r i{background:#ffad55}.flow span{margin-left:auto;color:#767f7a;font:10px "JetBrains Mono",Menlo,monospace}
 .status{height:22px;border-top:1px solid #292a29;display:flex;align-items:center;gap:14px;padding:0 12px;font:10px "JetBrains Mono",Menlo,monospace;color:#969b92;white-space:nowrap}.status b{color:#ffad55;font-weight:400}
 .caption{margin:14px 0 0;font-size:11.5px;color:#767f7a}
-</style>
-<h1>ProdAdvice<span>ADVANCED · HERDR</span></h1>
-<p class="lead">Projects, worktrees and agent sessions in one sidebar; files, changes and GitHub beside the terminal.</p>
+
+h1{font-size:40px}.hd{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:18px}
+.tag1{font:400 30px "Bodoni 72",Didot,serif;margin:0}.chips{display:flex;gap:8px;margin-top:8px;justify-content:flex-end}
+.chips b{border:1px solid #454845;color:#c9ccc5;font:500 12px "JetBrains Mono",Menlo,monospace;padding:4px 10px}
+.window{height:696px;zoom:1.15}.side{width:300px}.sprite{background-size:704px 44px}
+.term.q{border-color:#292a29}.term{min-width:0}
+.iss{padding:9px 0;border-bottom:1px solid #1c1d1c}.iss small{display:block;color:#767f7a;margin-top:4px;font-size:11px}
+.iss em{font-style:normal;border:1px solid #292a29;font:9px "JetBrains Mono",Menlo,monospace;color:#969b92;padding:0 4px;margin-left:6px}
+.pill{border:1px solid #292a29;font-size:11px;padding:2px 8px;color:#969b92;margin-right:6px}.pill.on{background:#f3f4ef;color:#000}
+.gh{width:294px}.sp1{background-position:-176px 0}.sp2{background-position:-440px 0}</style>
+<div class="hd"><div><h1>ProdAdvice<span>ADVANCED · FOR HERDR</span></h1><p class="lead" style="margin:0">Projects, worktrees and agent sessions in one tree.</p></div>
+<div><p class="tag1" style="text-align:right">Every agent, under its project.</p><div class="chips"><b>PROJECT TREE</b><b>LIVING AGENTS</b><b>FILES + SEARCH</b><b>GITHUB + ISSUES</b></div></div></div>
 <div class="window"><div class="top">
-<aside class="side">
- <div class="brand">Herdr</div>
+<aside class="side"><div class="brand">Herdr</div>
  <div class="tabs"><span class="on">PROJECTS</span><span class="off">SESSIONS</span><span class="open">Open</span></div>
  <div class="machine">▭ THIS MAC <i></i></div>
- <div class="proj"><span class="fold">⌄</span><span class="tile" style="background:#85dee7">N</span><b>notes-app</b><span class="count">3</span><span class="plus">+</span></div>
+ <div class="proj "><span class="fold">⌄</span><span class="tile" style="background:#85dee7">N</span><b>notes-app</b><span class="count">3</span><span class="plus">+</span></div>
  <div class="rail">
-  <div class="card on"><div class="sprite" style="background-image:url(mods/prodsovet/art/creatures/codex-working.png)"></div><div><div class="t">Add search to notes</div><small>4m</small></div></div>
-  <div class="card"><div class="sprite" style="background-image:url(mods/prodsovet/art/creatures/claude-done.png)"></div><div><div class="t">Review the sync module</div><small>12m</small></div></div>
+  <div class="card on"><div class="sprite sp1" style="background-image:url(mods/prodsovet/art/creatures/codex-working.png)"></div><div><div class="t">Add search to notes</div><small>4m</small></div></div>
+  <div class="card "><div class="sprite sp2" style="background-image:url(mods/prodsovet/art/creatures/claude-done.png)"></div><div><div class="t">Review the sync module</div><small>done · 12m</small></div></div>
   <div class="wt"><span class="tick"></span><span class="fold">⌄</span><span style="color:#767f7a">⑂</span><span>feature/export</span><span class="tag">WORKTREE</span><span class="count">1</span><span class="plus">+</span></div>
-  <div class="rail" style="margin-left:13px"><div class="card"><div class="sprite" style="background-image:url(mods/prodsovet/art/creatures/gemini-blocked.png)"></div><div><div class="t">Export to Markdown</div><small>waiting for you · 2m</small></div></div></div>
+  <div class="rail" style="margin-left:13px"><div class="card "><div class="sprite " style="background-image:url(mods/prodsovet/art/creatures/gemini-blocked.png)"></div><div><div class="t">Export to Markdown</div><small>waiting for you · 2m</small></div></div></div>
  </div>
- <div class="proj dim"><span class="fold">›</span><span class="tile" style="background:#ffad55;opacity:.55">W</span>website<span class="count">1</span><span class="plus">+</span></div>
- <div class="proj dim"><span class="fold">›</span><span class="tile" style="background:#a6bbff;opacity:.55">D</span>dotfiles<span class="plus" style="margin-left:auto">+</span></div>
- <div class="machine" style="margin-top:10px">▤ BUILD-SERVER <i></i></div>
- <div class="proj dim"><span class="fold">›</span><span class="tile" style="background:#cc9bfa;opacity:.55">A</span>api<span class="count">1</span><span class="plus">+</span></div>
+ <div class="proj "><span class="fold">⌄</span><span class="tile" style="background:#ffad55">W</span><b>website</b><span class="count">2</span><span class="plus">+</span></div>
+ <div class="rail"><div class="card "><div class="sprite sp2" style="background-image:url(mods/prodsovet/art/creatures/claude-working.png)"></div><div><div class="t">Fix the pricing page</div><small>1m</small></div></div><div class="card "><div class="sprite " style="background-image:url(mods/prodsovet/art/creatures/antigravity-working.png)"></div><div><div class="t">Draft release notes</div><small>2m</small></div></div></div>
+ <div class="proj dim"><span class="fold">›</span><span class="tile" style="background:#a6bbff">D</span><b>dotfiles</b><span class="plus" style="margin-left:auto">+</span></div>
+ <div class="machine" style="margin-top:8px">▤ BUILD-SERVER <i></i></div>
+ <div class="proj "><span class="fold">⌄</span><span class="tile" style="background:#cc9bfa">A</span><b>api</b><span class="count">1</span><span class="plus">+</span></div>
+ <div class="rail"><div class="card "><div class="sprite " style="background-image:url(mods/prodsovet/art/creatures/codex-blocked.png)"></div><div><div class="t">Migrate the jobs table</div><small>waiting for you · 6m</small></div></div></div>
 </aside>
 <main class="work">
- <div class="bar"><span class="ftab"><span style="color:#a6bbff">▰▰▱</span>Codex 1</span><span class="ftab off">README.md</span><span class="ftab off">+</span><span class="right"><span>Files</span><span>Changes</span><span class="on">GitHub</span></span></div>
+ <div class="bar"><span class="ftab"><span style="color:#a6bbff">▰▰▱</span>Codex 1</span><span class="ftab off">Claude 2</span><span class="ftab off">README.md</span><span class="ftab off">+</span><span class="right"><span>Files</span><span>Changes</span><span>GitHub</span><span class="on">Issues</span></span></div>
  <div class="body">
   <section class="term"><div class="ph"><span style="color:#ffad55">●</span>Codex <span style="color:#767f7a">~/projects/notes-app</span></div>
-  <div class="code"><span class="p">›</span> Add search to notes<br><br>Reading the project structure.<br><span class="g">✓</span> Build the file index<br><span class="g">✓</span> Filter results by title and text<br><span class="w">▰▰▱▱</span> Check the search panel<br><br><span class="p">Edited src/search.ts (+48 −6)</span></div></section>
-  <aside class="gh"><h4>GITHUB<span>you/notes-app</span></h4>
-   <div class="box"><div class="row"><span>⑂ main</span><span style="color:#7ee7ad">in sync</span></div><small>feat: add note tags and filters · 2h</small></div>
-   <div style="color:#767f7a;margin-bottom:10px">No pull request for this branch</div>
-   <div class="mono" style="font-size:10px;color:#969b92;letter-spacing:1px">WORKFLOWS 3</div>
-   <div class="flow"><i></i>Build and test<span>main 2h</span></div>
-   <div class="flow r"><i></i>Deploy preview<span>main now</span></div>
-   <div class="flow"><i></i>Lint<span>main 1d</span></div>
-  </aside>
- </div>
+  <div class="code"><span class="p">›</span> Add search to notes<br><br>Reading the project structure.<br><span class="g">✓</span> Build the file index<br><span class="g">✓</span> Filter results by title and text<br><span class="g">✓</span> Add keyboard navigation<br><span class="w">▰▰▱▱</span> Check the search panel<br><br><span class="p">Edited src/search.ts (+48 −6)</span><br><span class="p">Edited src/panel.ts (+21 −3)</span><br><br>Running the tests.<br><span class="g">✓</span> search: 14 passed<br><span class="g">✓</span> panel: 6 passed</div></section>
+  <section class="term q"><div class="ph"><span style="color:#7ee7ad">●</span>Claude Code <span style="color:#767f7a">~/projects/notes-app</span></div>
+  <div class="code"><span class="p">›</span> Review the sync module<br><br>Read src/sync/queue.ts<br>Read src/sync/merge.ts<br><br><span class="g">✓</span> Retries are bounded<br><span class="g">✓</span> Offline edits keep their order<br><span class="w">!</span> merge.ts drops a tag when both<br>&nbsp;&nbsp;sides rename the same note<br><br>One finding, with a failing test:<br><span class="p">tests/merge.test.ts (+17)</span><br><br>Shall I fix it?<br><span class="p">›</span> Yes, keep both tags</div></section>
+  <aside class="gh"><h4>ISSUES<span>you/notes-app</span></h4>
+   <div style="margin-bottom:8px"><span class="pill on">Open</span><span class="pill">Closed</span><span class="pill">Mine</span></div>
+   <div class="iss">#48 Search ignores archived notes<small>2h · 3 comments<em>bug</em></small></div>
+   <div class="iss">#47 Export keeps the folder order<small>5h · @you<em>feature</em></small></div>
+   <div class="iss">#45 Tags disappear after a merge<small>1d · 1 comment<em>bug</em></small></div>
+   <div class="iss">#41 Shortcut for a new note<small>3d<em>idea</em></small></div>
+   <div class="iss">#38 Paste images from the clipboard<small>5d · 4 comments<em>feature</em></small></div>
+   <div class="iss">#36 Slow start with 10k notes<small>1w · @you<em>perf</em></small></div>
+  </aside></div>
 </main></div>
-<footer class="status">THIS MAC <span>⎇ main</span><span>AGENTS 4</span><b>WORKING 1</b><span style="color:#ff8176">WAITING 1</span><span style="margin-left:auto">⌘⇧P COMMANDS</span></footer>
-</div>
-<p class="caption">Illustration of the layout with fictional data, not a screenshot. Limits are opt-in.</p>
-</html>
+<footer class="status">THIS MAC <span>⎇ main</span><span>AGENTS 6</span><b>WORKING 3</b><span style="color:#ff8176">WAITING 2</span><span style="margin-left:auto">⌘⇧P COMMANDS</span></footer></div>
+<p class="caption">Illustration with fictional data and the shipped mascot sprites, not a screenshot.</p></html>
