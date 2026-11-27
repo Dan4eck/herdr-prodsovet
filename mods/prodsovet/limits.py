@@ -6,10 +6,14 @@ Codex: the latest `rate_limits` that Codex writes into its session logs.
 Antigravity: the installed `agy` CLI (`agy -p /usage --output-format json`).
 Each window: {"used": percent, "resets": unix seconds, "minutes": window length}.
 
-The Claude source is macOS-only and is not ported to Windows: it would read
-Claude Code's subscription token outside Claude Code, which Anthropic's
-Claude Code terms do not allow for other tools. Codex reads local logs only,
-and Antigravity invokes its own CLI directly.
+On Windows and Linux the Keychain source is not used: it would read Claude
+Code's subscription token outside Claude Code, which Anthropic's Claude Code
+terms do not allow for other tools. There Claude's limits come from Claude
+Code itself: it hands its statusLine command a payload with `rate_limits`,
+and a statusLine command that saves that part to
+~/.claude/statusline-rate-limits.json makes them readable here (no token
+involved). Codex reads local logs only, and Antigravity invokes its own CLI
+directly.
 """
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
@@ -38,9 +42,33 @@ def parse_iso_timestamp(value):
     return datetime.fromisoformat(text).timestamp()
 
 
+def claude_statusline_cache():
+    return Path(os.environ.get("CLAUDE_CONFIG_DIR") or Path(HOME) / ".claude") / "statusline-rate-limits.json"
+
+
+def claude_from_statusline(path=None, now=None):
+    """What Claude Code last gave its statusLine command: {"rate_limits": {"five_hour":
+    {"used_percentage", "resets_at"}, "seven_day": {...}}, "at": seconds}. A window that
+    has reset since then counts as unused."""
+    data = json.loads(Path(path or claude_statusline_cache()).read_text(encoding="utf-8"))
+    limits = data.get("rate_limits") or {}
+    now = time.time() if now is None else now
+    out = {}
+    for key, name, minutes in (("five_hour", "5h", 300), ("seven_day", "7d", 10080)):
+        w = limits.get(key)
+        if not isinstance(w, dict) or w.get("used_percentage") is None:
+            continue
+        resets = parse_iso_timestamp(w.get("resets_at"))
+        used = 0 if resets and resets < now else w["used_percentage"]
+        out[name] = {"used": used, "minutes": minutes, "resets": resets}
+    if not out:
+        raise LookupError("No Claude rate limits in the statusLine cache yet")
+    return out
+
+
 def claude():
     if sys.platform != 'darwin':
-        raise NotImplementedError('Claude limits are macOS-only')
+        return claude_from_statusline()
     raw = subprocess.run(["security", "find-generic-password", "-s", "Claude Code-credentials", "-w"],
                          capture_output=True, text=True, timeout=10).stdout
     token = json.loads(raw)["claudeAiOauth"]["accessToken"]

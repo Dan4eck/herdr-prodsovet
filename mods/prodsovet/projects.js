@@ -97,6 +97,17 @@ export class ProjectTree {
     cx.notify();
   }
 
+  // The header button: fold every listed project, or open them all when all are folded.
+  allFolded() {
+    const ids = this.projectIds ?? [];
+    return ids.length > 0 && ids.every(id => this.folded.has(id));
+  }
+  foldAll(fold, cx) {
+    for (const id of this.projectIds ?? []) fold ? this.folded.add(id) : this.folded.delete(id);
+    setShared(FOLDS, [...this.folded]);
+    cx.notify();
+  }
+
   menu(space) {
     openOverlay({ mod: "menu", kind: "popup", width: 200, height: 300, props: { tab: "space", target: { id: space.id } } });
   }
@@ -153,6 +164,7 @@ export class ProjectTree {
       }
     }
     const projects = byOrder(projectGroups(entries), p => p.key, listOr(shared(PROJECT_ORDER)));
+    this.projectIds = projects.map(p => `project-${p.key}`);
     const sessionOrder = listOr(shared(SESSION_ORDER));
     for (const p of projects) for (const c of p.checkouts) c.members = byOrder(c.members, a => a.address, sessionOrder);
     // Agents that are on screen, in their shown order, with the drag applied.
@@ -364,6 +376,15 @@ export class ProjectTree {
               .on_click((_e, cx) => { cx.stop_propagation(); setShared(SESSIONS_MANUAL, hand); cx.notify(); }))
             .child(svg(px(icon)).size(14));
         }))))
+        // Fold or open every project at once.
+        .when(view === "projects" && !collapsed && (this.projectIds ?? []).length > 1, el => {
+          const all = this.allFolded();
+          return el.child(div().id("projects-fold-all").size(26).flex_none().flex().items_center().justify_center().rounded(radius(5))
+            .text_color(t.muted).cursor_pointer().hover(s => s.bg(t.hover).text_color(t.foreground))
+            .tooltip(all ? L("Expand all projects", "Развернуть все проекты") : L("Collapse all projects", "Свернуть все проекты"))
+            .on_click((_e, cx) => { cx.stop_propagation(); this.foldAll(!all, cx); })
+            .child(svg(px(all ? "fold-down" : "fold-right")).size(16).flex_none()));
+        })
         // Open project: a bare Finder-style folder icon at its native 16px.
         .child(div().id("project-new").size(26).flex_none().flex().items_center().justify_center().rounded(radius(5))
           .text_color(t.muted).cursor_pointer().hover(s => s.bg(t.hover).text_color(t.foreground))

@@ -74,6 +74,15 @@ export async function python(args, options = {}) {
   }
   return exec(windowsPython[0], [...windowsPython.slice(1), ...args], options);
 }
+// Windows: a Markdown picture copied (or downloaded) into the preview cache, with its size.
+export const cachePicture = (request) => system({ action: "picture", ...request });
+// A regular file there? `test -f` on macOS and remote machines; Windows has no `test`.
+export async function fileExists(path, on = null) {
+  const r = onWindows(on)
+    ? await python(["-c", "import os, sys; sys.exit(0 if os.path.isfile(sys.argv[1]) else 1)", path], { timeout: 15000 }).catch(() => null)
+    : await exec("test", ["-f", path], { on }).catch(() => null);
+  return r?.code === 0;
+}
 async function system(request) {
   const r = await python([`${appHome()}/mods/my-files/system.py`, JSON.stringify(request)], { timeout: 30000 });
   let value;
