@@ -8,10 +8,11 @@ import { div, image, svg } from "gpui-kit";
 import { word, artFrame, artPath, artKind, ART_FRAMES } from "./creatures.js";
 import { conversationTitle } from "./antigravity-titles.js";
 import { spaceLabel, fileExists } from "./filesystem.js";
+import { waitingKind } from "./waiting.js";
 import { ProjectTree } from "./projects.js";
 import { agency, accentOf, activitySpinner, googleActivityColor, current, onRail, hovered, glitchy, halftone, typed, px, icon as assetIcon, settled } from "./agency.js";
 import { v_flex, h_flex } from "gpui-base";
-import { agents, terminals, panes, focused, spaces, run, theme, shared, setShared, setAgentOrder, openOverlay, closeOverlay, props, window, layout, appHome, exec } from "herdr";
+import { agents, terminals, panes, focused, spaces, run, theme, shared, setShared, setAgentOrder, openOverlay, closeOverlay, props, window, layout, appHome, exec, hc } from "herdr";
 
 function find(node, id) {
   if (node?.id === id) return node;
@@ -132,6 +133,29 @@ export class Agents {
     });
     probe(cx);
     cx.timer.every(60000, probe);
+    // Agents at a start-up question (trust this folder…) report no status yet: read the
+    // screens of terminals that run something other than a plain shell, every 5 s while
+    // the window is active, and list the ones asking as needing you.
+    this.waiting = new Map();
+    this.scanning = false;
+    cx.timer.every(5000, (cx) => {
+      if (this.scanning || !window()?.active) return;
+      this.scanning = true;
+      cx.spawn(async (cx) => {
+        try {
+          const listed = new Set(agents().filter(a => a.status).map(a => a.address));
+          const next = new Map();
+          for (const p of panes()) {
+            if (!p.terminal || listed.has(p.terminal) || p.program?.shell) continue;
+            const r = await hc(["read", p.terminal]).catch(() => null);
+            const kind = r && !r.code ? waitingKind(r.stdout, p.program?.key) : null;
+            if (kind) next.set(p.terminal, kind);
+          }
+          const same = next.size === this.waiting.size && [...next].every(([k, v]) => this.waiting.get(k) === v);
+          if (!same) { this.waiting = next; cx.notify(); }
+        } finally { this.scanning = false; }
+      });
+    });
     // The sprite clock: 10 fps, only while characters are on screen.
     this.tick = 0;
     this.flaskDoneSince = new Map();
@@ -317,12 +341,16 @@ export class Agents {
       const terminal = live.get(p.terminal);
       const location = locations.get(p.tab);
       if (!terminal || !location || listed.has(p.terminal)) continue;
-      if (!p.program?.agent && !terminal.program?.agent && !parents.has(p.terminal)) continue;
+      const asking = this.waiting?.get(p.terminal);
+      if (!p.program?.agent && !terminal.program?.agent && !parents.has(p.terminal) && !asking) continue;
       const { s, tab } = location;
       list.push({
         address: p.terminal, pane: p.pane, space: s.id, space_name: s.name,
         tab: tab.id, tab_index: tab.index, tab_name: tab.name,
-        status: p.status ?? null, app: p.app, program: p.program,
+        // A start-up question is a choice the person makes: shown as needing them,
+        // with the character of the program asking (Codex as node.exe, say).
+        status: asking ? "blocked" : (p.status ?? null), app: p.app,
+        program: asking && !p.program?.agent && asking !== "other" ? { ...p.program, key: asking, agent: true } : p.program,
         title: p.title, seq: 0,
         pinned: Boolean(terminal.labels?.["herdr.pinned"]), focused: p.focused,
       });

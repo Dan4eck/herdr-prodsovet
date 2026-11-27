@@ -40,6 +40,7 @@ const host={
  layout:()=>({id:'sidebar',size:{px:width}}),setAgentOrder:x=>order=x,
  run:(name,args)=>calls.push({name,args}),notify:n=>calls.push({notify:n}),playSound:x=>calls.push({sound:x}),openOverlay:p=>calls.push({overlay:p}),closeOverlay:id=>calls.push({close:id}),
  knownAgents:async({on})=>{agentHosts.push(on);return [{key:'codex',name:'Codex',run:['codex'],installed:true}];},pickFolder:()=>picker(),keys:()=>[],
+ hc:async()=>({code:0,stdout:'',stderr:''}),
  exec:async(cmd,args,opts)=>{
    if(execFixture)return execFixture(cmd,args,opts);
    if(cmd==='test')return {code:0,stdout:'',stderr:''};

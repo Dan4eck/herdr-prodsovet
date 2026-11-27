@@ -40,6 +40,6 @@ for path in ROOT.rglob('*'):
                 assert path.parent.resolve() in dest.parents and dest.is_file(), f'Invalid import: {path}: {ref}'
 print('Package structure, JSON, module copies and privacy scan: PASS', flush=True)
 subprocess.run([sys.executable, '-B', '-m', 'unittest', 'discover', '-s', 'tests', '-p', 'test_*.py'], cwd=ROOT, check=True)
-for name in ('test_herdr_files.mjs', 'test_herdr_files_windows.mjs', 'test_herdr_files_ui.mjs', 'test_appearance.mjs', 'test_commit_suggestion.mjs', 'test_projects.mjs', 'test_md_blocks.mjs', 'test_issues.mjs'):
+for name in ('test_herdr_files.mjs', 'test_herdr_files_windows.mjs', 'test_herdr_files_ui.mjs', 'test_appearance.mjs', 'test_commit_suggestion.mjs', 'test_projects.mjs', 'test_md_blocks.mjs', 'test_issues.mjs', 'test_waiting.mjs'):
     subprocess.run(['node','--experimental-vm-modules',str(ROOT/'tests'/name)], cwd=ROOT, check=True)
 print('All package checks passed.')
