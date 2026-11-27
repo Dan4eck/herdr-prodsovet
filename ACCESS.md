@@ -29,19 +29,27 @@ contact GitHub, change your active layout, install agent hooks or upload data.
 | Search | Runs `rg` directly (no `sh`/`head`); the first 400 result lines are kept. |
 | Session fork | Finds Herdr's core as `hc` or `herdr-core` (PATH, then `%LOCALAPPDATA%\Programs\herdr-core`). npm installs of Claude Code and Codex are accepted when they run as `node.exe`, with Herdr's agent status as the deciding check. |
 | Commit suggestions | Same as macOS; the helper reads the diff itself instead of receiving it in argv (Windows limits a command line to 32,767 characters). `codex` is found through PATH (`codex.cmd` for npm installs). |
-| Limits | Codex and Antigravity. The Claude source is not ported to Windows (below). |
+| Limits | Codex and Antigravity as on macOS. Claude comes from Claude Code's own statusLine payload, never from its token (below). |
 
-### Why Claude limits are macOS-only
+### Claude limits on Windows: from Claude Code, not from its token
 
-The Claude limit source reads Claude Code's OAuth token from the macOS Keychain
+The macOS Claude source reads Claude Code's OAuth token from the Keychain
 and calls Anthropic's usage endpoint with it from this package's script.
 Anthropic's [Claude Code legal and compliance page](https://code.claude.com/docs/en/legal-and-compliance)
 describes subscription OAuth as meant for Claude Code and Anthropic's own apps,
 and says other developers may not collect or intermediate Claude.ai credentials
 or session tokens. Running the unmodified Claude Code inside Herdr is ordinary
 use; reading its token from another program is not. The Windows port therefore
-leaves this source out, and `--with-limits` enables only the local Codex and
-Antigravity CLI sources there. On macOS it stays opt-in, as before.
+never reads the token.
+
+Instead, Claude Code itself gives its configured `statusLine` command a JSON
+payload that includes the plan's `rate_limits` (`five_hour` / `seven_day`:
+`used_percentage`, `resets_at`). A statusLine command that writes that part to
+`~/.claude/statusline-rate-limits.json` (for example a small wrapper that
+saves it and then runs your previous statusLine command) makes the numbers
+available; `limits.py` only reads that file. With no such file the Claude
+entry reports an error instead of zeros. The numbers are as fresh as the last
+status line refresh of any Claude Code session.
 
 There is no project telemetry, external upload endpoint or bundled credential.
 Agents launched by the user retain their own normal network behavior. Herdr
