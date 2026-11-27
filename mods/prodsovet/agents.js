@@ -7,7 +7,7 @@ import { appearance, fontSize, metric, radius, style, labelFont, L } from "./app
 import { div, image, svg } from "gpui-kit";
 import { word, artFrame, artPath, artKind, ART_FRAMES } from "./creatures.js";
 import { conversationTitle } from "./antigravity-titles.js";
-import { spaceLabel } from "./filesystem.js";
+import { spaceLabel, fileExists } from "./filesystem.js";
 import { ProjectTree } from "./projects.js";
 import { agency, accentOf, activitySpinner, googleActivityColor, current, onRail, hovered, glitchy, halftone, typed, px, icon as assetIcon, settled } from "./agency.js";
 import { v_flex, h_flex } from "gpui-base";
@@ -127,7 +127,7 @@ export class Agents {
     this.hasArt = false;
     const probe = (cx) => cx.spawn(async (cx) => {
       let ok = false;
-      try { ok = (await exec("test", ["-f", `${appHome()}/mods/prodsovet/art/creatures/codex-working.png`])).code === 0; } catch {}
+      try { ok = await fileExists(`${appHome()}/mods/prodsovet/art/creatures/codex-working.png`); } catch {}
       if (ok !== this.hasArt) { this.hasArt = ok; cx.notify(); }
     });
     probe(cx);

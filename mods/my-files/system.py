@@ -1,5 +1,6 @@
 """Windows system actions for the ProdAdvice mods: clipboard text, opening a
-file or link, showing a file in Explorer. JSON request in argv[1], one JSON
+file or link, showing a file in Explorer, and caching a picture for the
+Markdown preview. JSON request in argv[1], one JSON
 line out. Uses the Windows API directly and never runs a shell string.
 macOS does these with pbcopy, pbpaste and open, so nothing here runs there."""
 import json
@@ -138,6 +139,118 @@ def reveal(value):
         raise ValueError(f'Проводник не открылся (код {result & 0xFFFFFFFF:#x})')
 
 
+PICTURE_EXT = ('.png', '.jpg', '.jpeg', '.webp', '.gif', '.svg', '.avif', '.bmp')
+VIDEO_EXT = ('.mp4', '.mov', '.m4v', '.webm')
+
+
+def fnv(text):
+    """The same 32-bit FNV-1a name md-preview.js gives a cached picture."""
+    h = 2166136261
+    for unit in text.encode('utf-16-le').decode('utf-16-le'):
+        for code in ([ord(unit)] if ord(unit) < 0x10000 else [0xD800 + ((ord(unit) - 0x10000) >> 10), 0xDC00 + ((ord(unit) - 0x10000) & 0x3FF)]):
+            h = ((h ^ code) * 16777619) & 0xFFFFFFFF
+    return f'{h:08x}'
+
+
+def picture_size(path):
+    """(width, height) from the file's header: PNG, GIF, BMP, JPEG, WebP. (16, 9) if unknown."""
+    with open(path, 'rb') as f:
+        head = f.read(64 * 1024)
+    if head[:8] == b'\x89PNG\r\n\x1a\n' and len(head) >= 24:
+        return int.from_bytes(head[16:20], 'big'), int.from_bytes(head[20:24], 'big')
+    if head[:6] in (b'GIF87a', b'GIF89a'):
+        return int.from_bytes(head[6:8], 'little'), int.from_bytes(head[8:10], 'little')
+    if head[:2] == b'BM' and len(head) >= 26:
+        return int.from_bytes(head[18:22], 'little', signed=True), abs(int.from_bytes(head[22:26], 'little', signed=True))
+    if head[:4] == b'RIFF' and head[8:12] == b'WEBP':
+        kind = head[12:16]
+        if kind == b'VP8X':
+            return 1 + int.from_bytes(head[24:27], 'little'), 1 + int.from_bytes(head[27:30], 'little')
+        if kind == b'VP8 ':
+            return int.from_bytes(head[26:28], 'little') & 0x3FFF, int.from_bytes(head[28:30], 'little') & 0x3FFF
+        if kind == b'VP8L':
+            b = int.from_bytes(head[21:25], 'little')
+            return (b & 0x3FFF) + 1, ((b >> 14) & 0x3FFF) + 1
+    if head[:2] == b'\xff\xd8':
+        i = 2
+        while i + 9 < len(head):
+            if head[i] != 0xFF:
+                i += 1
+                continue
+            marker = head[i + 1]
+            if marker in (0xC0, 0xC1, 0xC2, 0xC3, 0xC5, 0xC6, 0xC7, 0xC9, 0xCA, 0xCB, 0xCD, 0xCE, 0xCF):
+                return int.from_bytes(head[i + 7:i + 9], 'big'), int.from_bytes(head[i + 5:i + 7], 'big')
+            i += 2 + int.from_bytes(head[i + 2:i + 4], 'big')
+    return 16, 9
+
+
+def picture(request):
+    """A picture for the Markdown preview, copied into the mod's cache folder (Herdr's
+    image() reads files under its home). src: relative to dir, absolute, ~/..., file://
+    or https:// (downloaded once). A video gives a frame when ffmpeg is installed."""
+    import shutil
+    import subprocess
+    import urllib.parse
+    import urllib.request
+    src, base, cache, video = request.get('src'), request.get('dir'), request.get('cache'), bool(request.get('video'))
+    if not isinstance(src, str) or not src or not isinstance(cache, str) or not os.path.isabs(cache):
+        raise ValueError('Нет картинки')
+    os.makedirs(cache, exist_ok=True)
+    ext = os.path.splitext(src.split('?')[0].split('#')[0])[1].lower()
+    if src.lower().startswith(('http://', 'https://')):
+        if ext in VIDEO_EXT:
+            raise ValueError('удалённое видео без постера')
+        dest = os.path.join(cache, fnv(src) + (ext if ext in PICTURE_EXT else '.img'))
+        if not os.path.isfile(dest) or not os.path.getsize(dest):
+            req = urllib.request.Request(src, headers={'User-Agent': 'ProdAdvice-Herdr'})
+            temp = dest + '.part'
+            try:
+                with urllib.request.urlopen(req, timeout=40) as r, open(temp, 'wb') as out:
+                    shutil.copyfileobj(r, out)
+                os.replace(temp, dest)
+            except Exception as error:
+                if os.path.exists(temp):
+                    os.remove(temp)
+                raise ValueError(f'не скачалось: {error}') from None
+    else:
+        if src.lower().startswith('file://'):
+            path = urllib.parse.unquote(src[7:])
+            path = path[1:] if len(path) > 2 and path[0] == '/' and path[2] == ':' else path
+        elif src.startswith('~/') or src.startswith('~\\'):
+            path = os.path.join(os.path.expanduser('~'), src[2:])
+        elif src[1:3] in (':\\', ':/') or src.startswith('\\\\'):
+            path = urllib.parse.unquote(src)
+        else:
+            if not isinstance(base, str) or not os.path.isabs(base):
+                raise ValueError('Нет папки файла')
+            path = os.path.join(base, urllib.parse.unquote(src.split('?')[0].split('#')[0]))
+        path = os.path.normpath(path)
+        if not os.path.isfile(path):
+            raise ValueError('нет файла: ' + path)
+        ext = os.path.splitext(path)[1].lower()
+        if ext in VIDEO_EXT:
+            if not video:
+                raise ValueError('видео')
+            dest = os.path.join(cache, fnv(path) + '-frame.jpg')
+            if not os.path.isfile(dest) or not os.path.getsize(dest):
+                ffmpeg = shutil.which('ffmpeg')
+                if not ffmpeg:
+                    raise ValueError('кадр видео не снят (нужен ffmpeg)')
+                r = subprocess.run([ffmpeg, '-v', 'error', '-y', '-ss', '1', '-i', path, '-frames:v', '1', '-vf', 'scale=1280:-1', '-q:v', '3', dest],
+                                   capture_output=True, timeout=60, creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
+                if r.returncode:
+                    raise ValueError('кадр видео не снят (нужен ffmpeg)')
+        elif ext in PICTURE_EXT:
+            dest = os.path.join(cache, fnv(path) + ext)
+            # Windows symlinks need developer mode: a copy, refreshed when the original changes.
+            if not os.path.isfile(dest) or os.path.getmtime(dest) < os.path.getmtime(path):
+                shutil.copyfile(path, dest)
+        else:
+            raise ValueError(f'формат {ext} не показывается')
+    w, h = picture_size(dest) if not dest.endswith('.svg') else (16, 9)
+    return {'file': os.path.basename(dest), 'w': w, 'h': h}
+
+
 def run(request):
     action = request.get('action')
     if action == 'clipboard-get':
@@ -155,6 +268,8 @@ def run(request):
     if action == 'reveal':
         reveal(request.get('path'))
         return {}
+    if action == 'picture':
+        return picture(request)
     raise ValueError('Неизвестное действие')
 
 

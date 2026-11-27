@@ -3,12 +3,14 @@
 // TextView.markdown shows image syntax as plain text, so the preview draws text pieces with
 // TextView.markdown and pictures with image(). src may be relative to the file, absolute, ~/...,
 // file:// or https:// (downloaded once into data/md-preview). A video shows a still frame
-// (its poster, or the first seconds read by ffmpeg when installed). macOS only.
+// (its poster, or the first seconds read by ffmpeg when installed). macOS with its own tools;
+// Windows through my-files/system.py (copy instead of symlink, size from the file header).
 import { div, image } from "gpui-kit";
 import { v_flex, h_flex, TextView } from "gpui-base";
 import { exec, appHome, theme } from "herdr";
 import { fontSize, radius } from "./appearance.js";
 import { parseBlocks } from "./md-blocks.js";
+import { onWindows, cachePicture } from "./filesystem.js";
 
 const OK_EXT = /\.(png|jpe?g|webp|gif|svg|avif|bmp)$/i;
 const VIDEO_EXT = /\.(mp4|mov|m4v|webm)$/i;
@@ -41,6 +43,10 @@ export class MdPreview {
 
   async localize(src, videoFrame) {
     const cache = this.cacheDir();
+    if (onWindows()) {
+      const r = await cachePicture({ src, dir: this.dir, cache, video: Boolean(videoFrame) });
+      return { rel: "data/md-preview/" + r.file, w: r.w, h: r.h };
+    }
     await exec("mkdir", ["-p", cache]);
     const home = (await exec("printenv", ["HOME"])).stdout.trim();
     let abs = null;
